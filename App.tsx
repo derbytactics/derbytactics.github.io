@@ -1,10 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
+import { backendEnabled, getAccount, initAccount, refreshProfile } from './src/account/api';
+import { useAccount } from './src/account/useAccount';
 import { Action, BOT_STYLES, GameState, apply, botAction, check, createGame, currentPlayer } from './src/engine';
 import { RoomState } from './src/net/room';
 import { GUEST_KEY, HOST_KEY, normalizeCode } from './src/net/session';
 import { load } from './src/net/storage';
+import { AccountScreen, formatDate } from './src/ui/AccountScreen';
 import { GameView } from './src/ui/GameView';
 import { HelpScreen } from './src/ui/HelpScreen';
 import { OnlineGuest, OnlineHost } from './src/ui/Online';
@@ -31,6 +34,11 @@ export default function App() {
   const [mode, setMode] = useState<Mode>({ kind: 'menu' });
   const [game, setGame] = useState<GameState | null>(null);
   const [help, setHelp] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const account = useAccount();
+  useEffect(() => {
+    initAccount().then(() => getAccount().recovering && setAccountOpen(true));
+  }, []);
   const gameRef = useRef(game);
   gameRef.current = game;
 
@@ -70,7 +78,7 @@ export default function App() {
   } else if (mode.kind === 'guest') {
     body = <OnlineGuest code={mode.code} name={mode.name} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'local' && game) {
-    body = <GameView game={game} seat={null} dispatch={dispatch} onHelp={onHelp} onExit={toMenu} />;
+    body = <GameView game={game} seat={null} dispatch={dispatch} onHelp={onHelp} onExit={toMenu} exitText="La partida no se guarda: si sales, se pierde." />;
   } else {
     const savedHost = load<RoomState>(HOST_KEY);
     const savedGuest = load<{ code: string; name: string }>(GUEST_KEY);
@@ -86,7 +94,17 @@ export default function App() {
         resumeCode={savedHost?.code ?? null}
         onResume={() => savedHost && setMode({ kind: 'host', name: savedHost.seats[0].name, resume: savedHost })}
         initialCode={codeFromLink() || savedGuest?.code || ''}
-        initialName={savedGuest?.name ?? savedHost?.seats[0].name ?? ''}
+        initialName={savedGuest?.name ?? savedHost?.seats[0].name ?? account.profile?.username ?? ''}
+        account={backendEnabled() ? { label: account.session ? `👤 ${account.profile?.username ?? 'Mi cuenta'}` : '👤 Entrar', onOpen: () => setAccountOpen(true) } : null}
+        hostGate={async () => {
+          if (!backendEnabled()) return null;
+          if (!getAccount().session) {
+            setAccountOpen(true);
+            return 'Entra con tu cuenta para crear una sala.';
+          }
+          const p = await refreshProfile();
+          return p?.host_banned_until ? `Estás sancionado como anfitrión: no puedes crear salas hasta el ${formatDate(p.host_banned_until)}.` : null;
+        }}
       />
     );
   }
@@ -96,6 +114,11 @@ export default function App() {
       <View style={{ flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' }}>
         {body}
         {/* La ayuda se superpone: así no se corta la conexión de una partida en línea. */}
+        {accountOpen ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
+            <AccountScreen onClose={() => setAccountOpen(false)} />
+          </View>
+        ) : null}
         {help ? (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
             <HelpScreen onClose={() => setHelp(false)} />

@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { CONFIG, SeasonLength } from '../engine';
-import { RoomState, botStep, hostAct, hostReady, pendingReady, playTurnForAbsent, setLobby, startGame } from '../net/room';
+import { HostCard, backendEnabled, getAccount, refreshProfile, rpc } from '../account/api';
+import { useAccount } from '../account/useAccount';
+import { CONFIG, SeasonLength, standings } from '../engine';
+import { RoomState, botStep, finalSeats, hostAct, hostReady, pendingReady, playTurnForAbsent, setLobby, startGame } from '../net/room';
 import { GuestSession, HostSession } from '../net/session';
 import { deviceId } from '../net/storage';
+import { Stars } from './AccountScreen';
 import { Crest } from './art';
 import { Btn, Overline, s } from './components';
 import { GameView } from './GameView';
@@ -50,10 +53,34 @@ function Seats({ room, mine }: { room: RoomState; mine: number }) {
   );
 }
 
-function Connecting({ text, error, onExit }: { text: string; error?: string | null; onExit: () => void }) {
+/** Valoración del anfitrión por un invitado registrado, al acabar la partida. */
+function RateHost({ gameId, hostName }: { gameId: string; hostName: string }) {
+  const [stars, setStars] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <View style={[s.panel, { alignItems: 'center', borderColor: C.accent }]}>
+      <Overline>¿QUÉ TAL COMO ANFITRIÓN?</Overline>
+      <Text style={{ color: C.text, fontWeight: '800', fontSize: 16, marginVertical: 6 }}>Valora a {hostName}</Text>
+      <Stars
+        value={stars}
+        size={34}
+        onPick={(n) => {
+          setStars(n);
+          rpc('rate_host', { p_game: gameId, p_stars: n }).then(() => setError(null), (e: Error) => setError(e.message));
+        }}
+      />
+      <Text style={[s.p, { fontSize: 12, marginTop: 6, textAlign: 'center' }]}>
+        {error ?? (stars ? '¡Gracias! Puedes cambiarla desde tu historial.' : 'Tu valoración ayuda a los demás a elegir sala.')}
+      </Text>
+    </View>
+  );
+}
+
+function Connecting({ text, error, onExit, children }: { text: string; error?: string | null; onExit: () => void; children?: React.ReactNode }) {
   return (
     <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
       <Text style={[s.h2, { textAlign: 'center' }]}>{error ?? text}</Text>
+      {children ? <View style={{ alignSelf: 'stretch', marginTop: 12 }}>{children}</View> : null}
       <Btn small kind="ghost" label="Volver" onPress={onExit} style={{ marginTop: 16 }} />
     </View>
   );
@@ -67,6 +94,10 @@ export function OnlineHost(props: { name: string; resume: RoomState | null; onHe
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+  /** null: aún no registrada · true/false: si la partida puntúa para el ranking. */
+  const [ranked, setRanked] = useState<boolean | null>(null);
+  const reported = useRef(false);
 
   useEffect(() => {
     let alive = true;
@@ -75,7 +106,7 @@ export function OnlineHost(props: { name: string; resume: RoomState | null; onHe
       session.current = HostSession.resume(props.resume, l);
       if (!session.current) setError('No se ha podido reanudar la sala.');
     } else {
-      HostSession.create(deviceId(), props.name, l).then(
+      HostSession.create(deviceId(), props.name, getAccount().session?.user.id ?? null, l).then(
         (s2) => {
           if (!alive) return s2.close(true);
           session.current = s2;
@@ -100,10 +131,56 @@ export function OnlineHost(props: { name: string; resume: RoomState | null; onHe
     return () => clearTimeout(t);
   }, [botTurn, room?.seq]);
 
+  // Con cuentas: señal de vida mientras se juega y registro del resultado al terminar.
+  const gameId = room?.gameId ?? null;
+  const phase = g?.phase;
+  useEffect(() => {
+    if (!gameId || !phase || phase === 'finished') return;
+    const t = setInterval(() => rpc('heartbeat', { p_game: gameId }).catch(() => {}), 60000);
+    return () => clearInterval(t);
+  }, [gameId, phase]);
+  useEffect(() => {
+    if (!gameId || phase !== 'finished' || reported.current || !room?.game) return;
+    reported.current = true;
+    const table = standings(room.game);
+    const results = table.map((p, i) => ({ seat: p.id, points: p.points, goals: p.goals, position: i + 1 }));
+    rpc<boolean>('finish_game', { p_game: gameId, p_results: results }).then(
+      (isRanked) => {
+        setRanked(isRanked);
+        refreshProfile();
+      },
+      () => {
+        reported.current = false;
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, phase]);
+
   const exit = () => {
+    if (gameId && phase && phase !== 'finished') rpc('abandon_game', { p_game: gameId }).catch(() => {});
     session.current?.close(true);
     session.current = null;
     props.onExit();
+  };
+  const start = async () => {
+    const ses2 = session.current;
+    if (!ses2) return;
+    setStartError(null);
+    let gid: string | null = null;
+    if (backendEnabled()) {
+      try {
+        const seats = finalSeats(ses2.room);
+        gid = await rpc<string>('start_game', {
+          p_code: ses2.room.code,
+          p_season: ses2.room.season,
+          p_clubs: seats.length,
+          p_players: seats.map((st, i) => ({ seat: i, name: st.name, is_bot: !st.clientId })),
+        });
+      } catch (e) {
+        return setStartError((e as Error).message);
+      }
+    }
+    ses2.update((r) => startGame(r, undefined, gid));
   };
   if (!room || !session.current) return <Connecting text="Creando la sala…" error={error} onExit={props.onExit} />;
   const ses = session.current;
@@ -148,7 +225,8 @@ export function OnlineHost(props: { name: string; resume: RoomState | null; onHe
               ))}
             </View>
           </View>
-          <Btn label={room.seats.length < room.clubs ? `Empezar (la IA lleva ${room.clubs - room.seats.length})` : 'Empezar la pretemporada'} onPress={() => ses.update((r) => startGame(r))} />
+          {startError ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{startError}</Text> : null}
+          <Btn label={room.seats.length < room.clubs ? `Empezar (la IA lleva ${room.clubs - room.seats.length})` : 'Empezar la pretemporada'} onPress={start} />
           <Btn kind="ghost" label="Cerrar la sala" onPress={exit} style={{ marginTop: 10 }} />
         </ScrollView>
       </View>
@@ -164,6 +242,15 @@ export function OnlineHost(props: { name: string; resume: RoomState | null; onHe
         seat={0}
         onHelp={props.onHelp}
         onExit={exit}
+        exitText={gameId ? 'Eres el anfitrión: si sales, la partida se acaba para todos y cuenta como abandonada. Dos abandonos en una semana impiden crear salas durante un tiempo.' : 'Eres el anfitrión: si sales, la partida se acaba para todos.'}
+        endExtra={
+          gameId && ranked !== null ? (
+            <View style={[s.panel, { alignItems: 'center' }]}>
+              <Text style={{ color: ranked ? C.accent : C.dim, fontWeight: '800' }}>{ranked ? '✓ Partida guardada: puntúa para el ranking' : 'Partida guardada como amistosa'}</Text>
+              {!ranked ? <Text style={[s.p, { fontSize: 12, textAlign: 'center', marginTop: 4 }]}>Para el ranking hacen falta al menos dos usuarios registrados.</Text> : null}
+            </View>
+          ) : undefined
+        }
         dispatch={(a) => {
           const res = hostAct(ses.room, a);
           if (!res.error) ses.update(() => res.room);
@@ -191,6 +278,29 @@ export function OnlineGuest(props: { code: string; name: string; onHelp: () => v
   const [connected, setConnected] = useState(false);
   const [closed, setClosed] = useState(false);
   const [slow, setSlow] = useState(false);
+  const { session: account } = useAccount();
+  const [hostCard, setHostCard] = useState<HostCard | null>(null);
+  const [reportMsg, setReportMsg] = useState<string | null>(null);
+  /** Última sala vista, para poder valorar al anfitrión aunque la cierre. */
+  const lastRoom = useRef<RoomState | null>(null);
+  const claimed = useRef(false);
+  if (room) lastRoom.current = room;
+  const gameId = room?.gameId ?? null;
+  const hostUserId = room?.hostUserId ?? null;
+  const mySeat = session.current?.seat ?? -1;
+
+  // Reputación del anfitrión, para enseñarla en la sala de espera.
+  useEffect(() => {
+    if (hostUserId && backendEnabled()) rpc<HostCard>('host_card', { p_user: hostUserId }, false).then(setHostCard, () => {});
+  }, [hostUserId]);
+  // Con cuenta, cada persona reclama su propio asiento en el servidor.
+  useEffect(() => {
+    if (!gameId || !account || mySeat < 0 || claimed.current) return;
+    claimed.current = true;
+    rpc('join_game', { p_game: gameId, p_seat: mySeat }).catch(() => {
+      claimed.current = false;
+    });
+  }, [gameId, account, mySeat]);
 
   useEffect(() => {
     let alive = true;
@@ -218,7 +328,14 @@ export function OnlineGuest(props: { code: string; name: string; onHelp: () => v
     props.onExit();
   };
   if (!ses) return <Connecting text="" error="Ese código de sala no es válido." onExit={props.onExit} />;
-  if (closed) return <Connecting text="" error="El anfitrión ha cerrado la sala." onExit={props.onExit} />;
+  if (closed) {
+    const prev = lastRoom.current;
+    return (
+      <Connecting text="" error="El anfitrión ha cerrado la sala." onExit={props.onExit}>
+        {prev?.gameId && account && prev.game ? <RateHost gameId={prev.gameId} hostName={prev.seats[0].name} /> : null}
+      </Connecting>
+    );
+  }
   if (!room) {
     return <Connecting text={slow ? `No encuentro la sala ${ses.code}. Comprueba el código y que el anfitrión la tenga abierta.` : `Entrando en la sala ${ses.code}…`} onExit={props.onExit} />;
   }
@@ -235,6 +352,18 @@ export function OnlineGuest(props: { code: string; name: string; onHelp: () => v
           <Overline>SALA {room.code}</Overline>
           <Text style={s.h1}>Estás dentro</Text>
           <Text style={[s.p, { marginBottom: 14 }]}>Esperando a que {room.seats[0].name} empiece la partida.</Text>
+          {hostCard ? (
+            <View style={[s.panel, s.row]}>
+              <View style={{ flex: 1 }}>
+                <Overline>ANFITRIÓN · {hostCard.username.toUpperCase()}</Overline>
+                <Text style={[s.p, { marginTop: 2 }]}>
+                  {hostCard.host_games} partidas terminadas · {hostCard.host_abandons} abandonadas
+                </Text>
+              </View>
+              {hostCard.stars !== null ? <Stars value={hostCard.stars} /> : <Text style={{ color: C.faint, fontSize: 12 }}>Sin valorar</Text>}
+            </View>
+          ) : null}
+          {backendEnabled() && !account ? <Text style={[s.p, { fontSize: 12, marginBottom: 10 }]}>Juegas sin cuenta: esta partida no contará en tu historial ni en el ranking.</Text> : null}
           <Seats room={room} mine={seat} />
           <Btn kind="ghost" label="Salir de la sala" onPress={exit} style={{ marginTop: 10 }} />
         </ScrollView>
@@ -250,6 +379,16 @@ export function OnlineGuest(props: { code: string; name: string; onHelp: () => v
         seat={seat}
         onHelp={props.onHelp}
         onExit={exit}
+        exitText="Si sales, tu club pasará a manos de la IA durante el resto de la partida."
+        exitExtra={
+          gameId && account ? (
+            <View style={{ marginBottom: 10 }}>
+              <Btn small kind="ghost" label="El anfitrión ha desaparecido: avisar" onPress={() => rpc<boolean>('report_abandon', { p_game: gameId }).then((ok) => setReportMsg(ok ? 'Partida marcada como abandonada por el anfitrión. Puedes valorarle desde tu historial.' : 'El anfitrión ha dado señales hace menos de 10 minutos. Espera un poco más.'), (e: Error) => setReportMsg(e.message))} />
+              {reportMsg ? <Text style={[s.p, { fontSize: 12, textAlign: 'center', marginTop: 6 }]}>{reportMsg}</Text> : null}
+            </View>
+          ) : undefined
+        }
+        endExtra={gameId && account ? <RateHost gameId={gameId} hostName={room.seats[0].name} /> : undefined}
         dispatch={(a) => ses.act(a)}
         online={{
           isHost: false,

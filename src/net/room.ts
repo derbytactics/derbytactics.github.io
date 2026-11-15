@@ -22,6 +22,9 @@ export interface RoomState {
   game: GameState | null;
   /** Asientos que ya han visto el reparto de la jornada en curso. */
   ready: number[];
+  /** Cuenta del anfitrión e identificador de la partida en el servidor, si hay cuentas. */
+  hostUserId?: string | null;
+  gameId?: string | null;
 }
 
 export type ClientMsg =
@@ -32,8 +35,8 @@ export type ClientMsg =
 
 const BOT_NAMES = ['Deportivo Norte', 'Racing Meseta', 'CF Bahía', 'Rayo Sur', 'Sporting Ribera', 'Unión Levante', 'Real Chamartín'];
 
-export function newRoom(code: string, hostId: string, hostName: string): RoomState {
-  return { v: 1, code, seq: 1, clubs: 4, season: 'estandar', seats: [{ name: hostName, clientId: hostId }], game: null, ready: [] };
+export function newRoom(code: string, hostId: string, hostName: string, hostUserId: string | null = null): RoomState {
+  return { v: 1, code, seq: 1, clubs: 4, season: 'estandar', seats: [{ name: hostName, clientId: hostId }], game: null, ready: [], hostUserId, gameId: null };
 }
 
 export const seatOf = (room: RoomState, clientId: string) => room.seats.findIndex((s) => s.clientId === clientId);
@@ -96,15 +99,21 @@ export function setLobby(room: RoomState, patch: { clubs?: number; season?: Seas
   return bump(room, { clubs, season: patch.season ?? room.season, seats });
 }
 
-/** Empieza la partida: los asientos libres los ocupa la IA. */
-export function startGame(room: RoomState, seed?: number): RoomState {
-  if (room.game) return room;
+/** Asientos definitivos al empezar: los libres los ocupa la IA. */
+export function finalSeats(room: RoomState): Seat[] {
   const used = new Set(room.seats.map((s) => s.name));
   const bots = BOT_NAMES.filter((n) => !used.has(n));
   const seats = [...room.seats];
   while (seats.length < room.clubs) seats.push({ name: bots.shift() ?? `Club ${seats.length + 1}`, clientId: null });
+  return seats;
+}
+
+/** Empieza la partida. `gameId` es el identificador con el que quedó registrada en el servidor. */
+export function startGame(room: RoomState, seed?: number, gameId: string | null = null): RoomState {
+  if (room.game) return room;
+  const seats = finalSeats(room);
   const game = createGame({ players: seats.map((s) => ({ name: s.name, isBot: !s.clientId })), season: room.season, seed });
-  return bump(room, { seats, game, ready: [] });
+  return bump(room, { seats, game, ready: [], gameId });
 }
 
 /** Acción del propio anfitrión (asiento 0). Devuelve el motivo si no es legal. */

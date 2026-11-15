@@ -28,6 +28,7 @@ Run lint and typecheck before declaring any task done.
 - `src/engine/` es el motor de reglas en TypeScript puro (sin React ni Expo): determinista, con semilla y estado serializable. Toda regla nueva va ahí, con test en `engine.test.ts`.
 - `src/engine/config.ts` concentra los valores de equilibrio. Tras tocarlos, ejecuta `npm run simulate` y actualiza `docs/BALANCE.md`.
 - `src/net/` es el multijugador en línea: `room.ts` es el protocolo puro (el anfitrión es la autoridad; test en `room.test.ts`), `mqtt.ts` el transporte y `session.ts` la conexión. Los invitados nunca aplican acciones: las envían y esperan el estado del anfitrión.
+- `src/account/` y `supabase/schema.sql` son las cuentas (Supabase). Las tablas no se tocan desde el cliente: todo pasa por funciones SQL que comprueban `auth.uid()`. Tras cambiar el esquema, ejecuta `npm run test:db`. Sin `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY` el juego funciona sin cuentas.
 - `src/ui/` son las pantallas; `GameView.tsx` decide cuál mostrar según `state.phase`, tanto en local como en línea. Hoy no hay rutas: si se añade navegación, usar Expo Router como se indica abajo.
 - Comandos: `npm test`, `npm run typecheck`, `npm run simulate`, `npm run web`.
 - Textos de cara al jugador y documentación, en español.

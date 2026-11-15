@@ -10,6 +10,7 @@ Eres el presidente de un club recién ascendido. Con 60M en caja tienes que mont
 
 ## Qué incluye
 
+- **Cuentas de usuario (opcionales):** historial de partidas, ranking por victorias y reputación de anfitriones con sanciones temporales. Ver [docs/CUENTAS.md](docs/CUENTAS.md).
 - **Multijugador en línea:** cada persona desde su móvil, con salas por código o enlace de invitación.
 - Partida en un solo dispositivo: varias personas pasándoselo y/o rivales controlados por IA (5 estilos de juego).
 - Mercado de fichajes, cláusulas, blindajes, ampliación de estadio, 37 cartas especiales, recuento de goles y reparto por posición cada jornada.
@@ -44,6 +45,7 @@ npm run ios        # iOS (requiere macOS, o Expo Go)
 npm test           # tests del motor
 npm run typecheck  # TypeScript
 npm run simulate   # 2000 partidas de bots por tamaño de mesa
+npm run test:db    # pruebas de la base de datos (necesita PostgreSQL local)
 ```
 
 ## Estructura
@@ -56,6 +58,8 @@ src/engine/
   engine.ts          Estado, validación y aplicación de acciones
   bots.ts            IA con cinco personalidades
   engine.test.ts     Tests
+src/account/         Cuentas: sesión, perfil y llamadas al servidor
+supabase/            Esquema de la base de datos y sus pruebas
 src/net/             Multijugador: cliente MQTT, protocolo de sala y sesiones
 src/ui/              Pantallas y componentes
 scripts/simulate.ts  Simulador de equilibrio

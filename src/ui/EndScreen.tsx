@@ -5,7 +5,7 @@ import { Crest, Trophy } from './art';
 import { Btn, Chronicle, Overline, StandingsTable, s } from './components';
 import { C, clubColor } from './theme';
 
-export function EndScreen({ state, onRestart }: { state: GameState; onRestart: () => void }) {
+export function EndScreen({ state, onRestart, extra }: { state: GameState; onRestart: () => void; extra?: React.ReactNode }) {
   const table = standings(state);
   const champ = table[0];
   // Podio: 2.º, 1.º, 3.º
@@ -38,6 +38,7 @@ export function EndScreen({ state, onRestart }: { state: GameState; onRestart: (
         })}
       </View>
 
+      {extra}
       <StandingsTable state={state} highlight={champ.id} />
       <View style={s.panel}>
         <Overline>BALANCE FINAL · 1 PUNTO POR CADA {CONFIG.moneyPerPoint}M EN CAJA</Overline>

@@ -156,13 +156,24 @@ export function Popup(props: { icon?: React.ReactNode; overline: string; title: 
   );
 }
 
+/** Si se define, las pantallas de partida muestran un botón para salir. */
+export const ExitContext = React.createContext<(() => void) | null>(null);
+
 const STEPS = ['Mercado', 'Partido', 'Reparto'];
 
 /** Guía de la jornada: siempre visible para saber en qué paso estamos. */
 export function PhaseStepper({ step, label }: { step: 0 | 1 | 2; label: string }) {
+  const exit = React.useContext(ExitContext);
   return (
     <View style={s.stepper}>
-      <Text style={s.overline}>{label}</Text>
+      <View style={s.row}>
+        <Text style={[s.overline, { flex: 1 }]}>{label}</Text>
+        {exit ? (
+          <Pressable accessibilityRole="button" onPress={exit} hitSlop={8}>
+            <Text style={[s.overline, { color: C.dim }]}>SALIR ✕</Text>
+          </Pressable>
+        ) : null}
+      </View>
       <View style={[s.row, { marginTop: 8 }]}>
         {STEPS.map((name, i) => (
           <React.Fragment key={name}>

@@ -55,7 +55,7 @@ export class HostSession {
   }
 
   /** Crea una sala nueva en el primer servidor que responda. */
-  static create(hostId: string, hostName: string, l: Listener<RoomState>): Promise<HostSession> {
+  static create(hostId: string, hostName: string, hostUserId: string | null, l: Listener<RoomState>): Promise<HostSession> {
     const list = brokers();
     const attempt = (i: number): Promise<HostSession> =>
       new Promise((resolve, reject) => {
@@ -63,7 +63,7 @@ export class HostSession {
         let code = ALPHABET[i];
         for (let k = 0; k < 4; k++) code += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
         let settled = false;
-        const s = new HostSession(newRoom(code, hostId, hostName), list[i], l, () => {
+        const s = new HostSession(newRoom(code, hostId, hostName, hostUserId), list[i], l, () => {
           settled = true;
           clearTimeout(timer);
           save(HOST_KEY, s.room);

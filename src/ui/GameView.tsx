@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Action, GameState, currentPlayer } from '../engine';
 import { Crest } from './art';
-import { Btn, Chronicle, Overline, PhaseStepper, StandingsTable, jornadaLabel, s } from './components';
+import { Btn, Chronicle, ExitContext, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, s } from './components';
 import { EndScreen } from './EndScreen';
 import { GameScreen } from './GameScreen';
 import { KickoffScreen, MatchScreen } from './MatchScreen';
@@ -30,7 +30,30 @@ export function GameView(props: {
   onHelp: () => void;
   onExit: () => void;
   online?: OnlineInfo;
+  /** Qué supone salir a mitad de partida, y acciones extra en ese aviso. */
+  exitText: string;
+  exitExtra?: React.ReactNode;
+  /** Contenido extra en la pantalla final (valoración del anfitrión, si puntúa…). */
+  endExtra?: React.ReactNode;
 }) {
+  const [leaving, setLeaving] = useState(false);
+  return (
+    <ExitContext.Provider value={() => setLeaving(true)}>
+      <View style={{ flex: 1 }}>
+        <GameBody {...props} />
+        {leaving ? (
+          <Popup overline="SALIR DE LA PARTIDA" title="¿Seguro que quieres salir?" color={C.danger} button="Seguir jugando" onClose={() => setLeaving(false)}>
+            <Text style={[s.p, { textAlign: 'center', marginBottom: 12 }]}>{props.exitText}</Text>
+            {props.exitExtra}
+            <Btn kind="danger" label="Salir" onPress={props.onExit} style={{ marginBottom: 4 }} />
+          </Popup>
+        ) : null}
+      </View>
+    </ExitContext.Provider>
+  );
+}
+
+function GameBody(props: Parameters<typeof GameView>[0]) {
   const { game, seat, dispatch, online } = props;
   /** Turno que la persona ya ha confirmado tener en la mano (solo al compartir dispositivo). */
   const [handoff, setHandoff] = useState('');
@@ -39,7 +62,7 @@ export function GameView(props: {
   const focus = seat === null ? undefined : [seat];
   const last = game.jornada >= game.totalJornadas;
 
-  if (game.phase === 'finished') return <EndScreen state={game} onRestart={props.onExit} />;
+  if (game.phase === 'finished') return <EndScreen state={game} onRestart={props.onExit} extra={props.endExtra} />;
   if (game.phase === 'match') return <KickoffScreen state={game} focus={focus} onPlay={() => dispatch({ type: 'playMatch' })} />;
   if (game.phase === 'summary') {
     const footer = !online ? undefined : !online.iAmReady ? (
