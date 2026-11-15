@@ -4,6 +4,7 @@ Juego de cartas de fútbol para **2 a 8 jugadores**, multiplataforma (iOS, Andro
 
 Eres el presidente de un club recién ascendido. Con 60M en caja tienes que montar una plantilla, llenar el estadio y ganar la liga. Cada futbolista lleva números de dado, como las casillas del Catán: cuando sale su número, marca. Cuantos más números y más probables, más caro es.
 
+- **Jugar en el navegador:** https://juanrafernandez.github.io/Futcards/
 - **Reglas completas:** [docs/REGLAS.md](docs/REGLAS.md)
 - **Equilibrio y cómo se ha afinado:** [docs/BALANCE.md](docs/BALANCE.md)
 
