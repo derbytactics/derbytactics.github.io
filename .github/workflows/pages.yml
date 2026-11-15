@@ -26,6 +26,19 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - name: Comprobar configuración de cuentas
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            case "$SUPABASE_URL" in
+              https://*.supabase.co|https://*.supabase.co/) echo "Cuentas: ACTIVADAS ($SUPABASE_URL)" ;;
+              *) echo "::warning::SUPABASE_URL no parece una Project URL de Supabase (https://xxxx.supabase.co): $SUPABASE_URL" ;;
+            esac
+          else
+            echo "::warning::Cuentas DESACTIVADAS: faltan las variables del repositorio SUPABASE_URL y/o SUPABASE_ANON_KEY."
+          fi
       - run: npx expo export --platform web
         env:
           EXPO_BASE_URL: /${{ github.event.repository.name }}
