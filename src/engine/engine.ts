@@ -132,6 +132,8 @@ function shuffle<T>(state: GameState, items: T[]): T[] {
 
 function say(state: GameState, text: string) {
   state.log.push({ jornada: state.jornada, text });
+  // La crónica viaja con el estado en las partidas en línea: se limita su tamaño.
+  if (state.log.length > 150) state.log.splice(0, state.log.length - 150);
 }
 
 const freshTurn = (): TurnFlags => ({ signed: false, upgraded: false, boughtCard: false, cardsPlayed: 0, scout: false });

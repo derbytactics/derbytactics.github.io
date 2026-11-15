@@ -9,8 +9,8 @@ import { C, NATIVE_DRIVER, clubColor } from './theme';
 const ordinal = (n: number) => `${n}.º`;
 
 /** Antes del partido: qué va a pasar y con qué números marca cada persona. */
-export function KickoffScreen({ state, onPlay }: { state: GameState; onPlay: () => void }) {
-  const humans = state.players.filter((p) => !p.isBot);
+export function KickoffScreen({ state, onPlay, focus }: { state: GameState; onPlay: () => void; focus?: number[] }) {
+  const humans = state.players.filter((p) => (focus ? focus.includes(p.id) : !p.isBot));
   return (
     <View style={{ flex: 1 }}>
       <PhaseStepper step={1} label={jornadaLabel(state)} />
@@ -109,7 +109,8 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
   );
 }
 
-export function MatchScreen({ state, report, onNext }: { state: GameState; report: MatchReport; onNext: () => void }) {
+export function MatchScreen(props: { state: GameState; report: MatchReport; onNext: () => void; focus?: number[]; footer?: React.ReactNode }) {
+  const { state, report, onNext, focus } = props;
   const [shown, setShown] = useState(0);
   const total = report.rolls.length;
   const done = shown > total;
@@ -132,7 +133,7 @@ export function MatchScreen({ state, report, onNext }: { state: GameState; repor
   const current = visible[visible.length - 1];
   const goalsSoFar = (id: number) => visible.reduce((a, r) => a + r.goals.filter((g) => g.playerId === id).reduce((b, g) => b + g.goals, 0), 0);
   const maxGoals = Math.max(1, ...report.results.map((r) => r.goals));
-  const humans = report.results.filter((r) => !state.players[r.playerId].isBot);
+  const humans = report.results.filter((r) => (focus ? focus.includes(r.playerId) : !state.players[r.playerId].isBot));
   const heroes = humans.length ? humans : report.results.filter((r) => r.rank === 1).slice(0, 1);
 
   return (
@@ -248,7 +249,7 @@ export function MatchScreen({ state, report, onNext }: { state: GameState; repor
             </View>
 
             <StandingsTable state={state} />
-            <Btn label={last ? '🏆 Ver el final de temporada' : `Ir al mercado de la jornada ${state.jornada + 1} →`} onPress={onNext} />
+            {props.footer ?? <Btn label={last ? '🏆 Ver el final de temporada' : `Ir al mercado de la jornada ${state.jornada + 1} →`} onPress={onNext} />}
           </>
         )}
       </ScrollView>
