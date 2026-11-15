@@ -122,6 +122,16 @@ describe('cartas especiales', () => {
     expect(s.players[1].closedDoorsUntil).toBe(0);
     expect(s.players[1].hand).toHaveLength(0);
   });
+  it('las sanciones quedan apuntadas como novedad para quien las sufre', () => {
+    let s = give(newGame(2), 0, 'incidentes-1');
+    s.turnOrder = [0, 1];
+    s = apply(s, { type: 'playCard', handIndex: 0, targetPlayerId: 1 });
+    s = apply(s, { type: 'endTurn' });
+    const news = s.log.filter((l) => l.n > s.players[1].lastSeen && l.affects?.includes(1));
+    expect(news).toHaveLength(1);
+    expect(news[0].text).toMatch(/multa/);
+    expect(s.players[0].lastSeen).toBe(s.logSeq);
+  });
   it('la cantera impide pagar la cláusula', () => {
     let s = give(withInMarket(newGame(2), 'f47'), 0, 'cantera-1');
     s.turnOrder = [0, 1];
@@ -152,6 +162,8 @@ describe('partido', () => {
     expect(s.players[0].money).toBe(CONFIG.startingMoney + r0.prize + r0.ticket);
     expect(s.players[0].points).toBe(r0.points);
     expect(m.rolls.every((r) => r.sum !== 7 || r.goals.length === 0)).toBe(true);
+    // Con un 7 roba carta el colista, y el acta dice cuál.
+    for (const d of m.rolls.flatMap((r) => r.varDraws)) expect(s.players[d.playerId].hand).toContain(d.cardId);
   });
   it('tras la jornada el colista abre el mercado', () => {
     let s = newGame(3, 3);

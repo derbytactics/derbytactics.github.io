@@ -40,14 +40,16 @@ export interface Player {
   closedDoorsUntil: number;
   clubDayJornada: number;
   subsidy: boolean;
+  /** Última entrada de la crónica que este club ya había visto al acabar su turno. */
+  lastSeen: number;
 }
 
 export interface RollReport {
   dice: [number, number];
   sum: number;
   goals: { playerId: number; cardId: string; goals: number }[];
-  /** En un 7: clubes que roban carta especial. */
-  varDraws: number[];
+  /** En un 7: clubes que roban carta especial, y cuál. */
+  varDraws: { playerId: number; cardId: string }[];
 }
 
 export interface MatchResult {
@@ -65,6 +67,15 @@ export interface MatchReport {
   jornada: number;
   rolls: RollReport[];
   results: MatchResult[];
+}
+
+export interface LogEntry {
+  /** Número de orden en la partida (la crónica se recorta, este número no cambia). */
+  n: number;
+  jornada: number;
+  text: string;
+  /** Clubes a los que les ha pasado algo que no han hecho ellos. */
+  affects?: number[];
 }
 
 export type Phase = 'market' | 'match' | 'summary' | 'finished';
@@ -91,7 +102,9 @@ export interface GameState {
   specialDeck: string[];
   specialDiscard: string[];
   lastMatch: MatchReport | null;
-  log: { jornada: number; text: string }[];
+  log: LogEntry[];
+  /** Contador de entradas de crónica escritas en toda la partida. */
+  logSeq: number;
 }
 
 export interface NewGameOptions {
@@ -130,8 +143,9 @@ function shuffle<T>(state: GameState, items: T[]): T[] {
   return a;
 }
 
-function say(state: GameState, text: string) {
-  state.log.push({ jornada: state.jornada, text });
+function say(state: GameState, text: string, affects?: number[]) {
+  state.logSeq = (state.logSeq ?? 0) + 1;
+  state.log.push({ n: state.logSeq, jornada: state.jornada, text, ...(affects?.length ? { affects } : {}) });
   // La crónica viaja con el estado en las partidas en línea: se limita su tamaño.
   if (state.log.length > 150) state.log.splice(0, state.log.length - 150);
 }
@@ -230,6 +244,7 @@ export function createGame(opts: NewGameOptions): GameState {
       closedDoorsUntil: 0,
       clubDayJornada: 0,
       subsidy: false,
+      lastSeen: 0,
     })),
     turnOrder: [],
     turnIndex: 0,
@@ -240,6 +255,7 @@ export function createGame(opts: NewGameOptions): GameState {
     specialDiscard: [],
     lastMatch: null,
     log: [],
+    logSeq: 0,
   };
   state.footballDeck = shuffle(state, FOOTBALLERS.map((f) => f.id));
   state.specialDeck = shuffle(state, SPECIAL_CARDS.map((c) => c.id));
@@ -382,7 +398,7 @@ export function apply(prev: GameState, action: Action): GameState {
       owner.squad = owner.squad.filter((e) => e !== entry);
       state.turn.signed = true;
       me.squad.push({ ...entry, shielded: false, noClauseUntil: J + CONFIG.transferProtection });
-      say(state, `¡Bombazo! ${me.name} paga la cláusula de ${footballer(action.cardId).name} (${cost}M) a ${owner.name}.`);
+      say(state, `¡Bombazo! ${me.name} paga la cláusula de ${footballer(action.cardId).name} (${cost}M) a ${owner.name}.`, [owner.id]);
       break;
     }
     case 'sell': {
@@ -425,6 +441,7 @@ export function apply(prev: GameState, action: Action): GameState {
       playCard(state, me, action);
       break;
     case 'endTurn': {
+      me.lastSeen = state.logSeq;
       state.turn = freshTurn();
       state.turnIndex += 1;
       if (state.turnIndex >= state.turnOrder.length) {
@@ -448,16 +465,16 @@ function newEntry(cardId: string, jornada: number): SquadEntry {
   };
 }
 
-function drawSpecial(state: GameState, player: Player): boolean {
-  if (player.hand.length >= CONFIG.special.handLimit) return false;
+function drawSpecial(state: GameState, player: Player): string | null {
+  if (player.hand.length >= CONFIG.special.handLimit) return null;
   if (state.specialDeck.length === 0) {
     state.specialDeck = shuffle(state, state.specialDiscard);
     state.specialDiscard = [];
   }
   const id = state.specialDeck.shift();
-  if (!id) return false;
+  if (!id) return null;
   player.hand.push(id);
-  return true;
+  return id;
 }
 
 function playCard(state: GameState, me: Player, action: Extract<Action, { type: 'playCard' }>) {
@@ -474,7 +491,7 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
     const shieldIdx = rival.hand.findIndex((h) => specialCard(h).kind === 'abogados');
     if (shieldIdx >= 0) {
       state.specialDiscard.push(...rival.hand.splice(shieldIdx, 1));
-      say(state, `${me.name} juega «${info.title}» contra ${rival.name}, ¡pero su gabinete jurídico la anula!`);
+      say(state, `${me.name} juega «${info.title}» contra ${rival.name}, ¡pero su gabinete jurídico la anula!`, [rival.id]);
       return;
     }
   }
@@ -484,20 +501,20 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
     case 'incidentes': {
       const paid = Math.min(S.fine, rival!.money);
       rival!.money -= paid;
-      say(state, `Incidentes en la grada de ${rival!.name}: paga ${paid}M de multa.`);
+      say(state, `Incidentes en la grada de ${rival!.name}: paga ${paid}M de multa.`, [rival!.id]);
       break;
     }
     case 'puertaCerrada':
       rival!.closedDoorsUntil = J + S.closedDoorsRounds - 1;
-      say(state, `${rival!.name} jugará ${S.closedDoorsRounds} jornadas a puerta cerrada.`);
+      say(state, `${rival!.name} jugará ${S.closedDoorsRounds} jornadas a puerta cerrada.`, [rival!.id]);
       break;
     case 'lesion':
       theirs!.outUntil = J + S.injuryRounds - 1;
-      say(state, `${footballer(theirs!.cardId).name} (${rival!.name}) se lesiona: ${S.injuryRounds} jornadas de baja.`);
+      say(state, `${footballer(theirs!.cardId).name} (${rival!.name}) se lesiona: ${S.injuryRounds} jornadas de baja.`, [rival!.id]);
       break;
     case 'roja':
       theirs!.outUntil = J + S.redCardRounds - 1;
-      say(state, `Roja a ${footballer(theirs!.cardId).name} (${rival!.name}): se pierde esta jornada.`);
+      say(state, `Roja a ${footballer(theirs!.cardId).name} (${rival!.name}): se pierde esta jornada.`, [rival!.id]);
       break;
     case 'racha':
       own!.streakUntil = J + S.streakRounds - 1;
@@ -546,7 +563,14 @@ function playMatch(state: GameState): GameState {
     const d2 = 1 + Math.floor(rand(state) * 6);
     const roll: RollReport = { dice: [d1, d2], sum: d1 + d2, goals: [], varDraws: [] };
     if (roll.sum === 7) {
-      for (const id of bottom) if (drawSpecial(state, state.players[id])) roll.varDraws.push(id);
+      for (const id of bottom) {
+        const cardId = drawSpecial(state, state.players[id]);
+        if (cardId) roll.varDraws.push({ playerId: id, cardId });
+      }
+      if (roll.varDraws.length) {
+        const ids = roll.varDraws.map((d) => d.playerId);
+        say(state, `VAR en la jornada ${J}: ${ids.map((id) => state.players[id].name).join(', ')} ${ids.length > 1 ? 'roban' : 'roba'} carta especial.`);
+      }
     } else {
       for (const p of state.players) {
         for (const e of p.squad) {

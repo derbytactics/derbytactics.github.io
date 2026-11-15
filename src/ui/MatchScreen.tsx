@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, ScrollView, Text, View } from 'react-native';
-import { GameState, MatchReport, MatchResult, footballer, standings, ticketPerGoal } from '../engine';
-import { Ball, Crest, Die } from './art';
-import { NumberLine } from './GameScreen';
-import { Btn, Chronicle, Overline, PhaseStepper, StandingsTable, jornadaLabel, s } from './components';
-import { C, NATIVE_DRIVER, clubColor } from './theme';
+import React, { useEffect, useState } from 'react';
+import { ScrollView, Text, View } from 'react-native';
+import { GameState, MatchReport, MatchResult, RollReport, footballer, standings, ticketPerGoal } from '../engine';
+import { Avatar, Ball, Crest, Die } from './art';
+import { NumberLine, SpecialCardFace } from './GameScreen';
+import { Btn, Chronicle, Overline, PhaseStepper, Pop, StandingsTable, jornadaLabel, s } from './components';
+import { C, clubColor } from './theme';
 
 const ordinal = (n: number) => `${n}.º`;
 
@@ -109,69 +109,141 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
   );
 }
 
+/** Una línea del acta: qué salió y quién marcó. */
+function ActaLine({ state, roll, index, mine }: { state: GameState; roll: RollReport; index: number; mine: number[] }) {
+  const name = (id: number) => state.players[id].name;
+  const isVar = roll.sum === 7;
+  return (
+    <View style={[s.row, { alignItems: 'flex-start', paddingVertical: 7, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }]}>
+      <View style={{ width: 34, height: 34, borderRadius: 9, borderWidth: 1.5, borderColor: isVar ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: C.text, fontWeight: '800' }}>{roll.sum}</Text>
+      </View>
+      <View style={{ flex: 1, marginLeft: 10 }}>
+        <Text style={[s.overline, { marginBottom: 2 }]}>OCASIÓN {index + 1}</Text>
+        {isVar ? (
+          <Text style={{ color: '#FFB3B5', fontWeight: '700' }}>
+            VAR: sin goles.{roll.varDraws.length ? ` Roban carta: ${roll.varDraws.map((d) => name(d.playerId)).join(', ')}.` : ''}
+          </Text>
+        ) : roll.goals.length === 0 ? (
+          <Text style={s.p}>Nadie tenía el {roll.sum}.</Text>
+        ) : (
+          roll.goals.map((g, i) => {
+            const own = mine.includes(g.playerId);
+            return (
+              <Text key={i} style={{ color: own ? C.text : C.dim, fontWeight: own ? '800' : '500', fontSize: 14, lineHeight: 20 }}>
+                {own ? '⚽ ' : ''}
+                {footballer(g.cardId).name}
+                {g.goals > 1 ? ' ×2' : ''} <Text style={{ color: clubColor(g.playerId), fontWeight: '800' }}>· {name(g.playerId)}</Text>
+              </Text>
+            );
+          })
+        )}
+      </View>
+    </View>
+  );
+}
+
 export function MatchScreen(props: { state: GameState; report: MatchReport; onNext: () => void; focus?: number[]; footer?: React.ReactNode }) {
   const { state, report, onNext, focus } = props;
   const [shown, setShown] = useState(0);
+  const [reparto, setReparto] = useState(false);
   const total = report.rolls.length;
-  const done = shown > total;
-  const pop = useRef(new Animated.Value(1)).current;
+  /** Clubes de quien mira esta pantalla: sus goles y cartas se celebran a lo grande. */
+  const mine = focus ?? state.players.filter((p) => !p.isBot).map((p) => p.id);
+  const visible = report.rolls.slice(0, shown);
+  const current = visible[visible.length - 1];
+  const myGoals = current ? current.goals.filter((g) => mine.includes(g.playerId)) : [];
+  const myDraws = current ? current.varDraws.filter((d) => mine.includes(d.playerId)) : [];
 
-  // Cada tirada aparece sola; el último paso (shown = total + 1) abre el reparto.
+  // Las tiradas avanzan solas, con más pausa cuando te afecta. La última no se quita sola.
   useEffect(() => {
-    if (done) return;
-    const t = setTimeout(() => setShown((x) => x + 1), shown === 0 ? 700 : shown === total ? 1900 : 1700);
+    if (reparto || shown >= total) return;
+    const delay = shown === 0 ? 900 : myGoals.length || myDraws.length ? 4500 : 2800;
+    const t = setTimeout(() => setShown((x) => x + 1), delay);
     return () => clearTimeout(t);
-  }, [shown, done, total]);
-  useEffect(() => {
-    pop.setValue(0.55);
-    Animated.spring(pop, { toValue: 1, friction: 5, tension: 140, useNativeDriver: NATIVE_DRIVER }).start();
-  }, [shown, pop]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown, reparto, total]);
 
   const name = (id: number) => state.players[id].name;
   const last = state.jornada >= state.totalJornadas;
-  const visible = report.rolls.slice(0, Math.min(shown, total));
-  const current = visible[visible.length - 1];
   const goalsSoFar = (id: number) => visible.reduce((a, r) => a + r.goals.filter((g) => g.playerId === id).reduce((b, g) => b + g.goals, 0), 0);
   const maxGoals = Math.max(1, ...report.results.map((r) => r.goals));
-  const humans = report.results.filter((r) => (focus ? focus.includes(r.playerId) : !state.players[r.playerId].isBot));
+  const humans = report.results.filter((r) => mine.includes(r.playerId));
   const heroes = humans.length ? humans : report.results.filter((r) => r.rank === 1).slice(0, 1);
+  const tone = !current ? 'ghost' : current.sum === 7 ? 'var' : 'light';
 
   return (
     <View style={{ flex: 1 }}>
-      <PhaseStepper step={done ? 2 : 1} label={`JORNADA ${report.jornada} DE ${state.totalJornadas}`} />
+      <PhaseStepper step={reparto ? 2 : 1} label={`JORNADA ${report.jornada} DE ${state.totalJornadas}`} />
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        {!done ? (
+        {!reparto ? (
           <>
             <View style={[s.panel, { alignItems: 'center', paddingVertical: 18 }]}>
-              <Overline>{shown === 0 ? 'SALTAN AL CAMPO…' : `OCASIÓN ${Math.min(shown, total)} DE ${total}`}</Overline>
-              <Animated.View style={[s.row, { gap: 12, marginTop: 12, transform: [{ scale: pop }] }]}>
-                <Die value={current?.dice[0] ?? 1} size={70} tone={!current ? 'ghost' : current.sum === 7 ? 'var' : 'light'} />
-                <Die value={current?.dice[1] ?? 1} size={70} tone={!current ? 'ghost' : current.sum === 7 ? 'var' : 'light'} />
+              <Overline>{shown === 0 ? 'SALTAN AL CAMPO…' : `OCASIÓN ${shown} DE ${total}`}</Overline>
+              <Pop trigger={shown} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 }}>
+                <Die value={current?.dice[0] ?? 1} size={70} tone={tone} />
+                <Die value={current?.dice[1] ?? 1} size={70} tone={tone} />
                 <View style={{ width: 70, height: 70, borderRadius: 35, backgroundColor: !current ? C.panelAlt : current.sum === 7 ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
                   <Text style={{ color: !current ? C.faint : current.sum === 7 ? '#fff' : C.accentText, fontSize: 34, fontWeight: '900' }}>{current ? current.sum : '?'}</Text>
                 </View>
-              </Animated.View>
-              <View style={{ minHeight: 64, marginTop: 14, alignItems: 'center', justifyContent: 'center' }}>
+              </Pop>
+
+              {myGoals.length ? (
+                <Pop trigger={shown} style={{ alignSelf: 'stretch', marginTop: 16 }}>
+                  <View style={{ borderRadius: 16, borderWidth: 2, borderColor: clubColor(myGoals[0].playerId), backgroundColor: clubColor(myGoals[0].playerId) + '33', padding: 14, alignItems: 'center' }}>
+                    <Text style={{ color: C.accent, fontSize: 34, fontWeight: '900', letterSpacing: 1 }}>¡GOOOL!</Text>
+                    {myGoals.map((g, i) => (
+                      <View key={i} style={[s.row, { marginTop: 10, alignSelf: 'stretch' }]}>
+                        <Avatar seed={g.cardId} size={52} jersey={clubColor(g.playerId)} ring={C.accent} />
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>{footballer(g.cardId).name}</Text>
+                          <Text style={{ color: C.dim, fontSize: 13 }}>
+                            Marca con el {current!.sum} para {name(g.playerId)}
+                            {g.goals > 1 ? ' · 🔥 vale doble' : ''}
+                          </Text>
+                        </View>
+                        <View style={s.row}>
+                          {Array.from({ length: g.goals }, (_, k) => (
+                            <Ball key={k} size={24} />
+                          ))}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </Pop>
+              ) : null}
+
+              {myDraws.length ? (
+                <Pop trigger={shown} style={{ alignSelf: 'stretch', marginTop: 16 }}>
+                  <View style={{ borderRadius: 16, borderWidth: 2, borderColor: C.good, backgroundColor: C.good + '22', padding: 14 }}>
+                    <Text style={{ color: C.good, fontSize: 22, fontWeight: '900', textAlign: 'center' }}>📺 ¡El VAR te da una carta!</Text>
+                    {myDraws.map((d) =>
+                      mine.length === 1 ? (
+                        <View key={d.playerId} style={{ marginTop: 10 }}>
+                          <SpecialCardFace id={d.cardId} />
+                        </View>
+                      ) : (
+                        <Text key={d.playerId} style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 6 }}>
+                          {name(d.playerId)} roba una carta especial: la verá en su turno.
+                        </Text>
+                      ),
+                    )}
+                  </View>
+                </Pop>
+              ) : null}
+
+              <View style={{ marginTop: 14, alignItems: 'center' }}>
                 {!current ? <Text style={s.p}>Los dados están en el aire…</Text> : null}
                 {current && current.sum === 7 ? (
                   <Text style={{ color: '#FFB3B5', fontWeight: '800', textAlign: 'center' }}>
-                    📺 ¡VAR! Nadie marca.{current.varDraws.length ? ` Roban carta: ${current.varDraws.map(name).join(', ')}.` : ''}
+                    ¡VAR! Nadie marca.{current.varDraws.length ? ` Roban carta: ${current.varDraws.map((d) => name(d.playerId)).join(', ')}.` : ''}
                   </Text>
                 ) : null}
                 {current && current.sum !== 7 && current.goals.length === 0 ? <Text style={s.p}>Nadie tiene el {current.sum}. Balón fuera.</Text> : null}
-                {current && current.sum !== 7
-                  ? current.goals.map((g, i) => (
-                      <View key={i} style={[s.row, { marginBottom: 3 }]}>
-                        <Ball size={15} />
-                        <Text style={{ color: C.text, fontWeight: '800', marginLeft: 6 }}>
-                          ¡Gol{g.goals > 1 ? ' doble' : ''} de {footballer(g.cardId).name}!
-                        </Text>
-                        <Text style={{ color: clubColor(g.playerId), fontWeight: '800', marginLeft: 6 }}>{name(g.playerId)}</Text>
-                      </View>
-                    ))
-                  : null}
+                {current && current.sum !== 7 && current.goals.length > 0 && myGoals.length === 0 ? <Text style={s.p}>Marcan tus rivales. Tú no tienes el {current.sum}.</Text> : null}
               </View>
-              <View style={[s.row, { gap: 6, marginTop: 8 }]}>
+
+              <View style={[s.row, { gap: 6, marginTop: 12 }]}>
                 {report.rolls.map((r, i) => {
                   const on = i < visible.length;
                   return (
@@ -183,6 +255,15 @@ export function MatchScreen(props: { state: GameState; report: MatchReport; onNe
               </View>
             </View>
 
+            {shown >= total ? (
+              <Btn label="Ver el reparto de la jornada →" onPress={() => setReparto(true)} style={{ marginBottom: 12 }} />
+            ) : (
+              <View style={[s.row, { gap: 8, marginBottom: 12 }]}>
+                <Btn kind="ghost" label="Siguiente tirada ▸" onPress={() => setShown((x) => Math.min(total, x + 1))} style={{ flex: 1 }} />
+                <Btn kind="ghost" label="Saltar al reparto" onPress={() => { setShown(total); setReparto(true); }} style={{ flex: 1 }} />
+              </View>
+            )}
+
             <View style={s.panel}>
               <Overline>MARCADOR EN DIRECTO</Overline>
               {state.players.map((p) => {
@@ -192,7 +273,10 @@ export function MatchScreen(props: { state: GameState; report: MatchReport; onNe
                   <View key={p.id} style={[s.row, { marginTop: 8, padding: 6, borderRadius: 10, backgroundColor: scored ? clubColor(p.id) + '2E' : 'transparent' }]}>
                     <Crest name={p.name} color={clubColor(p.id)} size={28} />
                     <View style={{ flex: 1, marginLeft: 8 }}>
-                      <Text numberOfLines={1} style={{ color: C.text, fontWeight: '700', fontSize: 13 }}>{p.name}</Text>
+                      <Text numberOfLines={1} style={{ color: C.text, fontWeight: '700', fontSize: 13 }}>
+                        {p.name}
+                        {mine.includes(p.id) && mine.length < state.players.length ? <Text style={{ color: C.accent }}> · TÚ</Text> : null}
+                      </Text>
                       <View style={{ height: 6, borderRadius: 3, backgroundColor: C.panelAlt, marginTop: 4 }}>
                         <View style={{ height: 6, borderRadius: 3, backgroundColor: clubColor(p.id), width: `${(100 * g) / maxGoals}%` }} />
                       </View>
@@ -202,7 +286,17 @@ export function MatchScreen(props: { state: GameState; report: MatchReport; onNe
                 );
               })}
             </View>
-            <Btn kind="ghost" label="Saltar al reparto" onPress={() => setShown(total + 1)} />
+
+            {visible.length ? (
+              <View style={s.panel}>
+                <Overline>ACTA DEL PARTIDO</Overline>
+                <View style={{ marginTop: 6 }}>
+                  {visible.map((r, i) => (
+                    <ActaLine key={i} state={state} roll={r} index={i} mine={mine} />
+                  ))}
+                </View>
+              </View>
+            ) : null}
           </>
         ) : (
           <>
@@ -234,22 +328,18 @@ export function MatchScreen(props: { state: GameState; report: MatchReport; onNe
               ))}
             </View>
 
-            <View style={[s.panel, { paddingVertical: 10 }]}>
-              <Overline>LAS 6 TIRADAS</Overline>
-              <View style={[s.row, { gap: 6, marginTop: 8, flexWrap: 'wrap' }]}>
+            <StandingsTable state={state} />
+            {props.footer ?? <Btn label={last ? '🏆 Ver el final de temporada' : `Ir al mercado de la jornada ${state.jornada + 1} →`} onPress={onNext} />}
+
+            <View style={[s.panel, { marginTop: 14 }]}>
+              <Overline>ACTA DEL PARTIDO</Overline>
+              <View style={{ marginTop: 6 }}>
                 {report.rolls.map((r, i) => (
-                  <View key={i} style={{ alignItems: 'center' }}>
-                    <View style={{ width: 34, height: 34, borderRadius: 9, borderWidth: 1.5, borderColor: r.sum === 7 ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ color: C.text, fontWeight: '800' }}>{r.sum}</Text>
-                    </View>
-                    <Text style={{ color: C.faint, fontSize: 10, marginTop: 2 }}>{r.sum === 7 ? 'VAR' : `${r.goals.reduce((a, g) => a + g.goals, 0)} gol.`}</Text>
-                  </View>
+                  <ActaLine key={i} state={state} roll={r} index={i} mine={mine} />
                 ))}
               </View>
             </View>
-
-            <StandingsTable state={state} />
-            {props.footer ?? <Btn label={last ? '🏆 Ver el final de temporada' : `Ir al mercado de la jornada ${state.jornada + 1} →`} onPress={onNext} />}
+            <Btn kind="ghost" small label="◂ Volver a ver las tiradas" onPress={() => { setShown(0); setReparto(false); }} />
           </>
         )}
       </ScrollView>

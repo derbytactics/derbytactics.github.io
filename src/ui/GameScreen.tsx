@@ -20,8 +20,10 @@ import {
   upgradeCost,
 } from '../engine';
 import { Crest, StadiumArt } from './art';
-import { Btn, Chronicle, FootballerCard, NumberToken, Overline, PhaseStepper, StandingsTable, Tag, jornadaLabel, s } from './components';
+import { Btn, Chronicle, FootballerCard, NumberToken, Overline, PhaseStepper, Popup, StandingsTable, Tag, jornadaLabel, s } from './components';
 import { C, clubColor } from './theme';
+
+const J_IS_PRESEASON = (st: GameState) => st.jornada === 1 && st.turnOrder.length > st.players.length;
 
 type Tab = 'mercado' | 'plantilla' | 'rivales' | 'cartas' | 'cronica';
 
@@ -39,6 +41,29 @@ export const SPECIAL_ICON: Record<SpecialKind, string> = {
   ojeador: '🔭',
   abogados: '⚖️',
 };
+
+/** Carta especial dibujada con su icono, tipo y efecto. */
+export function SpecialCardFace({ id, children }: { id: string; children?: React.ReactNode }) {
+  const c = specialCard(id);
+  const info = SPECIAL_INFO[c.kind];
+  const tint = info.sanction ? C.danger : info.target === 'passive' ? '#7FB2FF' : C.good;
+  return (
+    <View style={[s.card, { borderColor: tint + '66' }]}>
+      <View style={[s.cardBand, { backgroundColor: tint }]} />
+      <View style={[s.row, { padding: 12, alignItems: 'flex-start' }]}>
+        <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: tint + '26', alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ fontSize: 24 }}>{SPECIAL_ICON[c.kind]}</Text>
+        </View>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={[s.tier, { color: tint }]}>{info.sanction ? 'SANCIÓN · CONTRA UN RIVAL' : info.target === 'passive' ? 'DEFENSA · AUTOMÁTICA' : 'VENTAJA · PARA TU CLUB'}</Text>
+          <Text style={s.cardName}>{info.title}</Text>
+          <Text style={[s.p, { marginTop: 3 }]}>{info.text(c)}</Text>
+        </View>
+      </View>
+      {children ? <View style={s.cardActions}>{children}</View> : null}
+    </View>
+  );
+}
 
 /** Qué números cubre tu plantilla y con cuántos jugadores. */
 export function NumberLine({ player, jornada, highlight }: { player: Player; jornada: number; highlight?: number }) {
@@ -66,7 +91,13 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
   const [error, setError] = useState<string | null>(null);
   /** Carta especial pendiente de elegir objetivo. */
   const [pending, setPending] = useState<number | null>(null);
-  const logStart = useRef(state.log.length);
+  const logStart = useRef(state.logSeq);
+  /** Lo que le ha pasado a este club desde su último turno: se enseña al empezar. */
+  const [news, setNews] = useState(() => state.log.filter((l) => l.n > me.lastSeen && l.affects?.includes(me.id)));
+  /** Carta recién comprada, para enseñarla. */
+  const [drawn, setDrawn] = useState<string | null>(null);
+  const handSize = useRef(me.hand.length);
+  const preseason = J_IS_PRESEASON(state);
   const J = state.jornada;
   const color = clubColor(me.id);
   const rivals = state.players.filter((p) => p.id !== me.id);
@@ -75,9 +106,15 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
     setError(props.dispatch(a));
     setPending(null);
   };
+  // Al comprar una carta se roba boca abajo: en cuanto llega a la mano, se enseña.
+  if (me.hand.length !== handSize.current) {
+    const grew = me.hand.length > handSize.current;
+    handSize.current = me.hand.length;
+    if (grew && state.turn.boughtCard && !drawn) setDrawn(me.hand[me.hand.length - 1]);
+  }
   const why = (a: Action) => check(state, a);
   const upCost = upgradeCost(me);
-  const lastAction = state.log.length > logStart.current ? state.log[state.log.length - 1].text : null;
+  const lastAction = state.logSeq > logStart.current ? state.log[state.log.length - 1].text : null;
 
   /** Botón de acción: si no se puede, se atenúa y explica el motivo al pulsarlo. */
   const ActionBtn = ({ label, action }: { label: string; action: Action }) => (
@@ -142,6 +179,14 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
           </View>
         ) : null}
 
+        {preseason && !error && !lastAction ? (
+          <View style={{ backgroundColor: C.accent + '1A', borderColor: C.accent, borderWidth: 1, borderRadius: 10, padding: 9, marginTop: 6 }}>
+            <Text style={{ color: '#FBE7A6', fontWeight: '700' }}>
+              Pretemporada: antes de la jornada 1 todos los clubes fichan dos veces. Esta es tu vuelta {state.turnIndex < state.players.length ? 1 : 2} de 2
+              {state.turnIndex < state.players.length ? '; en la segunda el orden va al revés.' : '. Después se juega el primer partido.'}
+            </Text>
+          </View>
+        ) : null}
         {error ? (
           <View style={{ backgroundColor: C.danger + '22', borderColor: C.danger, borderWidth: 1, borderRadius: 10, padding: 9, marginTop: 6 }}>
             <Text style={{ color: '#FFB3B5', fontWeight: '700' }}>✋ {error}</Text>
@@ -283,28 +328,13 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
 
             {me.hand.length === 0 ? <Text style={[s.p, { marginBottom: 10 }]}>No tienes cartas especiales. Cómpralas aquí o consíguelas gratis cuando salga un 7 y vayas en la mitad baja de la tabla.</Text> : null}
             {me.hand.map((id, i) => {
-              const c = specialCard(id);
-              const info = SPECIAL_INFO[c.kind];
+              const info = SPECIAL_INFO[specialCard(id).kind];
               const needsTarget = info.target !== 'self' && info.target !== 'passive';
-              const tint = info.sanction ? C.danger : info.target === 'passive' ? '#7FB2FF' : C.good;
               return (
-                <View key={id} style={[s.card, { borderColor: tint + '66' }]}>
-                  <View style={[s.cardBand, { backgroundColor: tint }]} />
-                  <View style={[s.row, { padding: 12, alignItems: 'flex-start' }]}>
-                    <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: tint + '26', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 24 }}>{SPECIAL_ICON[c.kind]}</Text>
-                    </View>
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={[s.tier, { color: tint }]}>{info.sanction ? 'SANCIÓN · CONTRA UN RIVAL' : info.target === 'passive' ? 'DEFENSA · AUTOMÁTICA' : 'VENTAJA · PARA TU CLUB'}</Text>
-                      <Text style={s.cardName}>{info.title}</Text>
-                      <Text style={[s.p, { marginTop: 3 }]}>{info.text(c)}</Text>
-                    </View>
-                  </View>
-                  <View style={s.cardActions}>
-                    {info.target !== 'passive' ? <Btn small label="Jugar" onPress={() => (needsTarget ? setPending(i) : act({ type: 'playCard', handIndex: i }))} /> : null}
-                    <Btn small kind="ghost" label="Descartar" onPress={() => act({ type: 'discardCard', handIndex: i })} />
-                  </View>
-                </View>
+                <SpecialCardFace key={id} id={id}>
+                  {info.target !== 'passive' ? <Btn small label="Jugar" onPress={() => (needsTarget ? setPending(i) : act({ type: 'playCard', handIndex: i }))} /> : null}
+                  <Btn small kind="ghost" label="Descartar" onPress={() => act({ type: 'discardCard', handIndex: i })} />
+                </SpecialCardFace>
               );
             })}
             <Btn kind={why({ type: 'buySpecial' }) ? 'muted' : 'primary'} label={`Comprar carta especial · ${CONFIG.special.cost}M`} onPress={() => act({ type: 'buySpecial' })} />
@@ -323,6 +353,21 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
         </Text>
         <Btn label="Terminar turno →" onPress={() => act({ type: 'endTurn' })} />
       </View>
+
+      {news.length ? (
+        <Popup overline="DESDE TU ÚLTIMO TURNO" title="Novedades en tu club" color={C.danger} icon={<Text style={{ fontSize: 44 }}>📣</Text>} onClose={() => setNews([])}>
+          {news.map((l) => (
+            <View key={l.n} style={[s.row, { alignItems: 'flex-start', marginBottom: 8 }]}>
+              <Text style={{ color: C.danger, fontWeight: '900', marginRight: 8 }}>•</Text>
+              <Text style={{ color: C.text, flex: 1, fontSize: 15, lineHeight: 21 }}>{l.text}</Text>
+            </View>
+          ))}
+        </Popup>
+      ) : drawn ? (
+        <Popup overline="CARTA NUEVA" title="Has robado esta carta" color={C.good} button="A la mano" onClose={() => setDrawn(null)}>
+          <SpecialCardFace id={drawn} />
+        </Popup>
+      ) : null}
     </View>
   );
 }

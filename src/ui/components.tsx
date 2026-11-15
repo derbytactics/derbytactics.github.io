@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import {
   GameState,
   Player,
@@ -16,7 +16,7 @@ import {
   totalPips,
 } from '../engine';
 import { Avatar, Crest } from './art';
-import { C, TIER_COLOR, clubColor } from './theme';
+import { C, NATIVE_DRIVER, TIER_COLOR, clubColor } from './theme';
 
 export function Btn(props: {
   label: string;
@@ -123,6 +123,39 @@ export function FootballerCard(props: { cardId: string; entry?: SquadEntry; stat
   );
 }
 
+/** Aparición con rebote; se repite cada vez que cambia `trigger`. */
+export function Pop({ trigger, children, style }: { trigger?: unknown; children: React.ReactNode; style?: ViewStyle }) {
+  const v = useRef(new Animated.Value(0.6)).current;
+  useEffect(() => {
+    v.setValue(0.6);
+    Animated.spring(v, { toValue: 1, friction: 5, tension: 150, useNativeDriver: NATIVE_DRIVER }).start();
+  }, [trigger, v]);
+  return <Animated.View style={[style, { transform: [{ scale: v }], opacity: v.interpolate({ inputRange: [0.6, 0.85], outputRange: [0, 1], extrapolate: 'clamp' }) }]}>{children}</Animated.View>;
+}
+
+/** Aviso a pantalla completa: hay que pulsar para cerrarlo, así no se pasa por alto. */
+export function Popup(props: { icon?: React.ReactNode; overline: string; title: string; color?: string; children?: React.ReactNode; button?: string; onClose: () => void }) {
+  const color = props.color ?? C.accent;
+  return (
+    <View style={s.backdrop}>
+      <Pop style={{ width: '100%', maxWidth: 420 }}>
+        <View style={[s.popup, { borderColor: color }]}>
+          <View style={{ height: 6, backgroundColor: color }} />
+          <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={{ padding: 18, alignItems: 'center' }}>
+            {props.icon}
+            <Text style={[s.overline, { color, marginTop: props.icon ? 10 : 0 }]}>{props.overline}</Text>
+            <Text style={[s.h1, { textAlign: 'center', marginTop: 4, fontSize: 24 }]}>{props.title}</Text>
+            <View style={{ alignSelf: 'stretch', marginTop: 10 }}>{props.children}</View>
+          </ScrollView>
+          <View style={{ padding: 14, paddingTop: 0 }}>
+            <Btn label={props.button ?? 'Entendido'} onPress={props.onClose} />
+          </View>
+        </View>
+      </Pop>
+    </View>
+  );
+}
+
 const STEPS = ['Mercado', 'Partido', 'Reparto'];
 
 /** Guía de la jornada: siempre visible para saber en qué paso estamos. */
@@ -149,7 +182,7 @@ export function PhaseStepper({ step, label }: { step: 0 | 1 | 2; label: string }
 
 export function jornadaLabel(state: GameState): string {
   const preseason = state.phase === 'market' && state.jornada === 1 && state.turnOrder.length > state.players.length;
-  return preseason ? 'PRETEMPORADA' : `JORNADA ${state.jornada} DE ${state.totalJornadas}`;
+  return preseason ? `PRETEMPORADA · VUELTA ${state.turnIndex < state.players.length ? 1 : 2} DE 2` : `JORNADA ${state.jornada} DE ${state.totalJornadas}`;
 }
 
 export function StandingsTable({ state, highlight }: { state: GameState; highlight?: number }) {
@@ -198,6 +231,8 @@ export function Chronicle({ state, max = 25 }: { state: GameState; max?: number 
 
 export const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(3,10,7,0.86)', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 10 },
+  popup: { backgroundColor: C.panel, borderRadius: 18, borderWidth: 2, overflow: 'hidden' },
   btn: { backgroundColor: C.accent, paddingVertical: 13, paddingHorizontal: 18, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   btnSmall: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 9 },
   btnGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line },
