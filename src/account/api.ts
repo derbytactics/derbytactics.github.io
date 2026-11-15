@@ -87,7 +87,8 @@ async function call<T>(path: string, init: { method?: string; body?: unknown; to
   try {
     res = await fetch(b.url + path, {
       method: init.method ?? 'POST',
-      headers: { apikey: b.key, Authorization: `Bearer ${init.token ?? b.key}`, 'Content-Type': 'application/json' },
+      // La cabecera Authorization solo lleva la sesión del usuario; sin sesión basta con la clave pública.
+      headers: { apikey: b.key, ...(init.token ? { Authorization: `Bearer ${init.token}` } : {}), 'Content-Type': 'application/json' },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
     });
   } catch {
