@@ -12,6 +12,7 @@ Eres el presidente de un club recién ascendido. Con 60M en caja tienes que mont
 
 - Partida local completa: varias personas pasándose el dispositivo y/o rivales controlados por IA (5 estilos de juego).
 - Mercado de fichajes, cláusulas, blindajes, ampliación de estadio, 37 cartas especiales, recuento de goles y reparto por posición cada jornada.
+- Ilustraciones vectoriales generadas por código (retratos, escudos, dados, estadio) y guía de pasos en pantalla.
 - Motor de reglas independiente de la interfaz (`src/engine`), determinista y con tests.
 - Simulador de partidas entre bots para medir el equilibrio (`npm run simulate`).
 
@@ -49,5 +50,5 @@ docs/                Reglas y notas de equilibrio
 
 - Guardar y reanudar la partida.
 - Multijugador en línea (el motor ya es determinista y serializable, pensado para ello).
-- Ilustraciones de cartas, sonido y animación de dados.
+- Sonido y animación de la tirada de dados.
 - Tutorial interactivo.

@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import {
   GameState,
+  Player,
   SquadEntry,
   activeNumbers,
   basePrice,
@@ -10,15 +11,17 @@ import {
   isProtected,
   onStreak,
   pipsOf,
+  standings,
   tierForPips,
   totalPips,
 } from '../engine';
-import { C, TIER_COLOR } from './theme';
+import { Avatar, Crest } from './art';
+import { C, TIER_COLOR, clubColor } from './theme';
 
 export function Btn(props: {
   label: string;
   onPress: () => void;
-  kind?: 'primary' | 'ghost' | 'danger';
+  kind?: 'primary' | 'ghost' | 'danger' | 'muted';
   small?: boolean;
   style?: ViewStyle;
 }) {
@@ -31,114 +34,198 @@ export function Btn(props: {
         s.btn,
         props.small && s.btnSmall,
         kind === 'ghost' && s.btnGhost,
+        kind === 'muted' && s.btnMuted,
         kind === 'danger' && s.btnDanger,
-        pressed && { opacity: 0.7 },
+        pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] },
         props.style,
       ]}
     >
-      <Text style={[s.btnText, props.small && { fontSize: 13 }, kind !== 'primary' && { color: C.text }]}>{props.label}</Text>
+      <Text style={[s.btnText, props.small && { fontSize: 13 }, kind === 'ghost' && { color: C.text }, kind === 'muted' && { color: C.faint }, kind === 'danger' && { color: '#fff' }]}>
+        {props.label}
+      </Text>
     </Pressable>
   );
 }
 
-export function NumberChip({ n, extra }: { n: number; extra?: boolean }) {
+/** Ficha de número, como las del Catán: el tamaño de la fila de puntos indica su frecuencia. */
+export function NumberToken({ n, extra, size = 38, dim }: { n: number; extra?: boolean; size?: number; dim?: boolean }) {
   const hot = n === 6 || n === 8;
   return (
-    <View style={[s.chip, extra && { backgroundColor: C.accent }]}>
-      <Text style={[s.chipNum, hot && { color: C.hot }]}>{n}</Text>
-      <Text style={[s.chipDots, hot && { color: C.hot }]}>{'•'.repeat(pipsOf(n))}</Text>
+    <View
+      style={[
+        s.token,
+        { width: size, height: size, borderRadius: size / 2 },
+        extra && { backgroundColor: C.accent, borderColor: '#B98A10' },
+        dim && { backgroundColor: C.panelAlt, borderColor: C.line },
+      ]}
+    >
+      <Text style={{ color: dim ? C.faint : hot ? C.hot : C.chipText, fontWeight: '900', fontSize: size * 0.42, lineHeight: size * 0.48 }}>{n}</Text>
+      <Text style={{ color: dim ? C.faint : hot ? C.hot : C.chipText, fontSize: size * 0.2, lineHeight: size * 0.2, letterSpacing: -0.5 }}>{'•'.repeat(pipsOf(n))}</Text>
     </View>
   );
 }
 
 export function Tag({ text, color }: { text: string; color?: string }) {
   return (
-    <View style={[s.tag, color ? { borderColor: color } : null]}>
+    <View style={[s.tag, color ? { borderColor: color, backgroundColor: color + '1F' } : null]}>
       <Text style={[s.tagText, color ? { color } : null]}>{text}</Text>
     </View>
   );
 }
 
+export function Overline({ children }: { children: React.ReactNode }) {
+  return <Text style={s.overline}>{children}</Text>;
+}
+
 /** Carta de futbolista. Con `entry` muestra además su estado en la plantilla. */
-export function FootballerCard(props: {
-  cardId: string;
-  entry?: SquadEntry;
-  state?: GameState;
-  children?: React.ReactNode;
-  highlight?: number;
-}) {
+export function FootballerCard(props: { cardId: string; entry?: SquadEntry; state?: GameState; owner?: Player; children?: React.ReactNode }) {
   const f = footballer(props.cardId);
   const J = props.state?.jornada ?? 0;
   const e = props.entry;
   const nums = e ? activeNumbers(e, J) : f.numbers;
   const pips = totalPips(f.numbers);
   const tier = tierForPips(pips);
+  const tint = TIER_COLOR[tier];
+  const out = e ? isOut(e, J) : false;
   return (
-    <View style={[s.card, { borderLeftColor: TIER_COLOR[tier] }]}>
-      <View style={s.row}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.cardName}>{f.name}</Text>
+    <View style={[s.card, { borderColor: tint + '55' }]}>
+      <View style={[s.cardBand, { backgroundColor: tint }]} />
+      <View style={[s.row, { padding: 12, opacity: out ? 0.6 : 1 }]}>
+        <View>
+          <Avatar seed={f.id} size={58} jersey={props.owner ? clubColor(props.owner.id) : '#7C8F84'} ring={tint} />
+          <View style={[s.posBadge, { backgroundColor: tint }]}>
+            <Text style={s.posText}>{f.position}</Text>
+          </View>
+        </View>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={[s.tier, { color: tint }]}>{tier.toUpperCase()}</Text>
+          <Text numberOfLines={1} style={s.cardName}>{f.name}</Text>
           <Text style={s.cardMeta}>
-            {f.position} · {tier} · valor {basePrice(f.id)}M
+            Valor {basePrice(f.id)}M · {(pips / 6).toFixed(1)} goles/jornada
           </Text>
         </View>
-        <View style={s.row}>
+        <View style={[s.row, { gap: 4 }]}>
           {nums.map((n) => (
-            <NumberChip key={n} n={n} extra={!f.numbers.includes(n)} />
+            <NumberToken key={n} n={n} extra={!f.numbers.includes(n)} />
           ))}
         </View>
       </View>
-      {e && (isOut(e, J) || onStreak(e, J) || isProtected(e, J) || e.shielded) ? (
-        <View style={[s.row, { marginTop: 6, flexWrap: 'wrap' }]}>
-          {isOut(e, J) ? <Tag text={`De baja hasta J${e.outUntil}`} color={C.danger} /> : null}
-          {onStreak(e, J) ? <Tag text={`En racha ×2 hasta J${e.streakUntil}`} color={C.accent} /> : null}
-          {isProtected(e, J) ? <Tag text={`Intransferible hasta J${e.noClauseUntil}`} color={C.good} /> : null}
-          {e.shielded ? <Tag text="Blindado" color={C.good} /> : null}
+      {e && (out || onStreak(e, J) || isProtected(e, J) || e.shielded) ? (
+        <View style={[s.row, { paddingHorizontal: 12, paddingBottom: 6, flexWrap: 'wrap' }]}>
+          {out ? <Tag text={`🩹 De baja hasta J${e.outUntil}`} color={C.danger} /> : null}
+          {onStreak(e, J) ? <Tag text={`🔥 Goles ×2 hasta J${e.streakUntil}`} color={C.accent} /> : null}
+          {isProtected(e, J) ? <Tag text={`🔒 Intransferible hasta J${e.noClauseUntil}`} color={C.good} /> : null}
+          {e.shielded ? <Tag text="🛡 Blindado" color={C.good} /> : null}
         </View>
       ) : null}
-      {props.children ? <View style={[s.row, { marginTop: 8, flexWrap: 'wrap', gap: 8 }]}>{props.children}</View> : null}
+      {props.children ? <View style={s.cardActions}>{props.children}</View> : null}
+    </View>
+  );
+}
+
+const STEPS = ['Mercado', 'Partido', 'Reparto'];
+
+/** Guía de la jornada: siempre visible para saber en qué paso estamos. */
+export function PhaseStepper({ step, label }: { step: 0 | 1 | 2; label: string }) {
+  return (
+    <View style={s.stepper}>
+      <Text style={s.overline}>{label}</Text>
+      <View style={[s.row, { marginTop: 8 }]}>
+        {STEPS.map((name, i) => (
+          <React.Fragment key={name}>
+            {i > 0 ? <View style={[s.stepLine, i <= step && { backgroundColor: C.accent }]} /> : null}
+            <View style={s.row}>
+              <View style={[s.stepDot, i < step && s.stepDone, i === step && s.stepActive]}>
+                <Text style={{ color: i <= step ? C.accentText : C.faint, fontWeight: '800', fontSize: 12 }}>{i < step ? '✓' : i + 1}</Text>
+              </View>
+              <Text style={{ color: i === step ? C.text : C.faint, fontWeight: i === step ? '800' : '600', fontSize: 13, marginLeft: 6 }}>{name}</Text>
+            </View>
+          </React.Fragment>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+export function jornadaLabel(state: GameState): string {
+  const preseason = state.phase === 'market' && state.jornada === 1 && state.turnOrder.length > state.players.length;
+  return preseason ? 'PRETEMPORADA' : `JORNADA ${state.jornada} DE ${state.totalJornadas}`;
+}
+
+export function StandingsTable({ state, highlight }: { state: GameState; highlight?: number }) {
+  return (
+    <View style={s.panel}>
+      <View style={[s.row, { marginBottom: 6 }]}>
+        <Text style={[s.th, { flex: 1, textAlign: "left" }]}>CLASIFICACIÓN</Text>
+        <Text style={[s.th, { width: 44 }]}>PTS</Text>
+        <Text style={[s.th, { width: 40 }]}>GOL</Text>
+        <Text style={[s.th, { width: 50 }]}>CAJA</Text>
+        <Text style={[s.th, { width: 34 }]}>EST</Text>
+      </View>
+      {standings(state).map((p, i) => (
+        <View key={p.id} style={[s.row, s.tr, p.id === highlight && { backgroundColor: C.panelAlt }]}>
+          <Text style={{ color: C.faint, width: 20, fontWeight: '700' }}>{i + 1}</Text>
+          <Crest name={p.name} color={clubColor(p.id)} size={24} />
+          <Text numberOfLines={1} style={{ color: C.text, flex: 1, fontWeight: '700', marginLeft: 8 }}>
+            {p.name}
+            {p.isBot ? <Text style={{ color: C.faint, fontWeight: '500' }}> · IA</Text> : null}
+          </Text>
+          <Text style={[s.td, { width: 44, color: C.accent, fontWeight: '800', fontSize: 15 }]}>{p.points}</Text>
+          <Text style={[s.td, { width: 40 }]}>{p.goals}</Text>
+          <Text style={[s.td, { width: 50 }]}>{p.money}M</Text>
+          <Text style={[s.td, { width: 34 }]}>N{p.stadium}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function Chronicle({ state, max = 25 }: { state: GameState; max?: number }) {
+  return (
+    <View style={s.panel}>
+      {state.log
+        .slice(-max)
+        .reverse()
+        .map((l, i) => (
+          <View key={i} style={[s.row, { alignItems: 'flex-start', marginBottom: 6 }]}>
+            <Text style={{ color: C.accent, fontWeight: '800', fontSize: 11, width: 30, marginTop: 3 }}>J{l.jornada}</Text>
+            <Text style={[s.p, { flex: 1, color: i === 0 ? C.text : C.dim }]}>{l.text}</Text>
+          </View>
+        ))}
     </View>
   );
 }
 
 export const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
-  btn: {
-    backgroundColor: C.accent,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnSmall: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },
+  btn: { backgroundColor: C.accent, paddingVertical: 13, paddingHorizontal: 18, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  btnSmall: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 9 },
   btnGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line },
+  btnMuted: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line, borderStyle: 'dashed' },
   btnDanger: { backgroundColor: C.danger },
-  btnText: { color: C.accentText, fontWeight: '700', fontSize: 15 },
-  chip: {
-    backgroundColor: C.chip,
-    borderRadius: 18,
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 4,
-  },
-  chipNum: { color: C.chipText, fontWeight: '800', fontSize: 15, lineHeight: 17 },
-  chipDots: { color: C.chipText, fontSize: 7, lineHeight: 8 },
-  tag: { borderWidth: 1, borderColor: C.line, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginRight: 6, marginBottom: 4 },
-  tagText: { color: C.dim, fontSize: 11, fontWeight: '600' },
-  card: {
-    backgroundColor: C.panel,
-    borderRadius: 12,
-    borderLeftWidth: 5,
-    padding: 12,
-    marginBottom: 10,
-  },
-  cardName: { color: C.text, fontWeight: '700', fontSize: 16 },
+  btnText: { color: C.accentText, fontWeight: '800', fontSize: 15 },
+  token: { backgroundColor: C.chip, borderWidth: 2, borderColor: '#D9CFA8', alignItems: 'center', justifyContent: 'center' },
+  tag: { borderWidth: 1, borderColor: C.line, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3, marginRight: 6, marginBottom: 6 },
+  tagText: { color: C.dim, fontSize: 11, fontWeight: '700' },
+  overline: { color: C.faint, fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
+  card: { backgroundColor: C.panel, borderRadius: 14, borderWidth: 1, marginBottom: 10, overflow: 'hidden' },
+  cardBand: { height: 4 },
+  cardActions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: 10, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: '#0C2318' },
+  posBadge: { position: 'absolute', bottom: -4, alignSelf: 'center', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1 },
+  posText: { color: '#14261B', fontSize: 9, fontWeight: '900' },
+  tier: { fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  cardName: { color: C.text, fontWeight: '800', fontSize: 16, marginTop: 1 },
   cardMeta: { color: C.dim, fontSize: 12, marginTop: 2 },
-  h1: { color: C.text, fontSize: 28, fontWeight: '800' },
-  h2: { color: C.text, fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  h1: { color: C.text, fontSize: 26, fontWeight: '900', letterSpacing: -0.3 },
+  h2: { color: C.text, fontSize: 17, fontWeight: '800', marginBottom: 8 },
   p: { color: C.dim, fontSize: 14, lineHeight: 20 },
-  panel: { backgroundColor: C.panel, borderRadius: 12, padding: 12, marginBottom: 10 },
+  panel: { backgroundColor: C.panel, borderRadius: 14, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: C.line },
+  stepper: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: C.line },
+  stepLine: { flex: 1, height: 2, backgroundColor: C.line, marginHorizontal: 8 },
+  stepDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  stepActive: { backgroundColor: C.accent, borderColor: C.accent },
+  stepDone: { backgroundColor: '#B8922C', borderColor: '#B8922C' },
+  th: { color: C.faint, fontSize: 10, fontWeight: '800', letterSpacing: 1, textAlign: 'right' },
+  tr: { paddingVertical: 5, paddingHorizontal: 4, borderRadius: 8 },
+  td: { color: C.dim, textAlign: 'right', fontSize: 13 },
 });
