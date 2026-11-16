@@ -16,7 +16,7 @@ Las cuentas son opcionales: si el juego se compila sin los datos del servidor, f
 
 1. Crea una cuenta y un proyecto en [supabase.com](https://supabase.com) (plan gratuito).
 2. En el **editor SQL** del proyecto, pega el contenido de [`supabase/schema.sql`](../supabase/schema.sql) y ejecútalo.
-3. En **Authentication → URL Configuration**, pon como *Site URL* la dirección del juego: `https://juanrafernandez.github.io/Futcards/`.
+3. En **Authentication → URL Configuration**, pon como *Site URL* la dirección del juego (`https://juanrafernandez.github.io/Futcards/`) y añade `https://juanrafernandez.github.io/Futcards/**` en *Redirect URLs*. Si no, los enlaces de los correos llevan a `localhost:3000` y no funcionan.
 4. Decide si quieres confirmación por correo (**Authentication → Providers → Email → Confirm email**). El envío de correos incluido en el plan gratuito está muy limitado: para probar con amigos es más cómodo desactivarla. Con ella activada, y para recuperar contraseñas, conviene configurar un servidor de correo propio.
 5. En **Project Settings → API**, copia la *Project URL* y la clave pública (*anon* / *publishable*).
 6. En GitHub, en **Settings → Secrets and variables → Actions → Variables** del repositorio, crea:

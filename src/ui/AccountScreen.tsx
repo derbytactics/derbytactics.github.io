@@ -3,9 +3,11 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import {
   HistoryRow,
   RankingRow,
+  clearLinkError,
   deleteAccount,
   refreshProfile,
   requestPasswordReset,
+  resendConfirmation,
   rpc,
   setNewPassword,
   signIn,
@@ -64,24 +66,38 @@ function AuthForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const { linkError } = useAccount();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Se ofrece reenviar el correo cuando la cuenta está creada pero sin confirmar. */
+  const [canResend, setCanResend] = useState(false);
+  const resend = () =>
+    resendConfirmation(email).then(
+      () => setMsg({ ok: true, text: 'Correo reenviado. Abre el enlace más reciente; los anteriores dejan de valer.' }),
+      (e: Error) => setMsg({ ok: false, text: e.message }),
+    );
 
   const submit = async () => {
     setBusy(true);
     setMsg(null);
+    clearLinkError();
     try {
       if (mode === 'login') await signIn(email, password);
       else if (mode === 'register') {
         if (password.length < 6) throw new Error('La contraseña debe tener al menos 6 caracteres.');
         const inside = await signUp(email, password, username);
-        if (!inside) setMsg({ ok: true, text: 'Cuenta creada. Te hemos enviado un correo: abre el enlace para confirmarla y entra.' });
+        if (!inside) {
+          setCanResend(true);
+          setMsg({ ok: true, text: 'Cuenta creada. Te hemos enviado un correo: abre el enlace para confirmarla y entra.' });
+        }
       } else {
         await requestPasswordReset(email);
         setMsg({ ok: true, text: 'Si ese correo tiene cuenta, recibirás un enlace para elegir una contraseña nueva.' });
       }
     } catch (e) {
-      setMsg({ ok: false, text: (e as Error).message });
+      const text = (e as Error).message;
+      if (/confirma tu correo/i.test(text)) setCanResend(true);
+      setMsg({ ok: false, text });
     }
     setBusy(false);
   };
@@ -95,7 +111,11 @@ function AuthForm() {
       {mode === 'register' ? <Field label="Nombre de usuario" value={username} onChange={setUsername} max={16} /> : null}
       <Field label="Correo" value={email} onChange={setEmail} email />
       {mode !== 'forgot' ? <Field label="Contraseña" value={password} onChange={setPassword} secure /> : null}
+      {linkError && !msg ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{linkError}</Text> : null}
       {msg ? <Text style={{ color: msg.ok ? C.good : C.danger, fontWeight: '700', marginBottom: 10 }}>{msg.text}</Text> : null}
+      {(canResend || linkError) && mode !== 'forgot' ? (
+        <Btn small kind="ghost" label="Reenviar el correo de confirmación" onPress={() => (email.trim() ? resend() : setMsg({ ok: false, text: 'Escribe tu correo para reenviarlo.' }))} style={{ marginBottom: 10 }} />
+      ) : null}
       <Btn
         kind={busy ? 'muted' : 'primary'}
         label={busy ? 'Un momento…' : mode === 'login' ? 'Entrar' : mode === 'register' ? 'Crear mi cuenta' : 'Enviarme el enlace'}

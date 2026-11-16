@@ -37,7 +37,7 @@ export default function App() {
   const [accountOpen, setAccountOpen] = useState(false);
   const account = useAccount();
   useEffect(() => {
-    initAccount().then(() => getAccount().recovering && setAccountOpen(true));
+    initAccount().then(() => (getAccount().recovering || getAccount().linkError) && setAccountOpen(true));
   }, []);
   const gameRef = useRef(game);
   gameRef.current = game;

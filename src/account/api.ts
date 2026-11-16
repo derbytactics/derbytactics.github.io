@@ -113,8 +113,10 @@ interface AccountState {
   profile: Profile | null;
   /** Ha llegado por un enlace de «olvidé mi contraseña» y debe elegir una nueva. */
   recovering: boolean;
+  /** El enlace del correo (confirmación o contraseña) ha fallado: motivo para enseñar. */
+  linkError: string | null;
 }
-let state: AccountState = { session: load<Session>(SESSION_KEY), profile: null, recovering: false };
+let state: AccountState = { session: load<Session>(SESSION_KEY), profile: null, recovering: false, linkError: null };
 const listeners = new Set<() => void>();
 function set(patch: Partial<AccountState>) {
   state = { ...state, ...patch };
@@ -206,6 +208,12 @@ export async function signOut(): Promise<void> {
   if (t) await call('/auth/v1/logout', { token: t }).catch(() => {});
 }
 
+/** Vuelve a enviar el correo de confirmación de una cuenta recién creada. */
+export async function resendConfirmation(email: string): Promise<void> {
+  await call(`/auth/v1/resend${redirect()}`, { body: { type: 'signup', email: email.trim() } });
+}
+export const clearLinkError = () => set({ linkError: null });
+
 export async function requestPasswordReset(email: string): Promise<void> {
   await call(`/auth/v1/recover${redirect()}`, { body: { email: email.trim() } });
 }
@@ -228,6 +236,17 @@ export async function initAccount(): Promise<void> {
   if (!backendEnabled()) return;
   const loc = (globalThis as { location?: Location }).location;
   const hash = new URLSearchParams((loc?.hash ?? '').replace(/^#/, ''));
+  if (hash.get('error') || hash.get('error_code')) {
+    const expired = /expired|invalid/i.test(`${hash.get('error_code')} ${hash.get('error_description')}`);
+    set({
+      linkError: expired
+        ? 'Ese enlace ya se ha usado o ha caducado. Si tu cuenta ya quedó confirmada, entra con tu correo y contraseña; si no, pide que te reenviemos el correo.'
+        : `El enlace no ha funcionado: ${hash.get('error_description') ?? hash.get('error')}`,
+    });
+    try {
+      (globalThis as { history?: History }).history?.replaceState(null, '', loc!.pathname + loc!.search);
+    } catch {}
+  }
   const access = hash.get('access_token');
   const refresh = hash.get('refresh_token');
   if (access && refresh) {
