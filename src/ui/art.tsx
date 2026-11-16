@@ -16,12 +16,19 @@ const SKIN = ['#F6D3B3', '#EBBE94', '#D9A273', '#B97C4F', '#8A5A38', '#5E3B24'];
 const HAIR = ['#1E1A17', '#3B2A1E', '#6B4423', '#A8742F', '#D9B45A', '#B6452C', '#8D8D8D'];
 
 /** Retrato de futbolista generado a partir de su id: tono de piel, peinado y dorsal estables. */
-export function Avatar({ seed, size = 60, jersey = '#7C8F84', ring = C.line }: { seed: string; size?: number; jersey?: string; ring?: string }) {
+export interface Look {
+  skin: number;
+  hair: number;
+  style: number;
+  beard?: boolean;
+}
+
+export function Avatar({ seed, size = 60, jersey = '#7C8F84', ring = C.line, look }: { seed: string; size?: number; jersey?: string; ring?: string; look?: Look }) {
   const h = hash(seed);
-  const skin = SKIN[h % SKIN.length];
-  const hair = HAIR[(h >>> 3) % HAIR.length];
-  const style = (h >>> 7) % 6;
-  const beard = (h >>> 11) % 5 === 0;
+  const skin = SKIN[(look?.skin ?? h) % SKIN.length];
+  const hair = HAIR[(look?.hair ?? h >>> 3) % HAIR.length];
+  const style = (look?.style ?? h >>> 7) % 6;
+  const beard = look ? !!look.beard : (h >>> 11) % 5 === 0;
   const id = `g${seed}`;
   return (
     <Svg width={size} height={size} viewBox="0 0 64 64">
@@ -124,6 +131,31 @@ export function Ball({ size = 18, dim = false }: { size?: number; dim?: boolean 
       <Path d="M12 7.2 L16.5 10.5 L14.8 15.8 H9.2 L7.5 10.5 Z" fill="#14261B" />
       <Path d="M12 7.2 V2 M16.5 10.5 L21.5 8.6 M14.8 15.8 L18 20.3 M9.2 15.8 L6 20.3 M7.5 10.5 L2.5 8.6" stroke="#14261B" strokeWidth="1.3" />
     </Svg>
+  );
+}
+
+/** Avatares de usuario para elegir. Para usar imágenes propias, basta con cambiar este componente. */
+export const USER_AVATARS: { id: string; look: Look; jersey: string }[] = [
+  { id: 'a1', look: { skin: 1, hair: 1, style: 1 }, jersey: '#E5484D' },
+  { id: 'a2', look: { skin: 4, hair: 0, style: 3 }, jersey: '#3E8BFF' },
+  { id: 'a3', look: { skin: 0, hair: 4, style: 5 }, jersey: '#F5C542' },
+  { id: 'a4', look: { skin: 2, hair: 2, style: 2, beard: true }, jersey: '#35C98A' },
+  { id: 'a5', look: { skin: 5, hair: 0, style: 0 }, jersey: '#A07CF5' },
+  { id: 'a6', look: { skin: 0, hair: 5, style: 1, beard: true }, jersey: '#FF8A3D' },
+  { id: 'a7', look: { skin: 3, hair: 0, style: 5 }, jersey: '#2CC7D8' },
+  { id: 'a8', look: { skin: 1, hair: 6, style: 4 }, jersey: '#F06CA8' },
+  { id: 'a9', look: { skin: 2, hair: 3, style: 3 }, jersey: '#FBF6E4' },
+  { id: 'a10', look: { skin: 4, hair: 0, style: 2, beard: true }, jersey: '#F5C542' },
+  { id: 'a11', look: { skin: 0, hair: 2, style: 0 }, jersey: '#3E8BFF' },
+  { id: 'a12', look: { skin: 3, hair: 1, style: 1 }, jersey: '#E5484D' },
+];
+
+export function UserAvatar({ id, size = 40, ring = C.accent }: { id: string; size?: number; ring?: string }) {
+  const a = USER_AVATARS.find((x) => x.id === id) ?? USER_AVATARS[0];
+  return (
+    <View style={{ width: size, height: size, flexShrink: 0 }}>
+      <Avatar seed={`user-${a.id}`} size={size} jersey={a.jersey} ring={ring} look={a.look} />
+    </View>
   );
 }
 

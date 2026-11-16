@@ -11,6 +11,8 @@ Las cuentas son opcionales: si el juego se compila sin los datos del servidor, f
   - Media inferior a 2,5 estrellas en sus 5 últimas valoraciones, con al menos 3: 24 horas.
 - **Qué cuenta como abandono:** que el anfitrión salga con la partida a medias, que pase 30 minutos sin dar señales, o que un invitado avise tras 10 minutos sin señales.
 - Recuperación de contraseña por correo y borrado de cuenta desde el perfil.
+- **Avatar** a elegir entre un conjunto de retratos; con cuenta se guarda en el perfil y, como invitado, en el dispositivo.
+- Al abrir el juego se elige entre **entrar con tu cuenta** o **jugar como invitado**.
 
 ## Puesta en marcha (unos 10 minutos, gratis)
 
@@ -29,6 +31,10 @@ La clave pública está pensada para ir en el cliente: no da acceso a las tablas
 Los nombres de los menús de Supabase pueden cambiar; estos pasos no se han podido comprobar contra un proyecto real (ver «Límites»).
 
 Para desarrollo local, exporta `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY` antes de `npm run web`.
+
+## Actualizar el esquema
+
+Cuando cambie `supabase/schema.sql` (por ejemplo, al añadirse el avatar al perfil), vuelve a pegarlo entero en el editor SQL y ejecútalo: no borra datos. Hasta entonces el juego funciona, pero lo nuevo no se guarda en la cuenta.
 
 ## Cómo funciona
 

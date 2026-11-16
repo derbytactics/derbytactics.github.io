@@ -15,7 +15,8 @@ import {
   tierForPips,
   totalPips,
 } from '../engine';
-import { Avatar, Crest } from './art';
+import { useAccount } from '../account/useAccount';
+import { Avatar, Crest, UserAvatar } from './art';
 import { C, NATIVE_DRIVER, TIER_COLOR, clubColor } from './theme';
 
 export function Btn(props: {
@@ -156,6 +157,38 @@ export function Popup(props: { icon?: React.ReactNode; overline: string; title: 
   );
 }
 
+/** Acciones de la barra de navegación; las pone App. */
+export const NavContext = React.createContext<{ onHelp: () => void; onAccount: () => void }>({ onHelp: () => {}, onAccount: () => {} });
+
+/** Barra superior: avatar (abre tu cuenta), nombre del juego, jornada y ayuda. */
+export function NavBar({ subtitle }: { subtitle?: string }) {
+  const nav = React.useContext(NavContext);
+  const { avatar, profile } = useAccount();
+  return (
+    <View style={s.navbar}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Tu cuenta y avatar" onPress={nav.onAccount} hitSlop={6}>
+        <UserAvatar id={avatar} size={38} />
+      </Pressable>
+      <View style={{ flex: 1, marginLeft: 10 }}>
+        <Text style={{ color: C.text, fontSize: 17, fontWeight: '900', letterSpacing: -0.3 }}>
+          FUT<Text style={{ color: C.accent }}>CARDS</Text>
+        </Text>
+        <Text numberOfLines={1} style={{ color: C.dim, fontSize: 12, fontWeight: '600' }}>{subtitle ?? profile?.username ?? 'Invitado'}</Text>
+      </View>
+      <Pressable accessibilityRole="button" accessibilityLabel="Reglas del juego" onPress={nav.onHelp} hitSlop={6} style={s.navHelp}>
+        <Text style={{ color: C.text, fontWeight: '900', fontSize: 16 }}>?</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/** Texto de jornada para la barra de navegación. */
+export function navJornada(state: GameState): string {
+  if (state.phase === 'finished') return 'Final de temporada';
+  const preseason = state.phase === 'market' && state.jornada === 1 && state.turnOrder.length > state.players.length;
+  return preseason ? 'Pretemporada' : `Jornada ${state.jornada} de ${state.totalJornadas}`;
+}
+
 /** Si se define, las pantallas de partida muestran un botón para salir. */
 export const ExitContext = React.createContext<(() => void) | null>(null);
 
@@ -193,7 +226,9 @@ export function PhaseStepper({ step, label }: { step: 0 | 1 | 2; label: string }
 
 export function jornadaLabel(state: GameState): string {
   const preseason = state.phase === 'market' && state.jornada === 1 && state.turnOrder.length > state.players.length;
-  return preseason ? `PRETEMPORADA · VUELTA ${state.turnIndex < state.players.length ? 1 : 2} DE 2` : `JORNADA ${state.jornada} DE ${state.totalJornadas}`;
+  const turn = `TURNO ${state.turnIndex + 1} DE ${state.turnOrder.length}`;
+  if (state.phase !== 'market') return 'DÍA DE PARTIDO';
+  return preseason ? `VUELTA ${state.turnIndex < state.players.length ? 1 : 2} DE 2 · ${turn}` : turn;
 }
 
 export function StandingsTable({ state, highlight }: { state: GameState; highlight?: number }) {
@@ -242,6 +277,8 @@ export function Chronicle({ state, max = 25 }: { state: GameState; max?: number 
 
 export const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
+  navbar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#0A1E15', borderBottomWidth: 1, borderBottomColor: C.line },
+  navHelp: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, borderColor: C.line, alignItems: 'center', justifyContent: 'center', backgroundColor: C.panel },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(3,10,7,0.86)', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 10 },
   popup: { backgroundColor: C.panel, borderRadius: 18, borderWidth: 2, overflow: 'hidden' },
   btn: { backgroundColor: C.accent, paddingVertical: 13, paddingHorizontal: 18, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

@@ -85,7 +85,7 @@ export function NumberLine({ player, jornada, highlight }: { player: Player; jor
   );
 }
 
-export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: Action) => string | null; onHelp: () => void }) {
+export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: Action) => string | null }) {
   const { state, me } = props;
   const [tab, setTab] = useState<Tab>('mercado');
   const [error, setError] = useState<string | null>(null);
@@ -141,7 +141,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
 
   return (
     <View style={{ flex: 1 }}>
-      <PhaseStepper step={0} label={`${jornadaLabel(state)} · TURNO ${state.turnIndex + 1} DE ${state.turnOrder.length}`} />
+      <PhaseStepper step={0} label={jornadaLabel(state)} />
 
       <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
         <View style={s.row}>
@@ -154,9 +154,6 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
             <Overline>CAJA</Overline>
             <Text style={{ color: C.accent, fontSize: 26, fontWeight: '900' }}>{me.money}M</Text>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Cómo se juega" onPress={props.onHelp} style={{ marginLeft: 10, width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: C.dim, fontWeight: '800' }}>?</Text>
-          </Pressable>
         </View>
 
         <View style={[s.row, { flexWrap: 'wrap', marginTop: 10 }]}>

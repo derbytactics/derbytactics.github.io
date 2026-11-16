@@ -8,7 +8,7 @@ import { GuestSession, HostSession } from '../net/session';
 import { deviceId } from '../net/storage';
 import { Stars } from './AccountScreen';
 import { Crest } from './art';
-import { Btn, Overline, s } from './components';
+import { Btn, NavBar, Overline, s } from './components';
 import { GameView } from './GameView';
 import { C, clubColor } from './theme';
 
@@ -193,6 +193,7 @@ export function OnlineHost(props: { name: string; resume: RoomState | null; onHe
     };
     return (
       <View style={{ flex: 1 }}>
+        <NavBar subtitle={`Sala ${room.code} · sala de espera`} />
         <Offline connected={connected} />
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           <Overline>SALA CREADA · COMPARTE ESTE CÓDIGO</Overline>
@@ -347,6 +348,7 @@ export function OnlineGuest(props: { code: string; name: string; onHelp: () => v
   if (!room.game) {
     return (
       <View style={{ flex: 1 }}>
+        <NavBar subtitle={`Sala ${room.code} · sala de espera`} />
         <Offline connected={connected} />
         <ScrollView contentContainerStyle={{ padding: 16 }}>
           <Overline>SALA {room.code}</Overline>

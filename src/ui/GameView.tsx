@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Action, GameState, currentPlayer } from '../engine';
 import { Crest } from './art';
-import { Btn, Chronicle, ExitContext, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, s } from './components';
+import { Btn, Chronicle, ExitContext, NavBar, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
 import { EndScreen } from './EndScreen';
 import { GameScreen } from './GameScreen';
 import { KickoffScreen, MatchScreen } from './MatchScreen';
@@ -40,6 +40,7 @@ export function GameView(props: {
   return (
     <ExitContext.Provider value={() => setLeaving(true)}>
       <View style={{ flex: 1 }}>
+        <NavBar subtitle={navJornada(props.game)} />
         <GameBody {...props} />
         {leaving ? (
           <Popup overline="SALIR DE LA PARTIDA" title="¿Seguro que quieres salir?" color={C.danger} button="Seguir jugando" onClose={() => setLeaving(false)}>
@@ -82,7 +83,7 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
   if (!mine) {
     return (
       <View style={{ flex: 1 }}>
-        <PhaseStepper step={0} label={`${jornadaLabel(game)} · TURNO ${game.turnIndex + 1} DE ${game.turnOrder.length}`} />
+        <PhaseStepper step={0} label={jornadaLabel(game)} />
         <View style={{ padding: 16 }}>
           <View style={[s.row, { marginBottom: 14 }]}>
             <Crest name={cur.name} color={clubColor(cur.id)} size={46} />
@@ -112,5 +113,5 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
       </View>
     );
   }
-  return <GameScreen key={turnKey} state={game} me={cur} dispatch={dispatch} onHelp={props.onHelp} />;
+  return <GameScreen key={turnKey} state={game} me={cur} dispatch={dispatch} />;
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { CONFIG, NewGameOptions, SeasonLength } from '../engine';
 import { Crest, Logo } from './art';
-import { Btn, Overline, s } from './components';
+import { Btn, NavBar, Overline, s } from './components';
 import { C, clubColor } from './theme';
 
 const DEFAULT_NAMES = ['Atlético Barrio', 'Real Chamartín', 'Sporting Ribera', 'Unión Levante', 'Deportivo Norte', 'Racing Meseta', 'CF Bahía', 'Rayo Sur'];
@@ -22,8 +22,8 @@ export function SetupScreen(props: {
   onResume: () => void;
   initialCode: string;
   initialName: string;
-  /** Botón de cuenta (null si no hay servidor de cuentas). */
-  account: { label: string; onOpen: () => void } | null;
+  /** Hay servidor de cuentas: crear salas exige estar registrado. */
+  accountsOn: boolean;
   /** Comprueba si esta persona puede crear salas; devuelve el motivo si no. */
   hostGate: () => Promise<string | null>;
 }) {
@@ -40,12 +40,9 @@ export function SetupScreen(props: {
     setPlayers((all) => all.map((x, j) => (j === i ? { ...x, ...p } : x)));
 
   return (
+    <View style={{ flex: 1 }}>
+    <NavBar />
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-      {props.account ? (
-        <View style={{ alignItems: 'flex-end' }}>
-          <Btn small kind="ghost" label={props.account.label} onPress={props.account.onOpen} />
-        </View>
-      ) : null}
       <View style={{ alignItems: 'center', marginTop: 8, marginBottom: 18 }}>
         <Logo size={128} />
         <Text style={{ color: C.text, fontSize: 40, fontWeight: '900', letterSpacing: -1 }}>
@@ -78,7 +75,7 @@ export function SetupScreen(props: {
           {warn ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{warn}</Text> : null}
 
           <Btn label="Crear una sala" onPress={() => named((n) => props.hostGate().then((why) => (why ? setWarn(why) : props.onHost(n))))} />
-          {props.account ? <Text style={[s.p, { fontSize: 12, marginTop: 6 }]}>Para crear salas necesitas una cuenta. Para unirte, no.</Text> : null}
+          {props.accountsOn ? <Text style={[s.p, { fontSize: 12, marginTop: 6 }]}>Para crear salas necesitas una cuenta. Para unirte, no.</Text> : null}
           {props.resumeCode ? <Btn kind="ghost" label={`Reanudar mi sala ${props.resumeCode}`} onPress={props.onResume} style={{ marginTop: 8 }} /> : null}
 
           <View style={[s.row, { marginVertical: 18 }]}>
@@ -150,5 +147,6 @@ export function SetupScreen(props: {
         </>
       )}
     </ScrollView>
+    </View>
   );
 }

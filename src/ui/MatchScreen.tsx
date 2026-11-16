@@ -174,7 +174,7 @@ export function MatchScreen(props: { state: GameState; report: MatchReport; onNe
 
   return (
     <View style={{ flex: 1 }}>
-      <PhaseStepper step={reparto ? 2 : 1} label={`JORNADA ${report.jornada} DE ${state.totalJornadas}`} />
+      <PhaseStepper step={reparto ? 2 : 1} label={reparto ? 'REPARTO' : 'DÍA DE PARTIDO'} />
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         {!reparto ? (
           <>

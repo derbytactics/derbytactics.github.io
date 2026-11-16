@@ -36,6 +36,7 @@ export interface Profile {
   host_banned_until: string | null;
   stars: number | null;
   votes: number;
+  avatar?: string | null;
 }
 export interface HostCard {
   username: string;
@@ -115,8 +116,11 @@ interface AccountState {
   recovering: boolean;
   /** El enlace del correo (confirmación o contraseña) ha fallado: motivo para enseñar. */
   linkError: string | null;
+  /** Avatar elegido (se guarda en el dispositivo y, con cuenta, también en el perfil). */
+  avatar: string;
 }
-let state: AccountState = { session: load<Session>(SESSION_KEY), profile: null, recovering: false, linkError: null };
+const AVATAR_KEY = 'futcards.avatar';
+let state: AccountState = { session: load<Session>(SESSION_KEY), profile: null, recovering: false, linkError: null, avatar: load<string>(AVATAR_KEY) ?? 'a1' };
 const listeners = new Set<() => void>();
 function set(patch: Partial<AccountState>) {
   state = { ...state, ...patch };
@@ -176,7 +180,10 @@ export async function refreshProfile(): Promise<Profile | null> {
   if (!state.session) return null;
   try {
     const profile = await rpc<Profile>('my_profile');
-    set({ profile });
+    set({ profile, ...(profile?.avatar ? { avatar: profile.avatar } : {}) });
+    if (profile?.avatar) save(AVATAR_KEY, profile.avatar);
+    // Cuenta sin avatar todavía: hereda el que se eligió en este dispositivo.
+    else if (profile) rpc('set_avatar', { p_avatar: state.avatar }).catch(() => {});
     return profile;
   } catch {
     return state.profile;
@@ -206,6 +213,12 @@ export async function signOut(): Promise<void> {
   const t = state.session?.access_token;
   set({ session: null, profile: null, recovering: false });
   if (t) await call('/auth/v1/logout', { token: t }).catch(() => {});
+}
+
+export function setAvatar(id: string) {
+  save(AVATAR_KEY, id);
+  set({ avatar: id });
+  if (state.session) rpc('set_avatar', { p_avatar: id }).catch(() => {});
 }
 
 /** Vuelve a enviar el correo de confirmación de una cuenta recién creada. */

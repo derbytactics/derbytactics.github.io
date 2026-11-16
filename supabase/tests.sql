@@ -60,6 +60,8 @@ select pg_temp.ok(not finish_game((select gid from t), '[]'), 'no se puede cerra
 select pg_temp.ok((select wins = 1 and games = 1 from profiles where username = 'Luis'), 'el ganador suma victoria');
 select pg_temp.ok((select wins = 0 and games = 1 and host_games = 1 from profiles where username = 'Ana'), 'la anfitriona suma partida');
 select pg_temp.ok((ranking() -> 0 ->> 'username') = 'Luis', 'el ranking ordena por victorias');
+select set_avatar('a7');
+select pg_temp.ok((my_profile() ->> 'avatar') = 'a7', 'el avatar se guarda en el perfil');
 select pg_temp.ok(json_array_length(my_history()) = 1 and (my_history() -> 0 ->> 'position')::int = 2, 'historial del anfitrión');
 
 select pg_temp.login('00000000-0000-0000-0000-00000000000b');

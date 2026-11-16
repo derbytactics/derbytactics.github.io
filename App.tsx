@@ -12,6 +12,8 @@ import { GameView } from './src/ui/GameView';
 import { HelpScreen } from './src/ui/HelpScreen';
 import { OnlineGuest, OnlineHost } from './src/ui/Online';
 import { SetupScreen } from './src/ui/SetupScreen';
+import { WelcomeScreen } from './src/ui/WelcomeScreen';
+import { NavContext } from './src/ui/components';
 import { C, TOP_INSET } from './src/ui/theme';
 
 type Mode =
@@ -35,9 +37,11 @@ export default function App() {
   const [game, setGame] = useState<GameState | null>(null);
   const [help, setHelp] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  /** Ha elegido jugar sin cuenta en esta visita. */
+  const [guest, setGuest] = useState(false);
   const account = useAccount();
   useEffect(() => {
-    initAccount().then(() => (getAccount().recovering || getAccount().linkError) && setAccountOpen(true));
+    initAccount().then(() => getAccount().recovering && setAccountOpen(true));
   }, []);
   const gameRef = useRef(game);
   gameRef.current = game;
@@ -73,7 +77,9 @@ export default function App() {
   const onHelp = () => setHelp(true);
 
   let body: React.ReactNode;
-  if (mode.kind === 'host') {
+  if (backendEnabled() && !account.session && !guest && mode.kind === 'menu') {
+    body = <WelcomeScreen onGuest={() => setGuest(true)} startWithLogin={!!account.linkError} />;
+  } else if (mode.kind === 'host') {
     body = <OnlineHost name={mode.name} resume={mode.resume} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'guest') {
     body = <OnlineGuest code={mode.code} name={mode.name} onHelp={onHelp} onExit={toMenu} />;
@@ -95,7 +101,7 @@ export default function App() {
         onResume={() => savedHost && setMode({ kind: 'host', name: savedHost.seats[0].name, resume: savedHost })}
         initialCode={codeFromLink() || savedGuest?.code || ''}
         initialName={savedGuest?.name ?? savedHost?.seats[0].name ?? account.profile?.username ?? ''}
-        account={backendEnabled() ? { label: account.session ? `👤 ${account.profile?.username ?? 'Mi cuenta'}` : '👤 Entrar', onOpen: () => setAccountOpen(true) } : null}
+        accountsOn={backendEnabled()}
         hostGate={async () => {
           if (!backendEnabled()) return null;
           if (!getAccount().session) {
@@ -110,6 +116,7 @@ export default function App() {
   }
 
   return (
+    <NavContext.Provider value={{ onHelp, onAccount: () => setAccountOpen(true) }}>
     <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: TOP_INSET }}>
       <View style={{ flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' }}>
         {body}
@@ -127,5 +134,6 @@ export default function App() {
       </View>
       <StatusBar style="light" />
     </View>
+    </NavContext.Provider>
   );
 }

@@ -14,6 +14,7 @@ create table if not exists public.profiles (
   host_abandons int not null default 0,
   host_banned_until timestamptz
 );
+alter table public.profiles add column if not exists avatar text;
 create unique index if not exists profiles_username_key on public.profiles (lower(username));
 
 create table if not exists public.games (
@@ -161,10 +162,19 @@ begin
     select json_build_object(
       'id', p.id, 'username', p.username, 'games', p.games, 'wins', p.wins,
       'host_games', p.host_games, 'host_abandons', p.host_abandons,
+      'avatar', p.avatar,
       'host_banned_until', case when p.host_banned_until > now() then p.host_banned_until end,
       'stars', (select round(avg(stars), 1) from host_ratings where host_id = p.id),
       'votes', (select count(*) from host_ratings where host_id = p.id))
     from profiles p where p.id = me);
+end $$;
+
+create or replace function public.set_avatar(p_avatar text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'Inicia sesión.'; end if;
+  if p_avatar !~ '^a[0-9]{1,2}$' then raise exception 'Avatar no válido.'; end if;
+  update profiles set avatar = p_avatar where id = auth.uid();
 end $$;
 
 create or replace function public.set_username(p_username text) returns text
@@ -337,10 +347,10 @@ end $$;
 -- ---------------------------------------------------------------- Permisos
 
 revoke all on function public.apply_host_penalty(uuid), public.sweep_host(uuid), public.handle_new_user() from public, anon, authenticated;
-revoke all on function public.my_profile(), public.set_username(text), public.start_game(text, text, int, jsonb), public.join_game(uuid, int),
+revoke all on function public.my_profile(), public.set_avatar(text), public.set_username(text), public.start_game(text, text, int, jsonb), public.join_game(uuid, int),
   public.heartbeat(uuid), public.finish_game(uuid, jsonb), public.abandon_game(uuid), public.report_abandon(uuid),
   public.rate_host(uuid, int), public.my_history(int), public.delete_my_account() from public, anon;
-grant execute on function public.my_profile(), public.set_username(text), public.start_game(text, text, int, jsonb), public.join_game(uuid, int),
+grant execute on function public.my_profile(), public.set_avatar(text), public.set_username(text), public.start_game(text, text, int, jsonb), public.join_game(uuid, int),
   public.heartbeat(uuid), public.finish_game(uuid, jsonb), public.abandon_game(uuid), public.report_abandon(uuid),
   public.rate_host(uuid, int), public.my_history(int), public.delete_my_account() to authenticated;
 grant execute on function public.username_available(text), public.host_card(uuid), public.ranking(int), public.clean_username(text) to anon, authenticated;

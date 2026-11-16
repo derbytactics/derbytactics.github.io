@@ -9,13 +9,14 @@ import {
   requestPasswordReset,
   resendConfirmation,
   rpc,
+  setAvatar,
   setNewPassword,
   signIn,
   signOut,
   signUp,
 } from '../account/api';
 import { useAccount } from '../account/useAccount';
-import { Trophy } from './art';
+import { Trophy, USER_AVATARS, UserAvatar } from './art';
 import { Btn, Overline, s } from './components';
 import { C } from './theme';
 
@@ -61,7 +62,24 @@ export function formatDate(iso: string): string {
   return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function AuthForm() {
+/** Selector de avatar: vale con cuenta y como invitado. */
+export function AvatarPicker() {
+  const { avatar } = useAccount();
+  return (
+    <View style={s.panel}>
+      <Overline>TU AVATAR</Overline>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
+        {USER_AVATARS.map((a) => (
+          <Pressable key={a.id} accessibilityRole="button" accessibilityLabel={`Avatar ${a.id.slice(1)}`} onPress={() => setAvatar(a.id)} style={{ opacity: a.id === avatar ? 1 : 0.55 }}>
+            <UserAvatar id={a.id} size={52} ring={a.id === avatar ? C.accent : C.line} />
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+export function AuthForm() {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -307,6 +325,7 @@ export function AccountScreen({ onClose, initialTab }: { onClose: () => void; in
         <NewPassword />
       ) : (
         <>
+          <AvatarPicker />
           <View style={[s.row, { gap: 8, marginBottom: 14 }]}>
             <Btn small kind={tab === 'perfil' ? 'primary' : 'ghost'} label={session ? 'Perfil' : 'Entrar'} onPress={() => setTab('perfil')} style={{ flex: 1 }} />
             <Btn small kind={tab === 'historial' ? 'primary' : 'ghost'} label="Historial" onPress={() => setTab('historial')} style={{ flex: 1 }} />
