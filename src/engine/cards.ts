@@ -1,15 +1,29 @@
 import { CONFIG } from './config';
 
-export type Position = 'DEF' | 'MED' | 'DEL';
+export type Position = 'POR' | 'DEF' | 'MED' | 'DEL';
 export type Tier = 'Cantera' | 'Plata' | 'Oro' | 'Crack';
 
 export interface Footballer {
   id: string;
   name: string;
   position: Position;
-  /** Números de dado (2-12, nunca 7) con los que marca. */
+  /** Números de dado (2-12, nunca 7) con los que actúa. */
   numbers: number[];
 }
+
+/**
+ * Fuerza de cada posición cuando sale uno de sus números.
+ * El ataque de un club es la suma de sus atacantes con ese número; la defensa, la de sus defensores.
+ * Una jugada es gol contra cada rival cuya defensa sea menor que el ataque.
+ */
+export const ROLE_NAME: Record<Position, { label: string; plural: string }> = {
+  POR: { label: 'Portero', plural: 'porteros' },
+  DEF: { label: 'Defensa', plural: 'defensas' },
+  MED: { label: 'Medio', plural: 'medios' },
+  DEL: { label: 'Delantero', plural: 'delanteros' },
+};
+export const roleOf = (position: Position) => CONFIG.roles[position];
+export const POSITIONS: Position[] = ['POR', 'DEF', 'MED', 'DEL'];
 
 /** "Pips" tipo Catán: de cuántas formas sale ese número con 2 dados (sobre 36). */
 export function pipsOf(n: number): number {
@@ -18,94 +32,72 @@ export function pipsOf(n: number): number {
 export function totalPips(numbers: number[]): number {
   return numbers.reduce((a, n) => a + pipsOf(n), 0);
 }
-export function priceForPips(pips: number): number {
-  return Math.round(CONFIG.price.perPip * pips + CONFIG.price.quad * pips * pips);
+/** Precio según la frecuencia de sus números y lo que cotiza su posición. */
+export function priceFor(position: Position, pips: number): number {
+  const f = CONFIG.price.factor[position];
+  return Math.max(1, Math.round(f * (CONFIG.price.perPip * pips + CONFIG.price.quad * pips * pips)));
 }
-export function tierForPips(pips: number): Tier {
-  if (pips >= 12) return 'Crack';
-  if (pips >= 9) return 'Oro';
-  if (pips >= 5) return 'Plata';
+export function tierForPrice(price: number): Tier {
+  if (price >= 38) return 'Crack';
+  if (price >= 24) return 'Oro';
+  if (price >= 11) return 'Plata';
   return 'Cantera';
 }
 
-type Row = [string, Position, number[]];
-const ROWS: Row[] = [
-  // Cracks (12-14 pips)
-  ['Leo Manzanares', 'DEL', [6, 8, 9]],
-  ['Kiko Bermejo', 'DEL', [5, 6, 8]],
-  ['Dani "Zurdo" Rey', 'DEL', [4, 6, 8]],
-  ['Yeray Cienfuegos', 'DEL', [6, 8, 10]],
-  ['Nico Valdés', 'DEL', [5, 8, 9]],
-  ['Hugo Trujillo', 'MED', [5, 6, 9]],
-  ['Samu Okoro', 'DEL', [6, 9, 10]],
-  ['Iker Lasarte', 'MED', [4, 5, 8]],
-  // Oro (9-11)
-  ['Bruno Castaño', 'DEL', [6, 8]],
-  ['Marc Ribera', 'DEL', [6, 8]],
-  ['Thiago Pardo', 'MED', [3, 6, 9]],
-  ['Álex Montoya', 'MED', [4, 8, 10]],
-  ['Rubén Sarabia', 'MED', [5, 9, 10]],
-  ['Joel Arrieta', 'MED', [4, 5, 9]],
-  ['Pau Ferrer', 'DEL', [6, 9]],
-  ['Mateo Lozano', 'DEL', [5, 8]],
-  ['Izan Cabello', 'DEL', [5, 6]],
-  ['Gael Navas', 'DEL', [8, 9]],
-  ['Unai Beitia', 'MED', [2, 6, 10]],
-  ['Erik Sandoval', 'MED', [4, 8, 12]],
-  ['Aitor Zubiri', 'MED', [3, 8, 11]],
-  ['Jorge Maldonado', 'MED', [3, 6, 11]],
-  ['Luca Bianchi', 'MED', [3, 5, 9]],
-  ['Omar Benali', 'MED', [4, 9, 11]],
-  // Plata (5-8)
-  ['Sergio Quintana', 'DEL', [6]],
-  ['Adrián Pombo', 'DEL', [6]],
-  ['Víctor Llorente', 'DEL', [8]],
-  ['Raúl Escobar', 'DEL', [8]],
-  ['Diego Salinas', 'MED', [5, 9]],
-  ['Mario Cuenca', 'MED', [4, 10]],
-  ['Toni Gallardo', 'MED', [5, 10]],
-  ['Pedro Vizcaíno', 'MED', [4, 9]],
-  ['Jon Etxeberria', 'MED', [3, 6]],
-  ['Cristian Mora', 'MED', [8, 11]],
-  ['Fran Céspedes', 'DEF', [2, 6]],
-  ['Borja Lerma', 'DEF', [8, 12]],
-  ['Guille Roldán', 'MED', [4, 5]],
-  ['Isma Carmona', 'MED', [9, 10]],
-  ['Chema Tejada', 'DEF', [3, 5]],
-  ['Rober Olmedo', 'DEF', [9, 11]],
-  ['Nando Peralta', 'DEF', [2, 3, 4]],
-  ['Quique Barrios', 'DEF', [10, 11, 12]],
-  ['Edu Sanchís', 'DEF', [6, 12]],
-  ['Javi Pinto', 'DEF', [2, 8]],
-  ['Carlos Mendieta', 'MED', [4, 6]],
-  ['Andrés Vidal', 'MED', [8, 10]],
-  // Cantera (1-4)
-  ['Miguelito Ros', 'MED', [5]],
-  ['Santi Cobo', 'MED', [9]],
-  ['Nacho Durán', 'DEF', [4]],
-  ['Pablo Yuste', 'DEF', [10]],
-  ['Lolo Gimeno', 'DEF', [3]],
-  ['Tino Aguirre', 'DEF', [11]],
-  ['Chus Pacheco', 'DEF', [2]],
-  ['Manu Tirado', 'DEF', [12]],
-  ['Rafa Oliva', 'DEF', [3, 11]],
-  ['Koke Bustos', 'DEF', [2, 12]],
-  ['Dario Lima', 'DEF', [3, 12]],
-  ['Fede Arce', 'DEF', [2, 11]],
-  ['Juanma Prieto', 'DEF', [2, 4]],
-  ['Óscar Leal', 'DEF', [10, 12]],
-  ['Abel Marín', 'MED', [5]],
-  ['Ximo Bosch', 'MED', [9]],
-  ['Teo Garrido', 'DEF', [4]],
-  ['Lucas Ferreiro', 'DEF', [10]],
+/** Combinaciones de números por posición. Los porteros cubren más números; los delanteros, menos. */
+const SETS: Record<Position, number[][]> = {
+  POR: [
+    [5, 6, 8, 9], [4, 6, 8, 10], [3, 6, 8, 11], [5, 6, 8], [6, 8, 9, 10], [4, 5, 6, 8],
+    [4, 5, 9, 10], [2, 6, 8, 12], [3, 5, 9, 11], [4, 6, 9], [5, 8, 10], [3, 4, 10, 11],
+    [2, 5, 9, 12], [6, 9, 11], [4, 8, 12],
+  ],
+  DEF: [
+    [6, 8], [6, 8], [5, 6, 9], [4, 8, 9], [5, 8], [6, 9], [5, 6], [8, 9], [4, 6, 10], [5, 8, 10],
+    [3, 6], [8, 11], [4, 9], [5, 10], [4, 5], [9, 10], [3, 8], [6, 11], [2, 6, 12], [3, 4, 11],
+    [10, 11, 12], [2, 3, 4], [5, 9], [4, 10],
+  ],
+  MED: [
+    [6, 8], [5, 6, 9], [4, 6, 8], [5, 8, 9], [6, 8, 10], [5, 6], [8, 9], [6, 9], [5, 8], [4, 5, 9],
+    [5, 9, 10], [3, 6, 9], [4, 8, 10], [4, 6], [8, 10], [5, 9], [4, 10], [3, 8, 11], [3, 6, 11],
+    [4, 9], [5, 10], [3, 5], [9, 11], [2, 6], [8, 12], [3, 4, 11],
+  ],
+  DEL: [
+    [6, 8, 9], [5, 6, 8], [6, 8], [6, 8], [5, 6], [8, 9], [6, 9], [5, 8], [6, 10], [4, 8],
+    [6], [6], [8], [8], [5, 9], [4, 10], [5], [9], [5, 10], [4, 9],
+    [3, 6], [8, 11], [4], [10], [3, 9], [5, 11], [3], [11], [2, 12], [3, 11],
+  ],
+};
+
+const NAMES = [
+  'Leo Manzanares', 'Kiko Bermejo', 'Dani Rey', 'Yeray Cienfuegos', 'Nico Valdés', 'Hugo Trujillo', 'Samu Okoro', 'Iker Lasarte',
+  'Bruno Castaño', 'Marc Ribera', 'Thiago Pardo', 'Álex Montoya', 'Rubén Sarabia', 'Joel Arrieta', 'Pau Ferrer', 'Mateo Lozano',
+  'Izan Cabello', 'Gael Navas', 'Unai Beitia', 'Erik Sandoval', 'Aitor Zubiri', 'Jorge Maldonado', 'Luca Bianchi', 'Omar Benali',
+  'Sergio Quintana', 'Adrián Pombo', 'Víctor Llorente', 'Raúl Escobar', 'Diego Salinas', 'Mario Cuenca', 'Toni Gallardo', 'Pedro Vizcaíno',
+  'Jon Etxeberria', 'Cristian Mora', 'Fran Céspedes', 'Borja Lerma', 'Guille Roldán', 'Isma Carmona', 'Chema Tejada', 'Rober Olmedo',
+  'Nando Peralta', 'Quique Barrios', 'Edu Sanchís', 'Javi Pinto', 'Carlos Mendieta', 'Andrés Vidal', 'Miguelito Ros', 'Santi Cobo',
+  'Nacho Durán', 'Pablo Yuste', 'Lolo Gimeno', 'Tino Aguirre', 'Chus Pacheco', 'Manu Tirado', 'Rafa Oliva', 'Koke Bustos',
+  'Dario Lima', 'Fede Arce', 'Juanma Prieto', 'Óscar Leal', 'Abel Marín', 'Ximo Bosch', 'Teo Garrido', 'Lucas Ferreiro',
+  'Íñigo Barrena', 'Marcos Tello', 'Saúl Herrero', 'Dídac Roca', 'Julen Aranda', 'Biel Morales', 'Hernán Paz', 'Aleix Soler',
+  'Rodri Campos', 'Ander Goñi', 'Curro Vargas', 'Pol Vilanova', 'Ramiro Sosa', 'Enzo Ferrari', 'Yago Pazos', 'Noel Cabrera',
+  'Tomás Alcaraz', 'Gorka Urrutia', 'Elías Montero', 'Bernat Pons', 'Germán Rubio', 'Kevin Ortega', 'Simón Calvo', 'Moha Rahmani',
+  'Felipe Lara', 'Arnau Ribas', 'Darío Becerra', 'Ibai Zabala', 'César Blanco', 'Martín Cano', 'Jaime Palacios', 'Néstor Vega',
 ];
 
-export const FOOTBALLERS: Footballer[] = ROWS.map(([name, position, numbers], i) => ({
-  id: `f${i + 1}`,
-  name,
-  position,
-  numbers: [...numbers].sort((a, b) => a - b),
-}));
+export const FOOTBALLERS: Footballer[] = (() => {
+  const out: Footballer[] = [];
+  // Se reparten los nombres alternando posiciones para que no queden agrupados.
+  const queues = POSITIONS.map((pos) => SETS[pos].map((numbers) => ({ pos, numbers })));
+  let i = 0;
+  while (queues.some((q) => q.length)) {
+    for (const q of queues) {
+      const next = q.shift();
+      if (!next) continue;
+      out.push({ id: `f${i + 1}`, name: NAMES[i], position: next.pos, numbers: [...next.numbers].sort((a, b) => a - b) });
+      i++;
+    }
+  }
+  return out;
+})();
 
 const BY_ID = new Map(FOOTBALLERS.map((f) => [f.id, f]));
 export function footballer(id: string): Footballer {
@@ -114,7 +106,8 @@ export function footballer(id: string): Footballer {
   return f;
 }
 export function basePrice(id: string): number {
-  return priceForPips(totalPips(footballer(id).numbers));
+  const f = footballer(id);
+  return priceFor(f.position, totalPips(f.numbers));
 }
 
 // ---------------------------------------------------------------- Cartas especiales
@@ -167,28 +160,28 @@ export const SPECIAL_INFO: Record<
     target: 'rivalFootballer',
     sanction: true,
     copies: 2,
-    text: () => `Un futbolista rival se pierde ${S.injuryRounds} jornadas: no marca.`,
+    text: () => `Un futbolista rival se pierde ${S.injuryRounds} jornadas: ni ataca ni defiende.`,
   },
   roja: {
     title: 'Tarjeta roja',
     target: 'rivalFootballer',
     sanction: true,
     copies: 3,
-    text: () => `Un futbolista rival queda sancionado ${S.redCardRounds} jornada: no marca.`,
+    text: () => `Un futbolista rival queda sancionado ${S.redCardRounds} jornada: ni ataca ni defiende.`,
   },
   racha: {
-    title: 'Delantero en racha',
+    title: 'Jugador en racha',
     target: 'ownFootballer',
     sanction: false,
     copies: 4,
-    text: () => `Los goles de uno de tus futbolistas valen doble durante ${S.streakRounds} jornadas.`,
+    text: () => `Uno de tus futbolistas juega con el doble de fuerza (ataque y defensa) durante ${S.streakRounds} jornadas.`,
   },
   olfato: {
     title: 'Olfato de gol',
     target: 'ownFootballer',
     sanction: false,
     copies: 6,
-    text: (c) => `Uno de tus futbolistas también marca con el ${c.value} durante ${S.extraNumberRounds} jornadas.`,
+    text: (c) => `Uno de tus futbolistas también actúa con el ${c.value} durante ${S.extraNumberRounds} jornadas.`,
   },
   cantera: {
     title: 'Jugador de cantera',

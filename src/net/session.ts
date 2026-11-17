@@ -13,8 +13,8 @@ const DEFAULT_BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.
 const brokers = (): string[] => (globalThis as { __FUTCARDS_BROKERS__?: string[] }).__FUTCARDS_BROKERS__ ?? DEFAULT_BROKERS;
 
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ';
-const topic = (code: string, leaf: 's' | 'c') => `futcards/1/${code}/${leaf}`;
-export const HOST_KEY = 'futcards.host';
+const topic = (code: string, leaf: 's' | 'c') => `futcards/2/${code}/${leaf}`;
+export const HOST_KEY = 'futcards.host.v2';
 export const GUEST_KEY = 'futcards.guest';
 
 export function normalizeCode(raw: string): string {

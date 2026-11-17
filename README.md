@@ -2,7 +2,7 @@
 
 Juego de cartas de fútbol para **2 a 8 jugadores**, multiplataforma (iOS, Android y web) con Expo + React Native + TypeScript.
 
-Eres el presidente de un club recién ascendido. Con 60M en caja tienes que montar una plantilla, llenar el estadio y ganar la liga. Cada futbolista lleva números de dado, como las casillas del Catán: cuando sale su número, marca. Cuantos más números y más probables, más caro es.
+Eres el presidente de un club recién ascendido. Con 80M en caja tienes que montar una plantilla de fútbol 7 (un portero y la táctica que quieras), llenar el estadio y ganar la liga. Cada futbolista lleva números de dado, como las casillas del Catán. Cada jornada es un partido de todos contra todos: cuando sale un número, quien tiene delanteros o medios con él ataca, y los rivales lo paran si su portero y sus defensas con ese número suman al menos la misma fuerza.
 
 - **Jugar en el navegador:** https://juanrafernandez.github.io/Futcards/
 - **Reglas completas:** [docs/REGLAS.md](docs/REGLAS.md)
@@ -12,7 +12,7 @@ Eres el presidente de un club recién ascendido. Con 60M en caja tienes que mont
 
 - **Cuentas de usuario (opcionales):** historial de partidas, ranking por victorias y reputación de anfitriones con sanciones temporales. Ver [docs/CUENTAS.md](docs/CUENTAS.md).
 - **Multijugador en línea:** cada persona desde su móvil, con salas por código o enlace de invitación.
-- Partida en un solo dispositivo: varias personas pasándoselo y/o rivales controlados por IA (5 estilos de juego).
+- Partida en un solo dispositivo: varias personas pasándoselo y/o rivales controlados por IA (cuatro tácticas).
 - Mercado de fichajes, cláusulas, blindajes, ampliación de estadio, 37 cartas especiales, recuento de goles y reparto por posición cada jornada.
 - Ilustraciones vectoriales generadas por código (retratos, escudos, dados, estadio) y guía de pasos en pantalla.
 - Motor de reglas independiente de la interfaz (`src/engine`), determinista y con tests.
@@ -54,9 +54,9 @@ npm run test:db    # pruebas de la base de datos (necesita PostgreSQL local)
 App.tsx              Decide la pantalla según la fase de la partida
 src/engine/
   config.ts          Todos los valores de equilibrio
-  cards.ts           64 futbolistas y 37 cartas especiales
+  cards.ts           95 futbolistas y 37 cartas especiales
   engine.ts          Estado, validación y aplicación de acciones
-  bots.ts            IA con cinco personalidades
+  bots.ts            IA con varias tácticas
   engine.test.ts     Tests
 src/account/         Cuentas: sesión, perfil y llamadas al servidor
 supabase/            Esquema de la base de datos y sus pruebas

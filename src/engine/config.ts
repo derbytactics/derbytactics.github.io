@@ -8,16 +8,34 @@ export const CONFIG = {
   maxPlayers: 8,
 
   /** Caja inicial de cada club. */
-  startingMoney: 60,
-  /** Máximo de futbolistas en plantilla. */
-  squadSize: 6,
+  startingMoney: 80,
+  /** Máximo de futbolistas en plantilla (fútbol 7). */
+  squadSize: 7,
+  /** Como mucho un portero por club. */
+  maxKeepers: 1,
+  /** Fuerza de ataque y defensa de cada posición cuando sale uno de sus números. */
+  roles: {
+    POR: { attack: 0, defense: 2 },
+    DEF: { attack: 0, defense: 1 },
+    MED: { attack: 1, defense: 1 },
+    DEL: { attack: 2, defense: 0 },
+  } as Record<'POR' | 'DEF' | 'MED' | 'DEL', { attack: number; defense: number }>,
+  /** Contragolpe: si paras una jugada con un defensa en ese número, marcas un gol a quien atacó. */
+  counterAttack: true,
+  /** Prima por cada jugada rival que para tu portero. */
+  saveBonus: 1,
+  /** Paradas del portero en una jornada que dan una carta especial. */
+  savesForCard: 3,
   /** Tiradas de 2 dados por jornada (ocasiones de gol). */
   rollsPerMatchday: 6,
   /** Duración de la temporada en jornadas. */
   seasonLengths: { corta: 8, estandar: 12, larga: 16 } as Record<SeasonLength, number>,
 
-  /** Precio = perPip·pips + quad·pips² (los cracks pagan prima por concentrar goles en una sola ficha). */
-  price: { perPip: 2.2, quad: 0.12 },
+  /**
+   * Precio = factor de posición × (perPip·pips + quad·pips²).
+   * Los pips son la frecuencia de sus números; el factor refleja cuánto pesa su papel.
+   */
+  price: { perPip: 1.8, quad: 0.1, factor: { POR: 0.5, DEF: 0.9, MED: 0.7, DEL: 1 } as Record<'POR' | 'DEF' | 'MED' | 'DEL', number> },
   /** Al vender al banco se recupera este porcentaje del precio. */
   sellRatio: 0.5,
   /** Cláusula = precio × multiplicador. */
@@ -29,8 +47,8 @@ export const CONFIG = {
   transferProtection: 1,
 
   stadium: {
-    /** Taquilla por gol según el nivel del estadio (nivel 1..5). */
-    ticketPerGoal: [1, 2, 3, 5, 7],
+    /** Taquilla por cada jugada propia que acaba en gol, según el nivel del estadio (1..5). */
+    ticketPerGoal: [2, 3, 4, 6, 8],
     /** Coste de ampliar del nivel i al i+1. */
     upgradeCost: [10, 18, 28, 40],
   },

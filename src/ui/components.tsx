@@ -12,12 +12,12 @@ import {
   onStreak,
   pipsOf,
   standings,
-  tierForPips,
-  totalPips,
+  roleOf,
+  tierForPrice,
 } from '../engine';
 import { useAccount } from '../account/useAccount';
 import { Avatar, Crest, UserAvatar } from './art';
-import { C, NATIVE_DRIVER, TIER_COLOR, clubColor } from './theme';
+import { C, NATIVE_DRIVER, POS_COLOR, TIER_COLOR, clubColor } from './theme';
 
 export function Btn(props: {
   label: string;
@@ -84,9 +84,10 @@ export function FootballerCard(props: { cardId: string; entry?: SquadEntry; stat
   const J = props.state?.jornada ?? 0;
   const e = props.entry;
   const nums = e ? activeNumbers(e, J) : f.numbers;
-  const pips = totalPips(f.numbers);
-  const tier = tierForPips(pips);
+  const tier = tierForPrice(basePrice(f.id));
   const tint = TIER_COLOR[tier];
+  const pos = POS_COLOR[f.position];
+  const role = roleOf(f.position);
   const out = e ? isOut(e, J) : false;
   return (
     <View style={[s.card, { borderColor: tint + '55' }]}>
@@ -94,16 +95,18 @@ export function FootballerCard(props: { cardId: string; entry?: SquadEntry; stat
       <View style={[s.row, { padding: 12, opacity: out ? 0.6 : 1 }]}>
         <View>
           <Avatar seed={f.id} size={58} jersey={props.owner ? clubColor(props.owner.id) : '#7C8F84'} ring={tint} />
-          <View style={[s.posBadge, { backgroundColor: tint }]}>
+          <View style={[s.posBadge, { backgroundColor: pos }]}>
             <Text style={s.posText}>{f.position}</Text>
           </View>
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={[s.tier, { color: tint }]}>{tier.toUpperCase()}</Text>
           <Text numberOfLines={1} style={s.cardName}>{f.name}</Text>
-          <Text style={s.cardMeta}>
-            Valor {basePrice(f.id)}M · {(pips / 6).toFixed(1)} goles/jornada
-          </Text>
+          <View style={[s.row, { marginTop: 3 }]}>
+            {role.attack > 0 ? <Text style={[s.power, { color: POS_COLOR.DEL }]}>⚔ Ataque {role.attack}</Text> : null}
+            {role.defense > 0 ? <Text style={[s.power, { color: POS_COLOR.DEF }]}>🛡 Defensa {role.defense}</Text> : null}
+            <Text style={s.cardMeta}>{basePrice(f.id)}M</Text>
+          </View>
         </View>
         <View style={[s.row, { gap: 4 }]}>
           {nums.map((n) => (
@@ -114,7 +117,7 @@ export function FootballerCard(props: { cardId: string; entry?: SquadEntry; stat
       {e && (out || onStreak(e, J) || isProtected(e, J) || e.shielded) ? (
         <View style={[s.row, { paddingHorizontal: 12, paddingBottom: 6, flexWrap: 'wrap' }]}>
           {out ? <Tag text={`🩹 De baja hasta J${e.outUntil}`} color={C.danger} /> : null}
-          {onStreak(e, J) ? <Tag text={`🔥 Goles ×2 hasta J${e.streakUntil}`} color={C.accent} /> : null}
+          {onStreak(e, J) ? <Tag text={`🔥 Doble fuerza hasta J${e.streakUntil}`} color={C.accent} /> : null}
           {isProtected(e, J) ? <Tag text={`🔒 Intransferible hasta J${e.noClauseUntil}`} color={C.good} /> : null}
           {e.shielded ? <Tag text="🛡 Blindado" color={C.good} /> : null}
         </View>
@@ -237,7 +240,7 @@ export function StandingsTable({ state, highlight }: { state: GameState; highlig
       <View style={[s.row, { marginBottom: 6 }]}>
         <Text style={[s.th, { flex: 1, textAlign: "left" }]}>CLASIFICACIÓN</Text>
         <Text style={[s.th, { width: 44 }]}>PTS</Text>
-        <Text style={[s.th, { width: 40 }]}>GOL</Text>
+        <Text style={[s.th, { width: 52 }]}>GOLES</Text>
         <Text style={[s.th, { width: 50 }]}>CAJA</Text>
         <Text style={[s.th, { width: 34 }]}>EST</Text>
       </View>
@@ -250,7 +253,7 @@ export function StandingsTable({ state, highlight }: { state: GameState; highlig
             {p.isBot ? <Text style={{ color: C.faint, fontWeight: '500' }}> · IA</Text> : null}
           </Text>
           <Text style={[s.td, { width: 44, color: C.accent, fontWeight: '800', fontSize: 15 }]}>{p.points}</Text>
-          <Text style={[s.td, { width: 40 }]}>{p.goals}</Text>
+          <Text style={[s.td, { width: 52 }]}>{p.goals}:{p.against ?? 0}</Text>
           <Text style={[s.td, { width: 50 }]}>{p.money}M</Text>
           <Text style={[s.td, { width: 34 }]}>N{p.stadium}</Text>
         </View>
@@ -298,7 +301,8 @@ export const s = StyleSheet.create({
   posText: { color: '#14261B', fontSize: 9, fontWeight: '900' },
   tier: { fontSize: 10, fontWeight: '900', letterSpacing: 1 },
   cardName: { color: C.text, fontWeight: '800', fontSize: 16, marginTop: 1 },
-  cardMeta: { color: C.dim, fontSize: 12, marginTop: 2 },
+  cardMeta: { color: C.dim, fontSize: 12 },
+  power: { fontSize: 11, fontWeight: '800', marginRight: 8 },
   h1: { color: C.text, fontSize: 26, fontWeight: '900', letterSpacing: -0.3 },
   h2: { color: C.text, fontSize: 17, fontWeight: '800', marginBottom: 8 },
   p: { color: C.dim, fontSize: 14, lineHeight: 20 },

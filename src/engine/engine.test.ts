@@ -13,9 +13,11 @@ import {
   clauseOf,
   createGame,
   currentPlayer,
+  hasKeeper,
+  lineup,
   pipsOf,
   pointsForRank,
-  priceForPips,
+  priceFor,
   prizeForRank,
   totalPips,
 } from './index';
@@ -30,6 +32,11 @@ function withInMarket(s: GameState, cardId: string): GameState {
   if (!c.market.includes(cardId)) c.market[0] = cardId;
   return c;
 }
+/** Busca una carta por posición y números exactos. */
+const card = (position: string, numbers: number[]) =>
+  FOOTBALLERS.find((f) => f.position === position && f.numbers.join() === numbers.join())!.id;
+const CHEAP = card('DEL', [3]);
+const entry = (cardId: string, extra: object = {}) => ({ cardId, shielded: false, noClauseUntil: 0, streakUntil: 0, outUntil: 0, extra: null, ...extra });
 const give = (s: GameState, playerId: number, special: string): GameState => {
   const c = structuredClone(s);
   c.players[playerId].hand.push(special);
@@ -41,14 +48,18 @@ describe('cartas y precios', () => {
     expect([2, 3, 4, 5, 6, 8, 9, 10, 11, 12].map(pipsOf)).toEqual([1, 2, 3, 4, 5, 5, 4, 3, 2, 1]);
     expect(totalPips([6, 8, 9])).toBe(14);
   });
-  it('ningún futbolista marca con el 7 y los nombres son únicos', () => {
+  it('ningún futbolista usa el 7, los nombres son únicos y hay porteros para todos', () => {
     expect(FOOTBALLERS.every((f) => !f.numbers.includes(7))).toBe(true);
     expect(new Set(FOOTBALLERS.map((f) => f.name)).size).toBe(FOOTBALLERS.length);
     expect(FOOTBALLERS.length).toBeGreaterThanOrEqual(CONFIG.maxPlayers * CONFIG.squadSize + 8);
+    const keepers = FOOTBALLERS.filter((f) => f.position === 'POR');
+    expect(keepers.length).toBeGreaterThanOrEqual(CONFIG.maxPlayers + 4);
+    expect(keepers.every((k) => k.numbers.length >= 3)).toBe(true);
   });
-  it('el precio crece más que proporcionalmente con los pips', () => {
-    expect(priceForPips(14) / 14).toBeGreaterThan(priceForPips(5) / 5);
-    expect(priceForPips(14)).toBeLessThanOrEqual(CONFIG.startingMoney);
+  it('el precio crece más que proporcionalmente con los pips y depende de la posición', () => {
+    expect(priceFor('DEL', 14) / 14).toBeGreaterThan(priceFor('DEL', 5) / 5);
+    expect(priceFor('DEL', 10)).toBeGreaterThan(priceFor('POR', 10));
+    expect(Math.max(...FOOTBALLERS.map((f) => basePrice(f.id)))).toBeLessThanOrEqual(CONFIG.startingMoney);
   });
   it('premios y puntos decrecen con la posición', () => {
     for (const n of [2, 4, 8]) {
@@ -87,20 +98,30 @@ describe('mercado', () => {
     expect(s.players[me].stadium).toBe(2);
     expect(check(s, { type: 'upgradeStadium' })).not.toBeNull();
   });
+  it('solo cabe un portero por club', () => {
+    const [k1, k2] = FOOTBALLERS.filter((f) => f.position === 'POR').sort((a, b) => basePrice(a.id) - basePrice(b.id));
+    let s = withInMarket(newGame(2), k1.id);
+    const me = currentPlayer(s)!.id;
+    s = apply(s, { type: 'sign', cardId: k1.id });
+    expect(hasKeeper(s.players[me])).toBe(true);
+    s.turn.signed = false;
+    s = withInMarket(s, k2.id);
+    expect(check(s, { type: 'sign', cardId: k2.id })).toMatch(/portero/);
+  });
   it('la cláusula paga al dueño, respeta la protección y el blindaje la encarece', () => {
-    let s = withInMarket(newGame(2), 'f47'); // un canterano barato
+    let s = withInMarket(newGame(2), CHEAP);
     const [first, second] = s.turnOrder;
-    s = apply(s, { type: 'sign', cardId: 'f47' });
+    s = apply(s, { type: 'sign', cardId: CHEAP });
     s = apply(s, { type: 'endTurn' });
-    expect(check(s, { type: 'clause', ownerId: first, cardId: 'f47' })).toMatch(/protegido/);
+    expect(check(s, { type: 'clause', ownerId: first, cardId: CHEAP })).toMatch(/protegido/);
     s.players[first].squad[0].noClauseUntil = 0;
     const clause = clauseOf(s.players[first].squad[0]);
     const before = s.players[first].money;
-    const after = apply(s, { type: 'clause', ownerId: first, cardId: 'f47' });
+    const after = apply(s, { type: 'clause', ownerId: first, cardId: CHEAP });
     expect(after.players[first].money).toBe(before + clause);
     expect(after.players[second].money).toBe(CONFIG.startingMoney - clause);
     expect(after.players[first].squad).toHaveLength(0);
-    expect(after.players[second].squad[0].cardId).toBe('f47');
+    expect(after.players[second].squad[0].cardId).toBe(CHEAP);
     s.players[first].squad[0].shielded = true;
     expect(clauseOf(s.players[first].squad[0])).toBeGreaterThan(clause);
   });
@@ -133,37 +154,68 @@ describe('cartas especiales', () => {
     expect(s.players[0].lastSeen).toBe(s.logSeq);
   });
   it('la cantera impide pagar la cláusula', () => {
-    let s = give(withInMarket(newGame(2), 'f47'), 0, 'cantera-1');
+    let s = give(withInMarket(newGame(2), CHEAP), 0, 'cantera-1');
     s.turnOrder = [0, 1];
-    s = apply(s, { type: 'sign', cardId: 'f47' });
-    s = apply(s, { type: 'playCard', handIndex: 0, targetCardId: 'f47' });
+    s = apply(s, { type: 'sign', cardId: CHEAP });
+    s = apply(s, { type: 'playCard', handIndex: 0, targetCardId: CHEAP });
     expect(s.players[0].squad[0].noClauseUntil).toBe(1 + CONFIG.special.academyRounds);
   });
 });
 
 describe('partido', () => {
-  it('reparte taquilla, premio y puntos; racha dobla, lesión anula y puerta cerrada deja sin taquilla', () => {
-    let s = newGame(2, 7);
-    const entry = (cardId: string) => ({ cardId, shielded: false, noClauseUntil: 0, streakUntil: 0, outUntil: 0, extra: null });
-    // f9 y f10 marcan ambos con 6 y 8.
-    s.players[0].squad = [{ ...entry('f9'), streakUntil: 1 }];
-    s.players[1].squad = [entry('f10'), { ...entry('f1'), outUntil: 1 }];
-    s.players[1].closedDoorsUntil = 1;
+  const DEL68 = card('DEL', [6, 8]);
+  const MED68 = card('MED', [6, 8]);
+  const DEF68 = card('DEF', [6, 8]);
+  const POR = card('POR', [5, 6, 8, 9]);
+  /** Juega una jornada entre dos plantillas y devuelve lo que pasó con el 6 y el 8. */
+  function play(a: ReturnType<typeof entry>[], b: ReturnType<typeof entry>[], tweak?: (s: GameState) => void) {
+    const s = newGame(2, 7);
+    s.players[0].squad = a;
+    s.players[1].squad = b;
     s.phase = 'match';
-    s = apply(s, { type: 'playMatch' });
-    const m = s.lastMatch!;
-    expect(m.rolls).toHaveLength(CONFIG.rollsPerMatchday);
+    tweak?.(s);
+    const after = apply(s, { type: 'playMatch' });
+    const m = after.lastMatch!;
     const hits = m.rolls.filter((r) => r.sum === 6 || r.sum === 8).length;
     const [r0, r1] = [0, 1].map((id) => m.results.find((r) => r.playerId === id)!);
-    expect(r0.goals).toBe(hits * 2);
-    expect(r1.goals).toBe(hits);
-    expect(r1.ticket).toBe(0);
-    expect(r0.ticket).toBe(r0.goals * CONFIG.stadium.ticketPerGoal[0]);
-    expect(s.players[0].money).toBe(CONFIG.startingMoney + r0.prize + r0.ticket);
-    expect(s.players[0].points).toBe(r0.points);
-    expect(m.rolls.every((r) => r.sum !== 7 || r.goals.length === 0)).toBe(true);
-    // Con un 7 roba carta el colista, y el acta dice cuál.
-    for (const d of m.rolls.flatMap((r) => r.varDraws)) expect(s.players[d.playerId].hand).toContain(d.cardId);
+    return { after, m, hits, r0, r1 };
+  }
+
+  it('un delantero marca a quien no tiene portero en ese número, y cobra taquilla y premio', () => {
+    const { after, m, hits, r0, r1 } = play([entry(DEL68)], []);
+    expect(hits).toBeGreaterThan(0);
+    expect(m.rolls).toHaveLength(CONFIG.rollsPerMatchday);
+    expect([r0.goals, r0.against, r1.goals, r1.against]).toEqual([hits, 0, 0, hits]);
+    expect(r0.rank).toBe(1);
+    expect(r0.ticket).toBe(hits * CONFIG.stadium.ticketPerGoal[0]);
+    expect(after.players[0].money).toBe(CONFIG.startingMoney + r0.prize + r0.ticket);
+    expect(after.players[0].points).toBe(r0.points);
+    expect(after.players[1].against).toBe(hits);
+    expect(m.rolls.every((r) => r.sum !== 7 || r.plays.length === 0)).toBe(true);
+    for (const d of m.rolls.flatMap((r) => r.varDraws)) expect(after.players[d.playerId].hand).toContain(d.cardId);
+  });
+  it('el portero para el remate de un delantero y cobra prima por parada', () => {
+    const { after, hits, r0, r1 } = play([entry(DEL68)], [entry(POR)]);
+    expect([r0.goals, r1.against, r1.saves]).toEqual([0, 0, hits]);
+    expect(r1.saveBonus).toBe(hits * CONFIG.saveBonus);
+    expect(after.players[1].money).toBe(CONFIG.startingMoney + r1.prize + r1.saveBonus);
+  });
+  it('la jugada combinada de medio y delantero supera a un portero solo', () => {
+    const { hits, r0, r1 } = play([entry(DEL68), entry(MED68)], [entry(POR)]);
+    expect([r0.goals, r1.against]).toEqual([hits, hits]);
+  });
+  it('portero y defensa paran la combinada, y el defensa sale a la contra', () => {
+    const { hits, r0, r1 } = play([entry(DEL68), entry(MED68)], [entry(POR), entry(DEF68)]);
+    expect([r0.goals, r0.against]).toEqual([0, hits]);
+    expect([r1.goals, r1.counters, r1.against]).toEqual([hits, hits, 0]);
+  });
+  it('la racha dobla la fuerza, la baja la anula y a puerta cerrada no hay taquilla', () => {
+    const streak = play([entry(DEL68, { streakUntil: 1 })], [entry(POR), entry(DEF68)]);
+    expect(streak.r0.goals).toBe(streak.hits);
+    const injured = play([entry(DEL68)], [entry(POR, { outUntil: 1 })]);
+    expect(injured.r0.goals).toBe(injured.hits);
+    const closed = play([entry(DEL68)], [], (s) => { s.players[0].closedDoorsUntil = 1; });
+    expect(closed.r0.ticket).toBe(0);
   });
   it('tras la jornada el colista abre el mercado', () => {
     let s = newGame(3, 3);
@@ -191,6 +243,7 @@ describe('partidas completas de bots', () => {
           expect(p.money).toBeGreaterThanOrEqual(0);
           expect(p.squad.length).toBeLessThanOrEqual(CONFIG.squadSize);
           expect(p.hand.length).toBeLessThanOrEqual(CONFIG.special.handLimit);
+          expect(lineup(p).POR).toBeLessThanOrEqual(CONFIG.maxKeepers);
         }
       }
       // Ninguna carta se duplica ni se pierde.
@@ -205,7 +258,7 @@ describe('partidas completas de bots', () => {
     const run = () => {
       let s = createGame({ players: [1, 2, 3].map((i) => ({ name: `B${i}`, isBot: true })), seed: 99, season: 'corta' });
       while (s.phase !== 'finished') s = apply(s, botAction(s));
-      return s.players.map((p) => [p.points, p.goals, p.money]);
+      return s.players.map((p) => [p.points, p.goals, p.against, p.money]);
     };
     expect(run()).toEqual(run());
   });

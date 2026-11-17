@@ -7,11 +7,10 @@ import {
   Player,
   SPECIAL_INFO,
   SpecialKind,
-  activeNumbers,
   check,
   clauseOf,
-  expectedGoals,
-  isOut,
+  lineup,
+  strengthOn,
   sellValue,
   shieldCost,
   signPrice,
@@ -21,7 +20,7 @@ import {
 } from '../engine';
 import { Crest, StadiumArt } from './art';
 import { Btn, Chronicle, FootballerCard, NumberToken, Overline, PhaseStepper, Popup, StandingsTable, Tag, jornadaLabel, s } from './components';
-import { C, clubColor } from './theme';
+import { C, POS_COLOR, clubColor } from './theme';
 
 const J_IS_PRESEASON = (st: GameState) => st.jornada === 1 && st.turnOrder.length > st.players.length;
 
@@ -65,22 +64,37 @@ export function SpecialCardFace({ id, children }: { id: string; children?: React
   );
 }
 
-/** Qué números cubre tu plantilla y con cuántos jugadores. */
-export function NumberLine({ player, jornada, highlight }: { player: Player; jornada: number; highlight?: number }) {
-  const count = (n: number) => player.squad.filter((e) => !isOut(e, jornada) && activeNumbers(e, jornada).includes(n)).length;
+/**
+ * Tu fuerza con cada número: ataque (⚔) y defensa (🛡).
+ * Con `state`, añade cuántos rivales pararían hoy tu ataque con ese número.
+ */
+export function NumberLine({ player, jornada, highlight, state }: { player: Player; jornada: number; highlight?: number; state?: GameState }) {
+  const rivals = state ? state.players.filter((p) => p.id !== player.id) : [];
   return (
-    <View style={[s.row, { justifyContent: 'space-between' }]}>
-      {[2, 3, 4, 5, 6, 8, 9, 10, 11, 12].map((n) => {
-        const c = count(n);
-        return (
-          <View key={n} style={{ alignItems: 'center' }}>
-            <View style={highlight === n ? { borderRadius: 20, borderWidth: 2, borderColor: C.accent, padding: 1 } : { padding: 3 }}>
-              <NumberToken n={n} size={27} dim={c === 0} />
+    <View>
+      <View style={[s.row, { justifyContent: 'space-between' }]}>
+        {[2, 3, 4, 5, 6, 8, 9, 10, 11, 12].map((n) => {
+          const st = strengthOn(player, n, jornada);
+          const stoppers = rivals.filter((r) => strengthOn(r, n, jornada).defense >= st.attack).length;
+          return (
+            <View key={n} style={{ alignItems: 'center' }}>
+              <View style={highlight === n ? { borderRadius: 20, borderWidth: 2, borderColor: C.accent, padding: 1 } : { padding: 3 }}>
+                <NumberToken n={n} size={27} dim={st.attack === 0 && st.defense === 0} />
+              </View>
+              <Text style={{ color: st.attack ? POS_COLOR.DEL : C.faint, fontSize: 11, fontWeight: '800', marginTop: 2 }}>{st.attack ? `⚔${st.attack}` : '–'}</Text>
+              <Text style={{ color: st.defense ? POS_COLOR.DEF : C.faint, fontSize: 11, fontWeight: '800' }}>{st.defense ? `🛡${st.defense}` : '–'}</Text>
+              {state ? (
+                <Text style={{ color: st.attack ? (stoppers === 0 ? C.good : stoppers === rivals.length ? C.danger : C.dim) : C.faint, fontSize: 10, fontWeight: '700' }}>
+                  {st.attack ? `${rivals.length - stoppers}/${rivals.length}` : ''}
+                </Text>
+              ) : null}
             </View>
-            <Text style={{ color: c ? C.text : C.faint, fontSize: 11, fontWeight: '800', marginTop: 2 }}>{c ? `×${c}` : '–'}</Text>
-          </View>
-        );
-      })}
+          );
+        })}
+      </View>
+      <Text style={{ color: C.faint, fontSize: 11, marginTop: 6 }}>
+        ⚔ tu ataque · 🛡 tu defensa{state ? ' · debajo, a cuántos rivales marcarías hoy con ese número' : ''}
+      </Text>
     </View>
   );
 }
@@ -205,7 +219,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
         {tab === 'mercado' ? (
           <>
             <Text style={[s.p, { marginBottom: 10 }]}>
-              Ficha a un futbolista: marcará cada vez que salga uno de sus números en los dados. Los números rojos (6 y 8) son los que más salen.
+              Los delanteros y medios atacan cuando sale su número; porteros y defensas lo paran si tienen ese mismo número. Caben 7 futbolistas y un solo portero.
             </Text>
             {state.market.map((id) => (
               <FootballerCard key={id} cardId={id}>
@@ -239,11 +253,14 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
             </View>
 
             <View style={s.panel}>
-              <Overline>TUS NÚMEROS</Overline>
-              <Text style={[s.p, { marginVertical: 6 }]}>
-                Cuántos de tus jugadores marcan con cada número. Esperas unos {expectedGoals(me, J).toFixed(1)} goles por jornada.
-              </Text>
-              <NumberLine player={me} jornada={J} />
+              <Overline>TU ALINEACIÓN</Overline>
+              <View style={[s.row, { marginTop: 6, marginBottom: 8, flexWrap: 'wrap' }]}>
+                {(['POR', 'DEF', 'MED', 'DEL'] as const).map((pos) => (
+                  <Tag key={pos} text={`${lineup(me)[pos]} ${pos}`} color={lineup(me)[pos] ? POS_COLOR[pos] : undefined} />
+                ))}
+                {lineup(me).POR === 0 ? <Tag text="⚠ Sin portero" color={C.danger} /> : null}
+              </View>
+              <NumberLine player={me} jornada={J} state={state} />
             </View>
 
             {me.squad.length === 0 ? <Text style={s.p}>Aún no tienes futbolistas. Ve al mercado y ficha.</Text> : null}

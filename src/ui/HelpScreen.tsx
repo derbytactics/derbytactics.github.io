@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { CONFIG } from '../engine';
-import { Avatar, Ball, Die, StadiumArt, Trophy } from './art';
+import { Avatar, Die, StadiumArt, Trophy } from './art';
 import { Btn, NumberToken, Overline, s } from './components';
 import { C } from './theme';
 
@@ -25,8 +25,8 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Text style={[s.p, { marginBottom: 14 }]}>Cada jornada tiene tres pasos: mercado, partido y reparto. Gana quien sume más puntos de liga al final de la temporada.</Text>
       <Step
         n={1}
-        title="Ficha en el mercado"
-        text={`Cada futbolista tiene números de dado. Cuantos más números y más probables (el 6 y el 8 son los que más salen), más caro es. Caben ${CONFIG.squadSize} en tu plantilla y puedes hacer un fichaje por turno.`}
+        title="Monta tu equipo"
+        text={`Caben ${CONFIG.squadSize} futbolistas y un solo portero; el resto, con la táctica que quieras. Cada uno actúa cuando sale uno de sus números (el 6 y el 8 son los que más salen). Un fichaje por turno.`}
         art={
           <View style={{ alignItems: 'center' }}>
             <Avatar seed="f1" size={50} jersey="#E5484D" ring={C.accent} />
@@ -40,8 +40,8 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       />
       <Step
         n={2}
-        title="Se juega el partido"
-        text="Se tiran dos dados 6 veces. En cada tirada marcan todos los futbolistas, de todos los clubes, que tengan ese número. Si sale un 7 interviene el VAR: nadie marca y los últimos de la tabla roban una carta especial."
+        title="Ataque contra defensa"
+        text="Se tiran dos dados 6 veces, en un solo partido de todos contra todos. Con el número que sale: cada delantero suma 2 de ataque y cada medio 1; el portero suma 2 de defensa, y cada defensa y cada medio 1. Tu jugada es gol contra cada rival cuya defensa en ese número sea menor que tu ataque."
         art={
           <View style={[s.row, { gap: 6 }]}>
             <Die value={5} size={40} />
@@ -51,27 +51,24 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       />
       <Step
         n={3}
-        title="Reparto: puntos y dinero"
-        text={`Quien más goles marca en la jornada se lleva más puntos de liga y un premio mayor (de ${CONFIG.prize.first}M a ${CONFIG.prize.last}M). Además cobras taquilla por cada gol: amplía tu estadio para cobrar más.`}
-        art={
-          <View style={{ alignItems: 'center' }}>
-            <StadiumArt level={4} color="#3E8BFF" width={92} />
-            <View style={[s.row, { gap: 3 }]}>
-              <Ball size={14} />
-              <Ball size={14} />
-              <Ball size={14} />
-            </View>
-          </View>
-        }
+        title="Qué hace cada posición"
+        text="Delantero: remata (ataque 2), solo lo para un portero o varios defensores. Medio: ataca 1 y defiende 1; junto a un delantero forma una jugada combinada que un portero solo no para. Defensa: defiende 1 y, si la jugada se para, sale a la contra y marca al que atacó. Portero: defiende 2, cobra prima por parada y con 3 paradas en una jornada gana una carta."
+        art={<Text style={{ fontSize: 40 }}>🧤</Text>}
       />
       <Step
         n={4}
+        title="Reparto: puntos y dinero"
+        text={`La jornada se ordena por diferencia de goles: quien queda más arriba se lleva más puntos de liga y más premio (de ${CONFIG.prize.first}M a ${CONFIG.prize.last}M). Además cobras taquilla por cada jugada de gol: amplía tu estadio para cobrar más. Con un 7 entra el VAR: no hay jugadas y los últimos de la tabla roban carta.`}
+        art={<StadiumArt level={4} color="#3E8BFF" width={92} />}
+      />
+      <Step
+        n={5}
         title="Juega sucio (con elegancia)"
         text="Paga la cláusula de un rival y llévate a su estrella. Lanza sanciones con cartas especiales: multas, partidos a puerta cerrada, lesiones… O protégete blindando a tus jugadores."
         art={<Text style={{ fontSize: 40 }}>🚨</Text>}
       />
       <Step
-        n={5}
+        n={6}
         title="Gana la liga"
         text={`Tras la última jornada, cada ${CONFIG.moneyPerPoint}M en caja suman 1 punto extra. El club con más puntos es campeón.`}
         art={<Trophy size={64} />}

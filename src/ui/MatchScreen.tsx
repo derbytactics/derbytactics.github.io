@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { GameState, MatchReport, MatchResult, RollReport, footballer, standings, ticketPerGoal } from '../engine';
-import { Avatar, Ball, Crest, Die } from './art';
+import { GameState, MatchReport, MatchResult, Play, RollReport, footballer, standings, ticketPerGoal } from '../engine';
+import { Avatar, Crest, Die } from './art';
 import { NumberLine, SpecialCardFace } from './GameScreen';
 import { Btn, Chronicle, Overline, PhaseStepper, Pop, StandingsTable, jornadaLabel, s } from './components';
 import { C, clubColor } from './theme';
@@ -22,7 +22,7 @@ export function KickoffScreen({ state, onPlay, focus }: { state: GameState; onPl
           </View>
           <Text style={[s.h1, { marginTop: 14, textAlign: 'center' }]}>Mercado cerrado. ¡A jugar!</Text>
           <Text style={[s.p, { textAlign: 'center', marginTop: 6 }]}>
-            Se tiran los dados 6 veces. En cada tirada marcan todos los futbolistas que tengan ese número. Con un 7 entra el VAR: nadie marca y los últimos de la tabla roban carta.
+            Un solo partido, todos contra todos. Se tiran los dados 6 veces: quien tenga delanteros o medios con ese número ataca a todos los rivales, y cada rival lo para si su portero y sus defensas con ese número suman al menos la misma fuerza. Con un 7 entra el VAR.
           </Text>
         </View>
         {humans.map((p) => (
@@ -32,7 +32,7 @@ export function KickoffScreen({ state, onPlay, focus }: { state: GameState; onPl
               <Text style={{ color: C.text, fontWeight: '800', marginLeft: 8, flex: 1 }}>{p.name}</Text>
               <Overline>TUS NÚMEROS</Overline>
             </View>
-            <NumberLine player={p} jornada={state.jornada} />
+            <NumberLine player={p} jornada={state.jornada} state={state} />
           </View>
         ))}
         <Btn label="🎲 Tirar los dados" onPress={onPlay} />
@@ -62,8 +62,8 @@ function useCountUp(target: number, run: boolean): number {
 function Stat({ label, value, color, big }: { label: string; value: string; color?: string; big?: boolean }) {
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
-      <Text style={{ color: color ?? C.text, fontSize: big ? 40 : 28, fontWeight: '900', lineHeight: big ? 46 : 46 }}>{value}</Text>
-      <Text style={s.overline}>{label}</Text>
+      <Text style={{ color: color ?? C.text, fontSize: big ? 40 : 28, fontWeight: '900', lineHeight: 46 }}>{value}</Text>
+      <Text style={[s.overline, { textAlign: 'center' }]}>{label}</Text>
     </View>
   );
 }
@@ -73,7 +73,8 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
   const p = state.players[r.playerId];
   const color = clubColor(p.id);
   const pts = useCountUp(r.points, true);
-  const money = useCountUp(r.prize + r.ticket, true);
+  const income = r.prize + r.ticket + r.saveBonus;
+  const money = useCountUp(income, true);
   const leaguePos = standings(state).findIndex((x) => x.id === p.id) + 1;
   const n = state.players.length;
   const headline = r.rank === 1 ? '¡Ganas la jornada!' : r.rank === n ? 'Jornada para olvidar' : `${ordinal(r.rank)} de ${n} en la jornada`;
@@ -88,7 +89,7 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
         {r.rank === 1 ? <Text style={{ fontSize: 30 }}>🥇</Text> : null}
       </View>
       <View style={[s.row, { paddingVertical: 12, paddingHorizontal: 8 }]}>
-        <Stat label="GOLES" value={`${r.goals}`} />
+        <Stat label="A FAVOR – EN CONTRA" value={`${r.goals}–${r.against}`} />
         <View style={{ width: 1, height: 44, backgroundColor: C.line }} />
         <Stat label="PUNTOS DE LIGA" value={`+${pts}`} color={C.accent} big />
         <View style={{ width: 1, height: 44, backgroundColor: C.line }} />
@@ -99,8 +100,16 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
           Premio por posición {r.prize}M ·{' '}
           {r.closedDoors
             ? 'taquilla 0M (puerta cerrada)'
-            : `taquilla ${r.ticket}M (${r.goals} ${r.goals === 1 ? 'gol' : 'goles'} × ${ticketPerGoal(p.stadium)}M${r.clubDay ? ' × 2 Día del club' : ''})`}
+            : `taquilla ${r.ticket}M (${r.scoringPlays} ${r.scoringPlays === 1 ? 'jugada de gol' : 'jugadas de gol'} × ${ticketPerGoal(p.stadium)}M${r.clubDay ? ' × 2 Día del club' : ''})`}
+          {r.saves ? ` · ${r.saves} ${r.saves === 1 ? 'parada' : 'paradas'} del portero: ${r.saveBonus}M` : ''}
         </Text>
+        {r.counters || r.keeperCard ? (
+          <Text style={{ color: C.good, fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
+            {r.counters ? `${r.counters} ${r.counters === 1 ? 'gol' : 'goles'} a la contra` : ''}
+            {r.counters && r.keeperCard ? ' · ' : ''}
+            {r.keeperCard ? 'Tu portero gana una carta especial por sus paradas' : ''}
+          </Text>
+        ) : null}
         <Text style={{ color: C.text, fontSize: 13, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
           Llevas {p.points} puntos · vas {ordinal(leaguePos)} en la liga · {p.money}M en caja
         </Text>
@@ -109,7 +118,24 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
   );
 }
 
-/** Una línea del acta: qué salió y quién marcó. */
+const list = (names: string[]) => (names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`);
+
+/** Cuenta lo que pasa en una jugada de ataque, con tono de crónica. */
+export function narrate(state: GameState, sum: number, play: Play): string {
+  const club = state.players[play.playerId].name;
+  const who = list(play.cards.map((id) => footballer(id).name));
+  const name = (id: number) => state.players[id].name;
+  const kind = play.cards.length > 1 ? 'Jugada combinada' : footballer(play.cards[0]).position === 'MED' ? 'Tiro lejano' : 'Remate';
+  const parts: string[] = [`${kind} de ${who} (${club}) con el ${sum}.`];
+  if (play.scored.length) parts.push(`Gol a ${list(play.scored.map(name))}.`);
+  const plain = play.stopped.filter((x) => !x.counter);
+  const counters = play.stopped.filter((x) => x.counter);
+  if (plain.length) parts.push(`Lo ${plain.length > 1 ? 'paran' : 'para'} ${list(plain.map((x) => name(x.playerId)))}.`);
+  if (counters.length) parts.push(`${list(counters.map((x) => name(x.playerId)))} ${counters.length > 1 ? 'roban y marcan' : 'roba y marca'} a la contra.`);
+  return parts.join(' ');
+}
+
+/** Una línea del acta: qué salió y qué jugadas hubo. */
 function ActaLine({ state, roll, index, mine }: { state: GameState; roll: RollReport; index: number; mine: number[] }) {
   const name = (id: number) => state.players[id].name;
   const isVar = roll.sum === 7;
@@ -122,18 +148,17 @@ function ActaLine({ state, roll, index, mine }: { state: GameState; roll: RollRe
         <Text style={[s.overline, { marginBottom: 2 }]}>OCASIÓN {index + 1}</Text>
         {isVar ? (
           <Text style={{ color: '#FFB3B5', fontWeight: '700' }}>
-            VAR: sin goles.{roll.varDraws.length ? ` Roban carta: ${roll.varDraws.map((d) => name(d.playerId)).join(', ')}.` : ''}
+            VAR: sin jugadas.{roll.varDraws.length ? ` Roban carta: ${roll.varDraws.map((d) => name(d.playerId)).join(', ')}.` : ''}
           </Text>
-        ) : roll.goals.length === 0 ? (
-          <Text style={s.p}>Nadie tenía el {roll.sum}.</Text>
+        ) : roll.plays.length === 0 ? (
+          <Text style={s.p}>Nadie atacaba con el {roll.sum}.</Text>
         ) : (
-          roll.goals.map((g, i) => {
-            const own = mine.includes(g.playerId);
+          roll.plays.map((pl, i) => {
+            const own = mine.includes(pl.playerId) || pl.scored.some((id) => mine.includes(id)) || pl.stopped.some((x) => mine.includes(x.playerId));
             return (
-              <Text key={i} style={{ color: own ? C.text : C.dim, fontWeight: own ? '800' : '500', fontSize: 14, lineHeight: 20 }}>
-                {own ? '⚽ ' : ''}
-                {footballer(g.cardId).name}
-                {g.goals > 1 ? ' ×2' : ''} <Text style={{ color: clubColor(g.playerId), fontWeight: '800' }}>· {name(g.playerId)}</Text>
+              <Text key={i} style={{ color: own ? C.text : C.dim, fontWeight: own ? '700' : '500', fontSize: 13, lineHeight: 19, marginBottom: 2 }}>
+                <Text style={{ color: clubColor(pl.playerId) }}>● </Text>
+                {narrate(state, roll.sum, pl)}
               </Text>
             );
           })
@@ -143,34 +168,72 @@ function ActaLine({ state, roll, index, mine }: { state: GameState; roll: RollRe
   );
 }
 
+function Banner({ color, title, children, trigger }: { color: string; title: string; children: React.ReactNode; trigger: number }) {
+  return (
+    <Pop trigger={trigger} style={{ alignSelf: 'stretch', marginTop: 12 }}>
+      <View style={{ borderRadius: 16, borderWidth: 2, borderColor: color, backgroundColor: color + '26', padding: 12 }}>
+        <Text style={{ color, fontSize: 24, fontWeight: '900', textAlign: 'center', letterSpacing: 0.5 }}>{title}</Text>
+        {children}
+      </View>
+    </Pop>
+  );
+}
+
 export function MatchScreen(props: { state: GameState; report: MatchReport; onNext: () => void; focus?: number[]; footer?: React.ReactNode }) {
   const { state, report, onNext, focus } = props;
   const [shown, setShown] = useState(0);
   const [reparto, setReparto] = useState(false);
   const total = report.rolls.length;
-  /** Clubes de quien mira esta pantalla: sus goles y cartas se celebran a lo grande. */
+  /** Clubes de quien mira esta pantalla: lo que les pasa se destaca a lo grande. */
   const mine = focus ?? state.players.filter((p) => !p.isBot).map((p) => p.id);
+  const isMine = (id: number) => mine.includes(id);
   const visible = report.rolls.slice(0, shown);
   const current = visible[visible.length - 1];
-  const myGoals = current ? current.goals.filter((g) => mine.includes(g.playerId)) : [];
-  const myDraws = current ? current.varDraws.filter((d) => mine.includes(d.playerId)) : [];
+  const name = (id: number) => state.players[id].name;
+
+  // Lo que le pasa a quien mira en la tirada actual.
+  const plays = current?.plays ?? [];
+  const myAttacks = plays.filter((pl) => isMine(pl.playerId));
+  const myGoals = myAttacks.filter((pl) => pl.scored.length > 0);
+  const myStopped = myAttacks.filter((pl) => pl.scored.length === 0);
+  const conceded = plays.filter((pl) => pl.scored.some(isMine));
+  const saved = plays.filter((pl) => pl.stopped.some((x) => isMine(x.playerId)));
+  const counterAgainst = myAttacks.flatMap((pl) => pl.stopped.filter((x) => x.counter && !isMine(x.playerId)));
+  const myDraws = current ? current.varDraws.filter((d) => isMine(d.playerId)) : [];
+  const involved = myAttacks.length + conceded.length + saved.length + myDraws.length > 0;
 
   // Las tiradas avanzan solas, con más pausa cuando te afecta. La última no se quita sola.
   useEffect(() => {
     if (reparto || shown >= total) return;
-    const delay = shown === 0 ? 900 : myGoals.length || myDraws.length ? 4500 : 2800;
+    const delay = shown === 0 ? 900 : involved ? 5200 : 3000;
     const t = setTimeout(() => setShown((x) => x + 1), delay);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown, reparto, total]);
 
-  const name = (id: number) => state.players[id].name;
   const last = state.jornada >= state.totalJornadas;
-  const goalsSoFar = (id: number) => visible.reduce((a, r) => a + r.goals.filter((g) => g.playerId === id).reduce((b, g) => b + g.goals, 0), 0);
+  const score = (id: number) => {
+    let gf = 0;
+    let gc = 0;
+    for (const r of visible) {
+      for (const pl of r.plays) {
+        const counters = pl.stopped.filter((x) => x.counter);
+        if (pl.playerId === id) {
+          gf += pl.scored.length;
+          gc += counters.length;
+        } else {
+          if (pl.scored.includes(id)) gc += 1;
+          if (counters.some((x) => x.playerId === id)) gf += 1;
+        }
+      }
+    }
+    return { gf, gc };
+  };
   const maxGoals = Math.max(1, ...report.results.map((r) => r.goals));
-  const humans = report.results.filter((r) => mine.includes(r.playerId));
+  const humans = report.results.filter((r) => isMine(r.playerId));
   const heroes = humans.length ? humans : report.results.filter((r) => r.rank === 1).slice(0, 1);
   const tone = !current ? 'ghost' : current.sum === 7 ? 'var' : 'light';
+  const attackers = (pl: Play) => list(pl.cards.map((id) => footballer(id).name));
 
   return (
     <View style={{ flex: 1 }}>
@@ -188,59 +251,97 @@ export function MatchScreen(props: { state: GameState; report: MatchReport; onNe
                 </View>
               </Pop>
 
+              {conceded.length ? (
+                <Banner color={C.danger} title={myGoals.length ? 'Encajas…' : '¡Gol en contra!'} trigger={shown}>
+                  {conceded.map((pl, i) => (
+                    <Text key={i} style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
+                      {attackers(pl)} <Text style={{ color: clubColor(pl.playerId) }}>({name(pl.playerId)})</Text> te marca{pl.cards.length > 1 ? 'n en jugada combinada' : ''}: tu defensa no llega a fuerza {pl.power} con el {current!.sum}.
+                    </Text>
+                  ))}
+                </Banner>
+              ) : null}
+
               {myGoals.length ? (
-                <Pop trigger={shown} style={{ alignSelf: 'stretch', marginTop: 16 }}>
-                  <View style={{ borderRadius: 16, borderWidth: 2, borderColor: clubColor(myGoals[0].playerId), backgroundColor: clubColor(myGoals[0].playerId) + '33', padding: 14, alignItems: 'center' }}>
-                    <Text style={{ color: C.accent, fontSize: 34, fontWeight: '900', letterSpacing: 1 }}>¡GOOOL!</Text>
-                    {myGoals.map((g, i) => (
-                      <View key={i} style={[s.row, { marginTop: 10, alignSelf: 'stretch' }]}>
-                        <Avatar seed={g.cardId} size={52} jersey={clubColor(g.playerId)} ring={C.accent} />
-                        <View style={{ flex: 1, marginLeft: 10 }}>
-                          <Text style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>{footballer(g.cardId).name}</Text>
-                          <Text style={{ color: C.dim, fontSize: 13 }}>
-                            Marca con el {current!.sum} para {name(g.playerId)}
-                            {g.goals > 1 ? ' · 🔥 vale doble' : ''}
-                          </Text>
-                        </View>
-                        <View style={s.row}>
-                          {Array.from({ length: g.goals }, (_, k) => (
-                            <Ball key={k} size={24} />
-                          ))}
-                        </View>
+                <Banner color={C.accent} title={conceded.length ? '…¡y respondes! ¡GOOOL!' : '¡GOOOL!'} trigger={shown}>
+                  {conceded.length ? <Text style={{ color: C.dim, textAlign: 'center', fontSize: 12, marginTop: 2 }}>Sacas de centro, te lanzas al ataque y marcas.</Text> : null}
+                  {myGoals.map((pl, i) => (
+                    <View key={i} style={{ marginTop: 8 }}>
+                      <View style={[s.row, { justifyContent: 'center', gap: 6 }]}>
+                        {pl.cards.map((id) => (
+                          <Avatar key={id} seed={id} size={46} jersey={clubColor(pl.playerId)} ring={C.accent} />
+                        ))}
                       </View>
-                    ))}
-                  </View>
-                </Pop>
+                      <Text style={{ color: C.text, fontSize: 16, fontWeight: '900', textAlign: 'center', marginTop: 4 }}>{attackers(pl)}</Text>
+                      <Text style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 2 }}>
+                        {pl.scored.length} {pl.scored.length === 1 ? 'gol' : 'goles'}: marcas a {list(pl.scored.map(name))}.
+                      </Text>
+                      {pl.stopped.length ? (
+                        <Text style={{ color: C.dim, fontSize: 12, textAlign: 'center', marginTop: 2 }}>
+                          Te lo {pl.stopped.length > 1 ? 'paran' : 'para'} {list(pl.stopped.map((x) => name(x.playerId)))}.
+                        </Text>
+                      ) : null}
+                    </View>
+                  ))}
+                </Banner>
+              ) : null}
+
+              {myStopped.length ? (
+                <Banner color="#8FA89A" title="Te la paran" trigger={shown}>
+                  {myStopped.map((pl, i) => (
+                    <Text key={i} style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
+                      {attackers(pl)} lo intenta con el {current!.sum}, pero {list(pl.stopped.map((x) => name(x.playerId)))} {pl.stopped.length > 1 ? 'tienen' : 'tiene'} defensa suficiente.
+                    </Text>
+                  ))}
+                </Banner>
+              ) : null}
+
+              {counterAgainst.length ? (
+                <Banner color={C.danger} title="¡Contragolpe!" trigger={shown}>
+                  <Text style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
+                    {list(counterAgainst.map((x) => name(x.playerId)))} {counterAgainst.length > 1 ? 'roban' : 'roba'} el balón con su defensa y te {counterAgainst.length > 1 ? 'marcan' : 'marca'} a la contra.
+                  </Text>
+                </Banner>
+              ) : null}
+
+              {saved.length ? (
+                <Banner color={C.good} title={saved.some((pl) => pl.stopped.some((x) => isMine(x.playerId) && x.keeper)) ? '¡Paradón!' : '¡Bien defendido!'} trigger={shown}>
+                  {saved.map((pl, i) => {
+                    const st = pl.stopped.find((x) => isMine(x.playerId))!;
+                    return (
+                      <Text key={i} style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
+                        Paras a {attackers(pl)} <Text style={{ color: clubColor(pl.playerId) }}>({name(pl.playerId)})</Text>
+                        {st.counter ? ' y tu defensa sale a la contra: ¡gol!' : '.'}
+                      </Text>
+                    );
+                  })}
+                </Banner>
               ) : null}
 
               {myDraws.length ? (
-                <Pop trigger={shown} style={{ alignSelf: 'stretch', marginTop: 16 }}>
-                  <View style={{ borderRadius: 16, borderWidth: 2, borderColor: C.good, backgroundColor: C.good + '22', padding: 14 }}>
-                    <Text style={{ color: C.good, fontSize: 22, fontWeight: '900', textAlign: 'center' }}>📺 ¡El VAR te da una carta!</Text>
-                    {myDraws.map((d) =>
-                      mine.length === 1 ? (
-                        <View key={d.playerId} style={{ marginTop: 10 }}>
-                          <SpecialCardFace id={d.cardId} />
-                        </View>
-                      ) : (
-                        <Text key={d.playerId} style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 6 }}>
-                          {name(d.playerId)} roba una carta especial: la verá en su turno.
-                        </Text>
-                      ),
-                    )}
-                  </View>
-                </Pop>
+                <Banner color={C.good} title="📺 ¡El VAR te da una carta!" trigger={shown}>
+                  {myDraws.map((d) =>
+                    mine.length === 1 ? (
+                      <View key={d.playerId} style={{ marginTop: 10 }}>
+                        <SpecialCardFace id={d.cardId} />
+                      </View>
+                    ) : (
+                      <Text key={d.playerId} style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 6 }}>
+                        {name(d.playerId)} roba una carta especial: la verá en su turno.
+                      </Text>
+                    ),
+                  )}
+                </Banner>
               ) : null}
 
               <View style={{ marginTop: 14, alignItems: 'center' }}>
                 {!current ? <Text style={s.p}>Los dados están en el aire…</Text> : null}
                 {current && current.sum === 7 ? (
                   <Text style={{ color: '#FFB3B5', fontWeight: '800', textAlign: 'center' }}>
-                    ¡VAR! Nadie marca.{current.varDraws.length ? ` Roban carta: ${current.varDraws.map((d) => name(d.playerId)).join(', ')}.` : ''}
+                    ¡VAR! No hay jugadas.{current.varDraws.length ? ` Roban carta: ${current.varDraws.map((d) => name(d.playerId)).join(', ')}.` : ''}
                   </Text>
                 ) : null}
-                {current && current.sum !== 7 && current.goals.length === 0 ? <Text style={s.p}>Nadie tiene el {current.sum}. Balón fuera.</Text> : null}
-                {current && current.sum !== 7 && current.goals.length > 0 && myGoals.length === 0 ? <Text style={s.p}>Marcan tus rivales. Tú no tienes el {current.sum}.</Text> : null}
+                {current && current.sum !== 7 && plays.length === 0 ? <Text style={s.p}>Nadie ataca con el {current.sum}. Balón al centro del campo.</Text> : null}
+                {current && current.sum !== 7 && plays.length > 0 && !involved ? <Text style={s.p}>Hay jugadas con el {current.sum}, pero a ti no te afectan. Están en el acta.</Text> : null}
               </View>
 
               <View style={[s.row, { gap: 6, marginTop: 12 }]}>
@@ -265,23 +366,30 @@ export function MatchScreen(props: { state: GameState; report: MatchReport; onNe
             )}
 
             <View style={s.panel}>
-              <Overline>MARCADOR EN DIRECTO</Overline>
+              <View style={s.row}>
+                <Text style={[s.overline, { flex: 1 }]}>MARCADOR EN DIRECTO</Text>
+                <Text style={s.overline}>A FAVOR : EN CONTRA</Text>
+              </View>
               {state.players.map((p) => {
-                const g = goalsSoFar(p.id);
-                const scored = !!current && current.goals.some((x) => x.playerId === p.id);
+                const sc = score(p.id);
+                const active = plays.some((pl) => pl.playerId === p.id || pl.scored.includes(p.id) || pl.stopped.some((x) => x.playerId === p.id));
                 return (
-                  <View key={p.id} style={[s.row, { marginTop: 8, padding: 6, borderRadius: 10, backgroundColor: scored ? clubColor(p.id) + '2E' : 'transparent' }]}>
+                  <View key={p.id} style={[s.row, { marginTop: 8, padding: 6, borderRadius: 10, backgroundColor: active ? clubColor(p.id) + '2E' : 'transparent' }]}>
                     <Crest name={p.name} color={clubColor(p.id)} size={28} />
                     <View style={{ flex: 1, marginLeft: 8 }}>
                       <Text numberOfLines={1} style={{ color: C.text, fontWeight: '700', fontSize: 13 }}>
                         {p.name}
-                        {mine.includes(p.id) && mine.length < state.players.length ? <Text style={{ color: C.accent }}> · TÚ</Text> : null}
+                        {isMine(p.id) && mine.length < state.players.length ? <Text style={{ color: C.accent }}> · TÚ</Text> : null}
                       </Text>
                       <View style={{ height: 6, borderRadius: 3, backgroundColor: C.panelAlt, marginTop: 4 }}>
-                        <View style={{ height: 6, borderRadius: 3, backgroundColor: clubColor(p.id), width: `${(100 * g) / maxGoals}%` }} />
+                        <View style={{ height: 6, borderRadius: 3, backgroundColor: clubColor(p.id), width: `${Math.min(100, (100 * sc.gf) / maxGoals)}%` }} />
                       </View>
                     </View>
-                    <Text style={{ color: C.text, fontSize: 24, fontWeight: '900', width: 40, textAlign: 'right' }}>{g}</Text>
+                    <Text style={{ color: C.text, fontSize: 22, fontWeight: '900', width: 64, textAlign: 'right' }}>
+                      {sc.gf}
+                      <Text style={{ color: C.faint }}> : </Text>
+                      <Text style={{ color: C.dim }}>{sc.gc}</Text>
+                    </Text>
                   </View>
                 );
               })}
@@ -301,7 +409,7 @@ export function MatchScreen(props: { state: GameState; report: MatchReport; onNe
         ) : (
           <>
             <Text style={s.h1}>Final de la jornada</Text>
-            <Text style={[s.p, { marginBottom: 12 }]}>Más goles, más puntos de liga y mejor premio. Además, cada gol llena tu taquilla.</Text>
+            <Text style={[s.p, { marginBottom: 12 }]}>La jornada se ordena por diferencia de goles. Cuanto más arriba, más puntos de liga y mejor premio.</Text>
             {heroes.map((r) => (
               <HeroResult key={r.playerId} state={state} r={r} />
             ))}
@@ -318,12 +426,9 @@ export function MatchScreen(props: { state: GameState; report: MatchReport; onNe
                   <Text style={{ color: C.faint, width: 20, fontWeight: '700' }}>{r.rank}</Text>
                   <Crest name={name(r.playerId)} color={clubColor(r.playerId)} size={24} />
                   <Text numberOfLines={1} style={{ color: C.text, flex: 1, fontWeight: '700', marginLeft: 8 }}>{name(r.playerId)}</Text>
-                  <View style={[s.row, { width: 50, justifyContent: 'flex-end' }]}>
-                    <Text style={{ color: C.text, fontWeight: '800', marginRight: 4 }}>{r.goals}</Text>
-                    <Ball size={13} dim={r.goals === 0} />
-                  </View>
+                  <Text style={[s.td, { width: 50, color: C.text, fontWeight: '800' }]}>{r.goals}:{r.against}</Text>
                   <Text style={[s.td, { width: 52, color: C.accent, fontWeight: '900', fontSize: 15 }]}>+{r.points}</Text>
-                  <Text style={[s.td, { width: 56, color: C.good, fontWeight: '800' }]}>+{r.prize + r.ticket}M</Text>
+                  <Text style={[s.td, { width: 56, color: C.good, fontWeight: '800' }]}>+{r.prize + r.ticket + r.saveBonus}M</Text>
                 </View>
               ))}
             </View>

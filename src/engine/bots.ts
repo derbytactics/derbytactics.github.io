@@ -1,4 +1,4 @@
-import { SPECIAL_INFO, basePrice, footballer, specialCard, totalPips } from './cards';
+import { Position, SPECIAL_INFO, basePrice, footballer, specialCard, totalPips } from './cards';
 import { CONFIG } from './config';
 import {
   Action,
@@ -12,6 +12,7 @@ import {
   expectedGoals,
   isOut,
   isProtected,
+  lineup,
   onStreak,
   sellValue,
   shieldCost,
@@ -21,33 +22,28 @@ import {
   upgradeCost,
 } from './engine';
 
-/** Personalidades de la IA. Sirven tanto para jugar como para medir el equilibrio entre estrategias. */
-export type BotStyle = 'equilibrado' | 'estrellas' | 'cantidad' | 'ladrillo' | 'tiburon';
-export const BOT_STYLES: BotStyle[] = ['equilibrado', 'estrellas', 'cantidad', 'ladrillo', 'tiburon'];
+/**
+ * Tácticas de la IA: cuántos futbolistas quiere de cada posición (portero-defensas-medios-delanteros).
+ * Sirven para jugar y para medir en el simulador que ninguna alineación domina.
+ */
+export type BotStyle = 'equilibrado' | 'ofensivo' | 'defensivo' | 'medios' | 'delanteros' | 'sinPortero';
+export const TACTICS: Record<BotStyle, Record<Position, number>> = {
+  equilibrado: { POR: 1, DEF: 2, MED: 2, DEL: 2 },
+  ofensivo: { POR: 1, DEF: 1, MED: 1, DEL: 4 },
+  defensivo: { POR: 1, DEF: 3, MED: 2, DEL: 1 },
+  medios: { POR: 1, DEF: 1, MED: 4, DEL: 1 },
+  // Extremos, solo para el simulador: todo al ataque, y jugar sin portero.
+  delanteros: { POR: 0, DEF: 0, MED: 1, DEL: 6 },
+  sinPortero: { POR: 0, DEF: 2, MED: 2, DEL: 3 },
+};
+/** Estilos con los que juega la IA en las partidas. */
+export const BOT_STYLES: BotStyle[] = ['equilibrado', 'ofensivo', 'defensivo', 'medios'];
+export const SIM_STYLES: BotStyle[] = [...BOT_STYLES, 'delanteros', 'sinPortero'];
 
 const pips = (cardId: string) => totalPips(footballer(cardId).numbers);
+const posOf = (cardId: string) => footballer(cardId).position;
 const entryPower = (e: SquadEntry, J: number) =>
   isOut(e, J) ? 0 : totalPips(activeNumbers(e, J)) * (onStreak(e, J) ? 2 : 1);
-
-function minPipsWanted(style: BotStyle, squadLen: number, remaining: number, jornada: number): number {
-  if (remaining <= 2) return 1;
-  switch (style) {
-    case 'estrellas':
-      // Prefiere esperar a un buen jugador, pero no deja huecos vacíos toda la temporada.
-      return squadLen < 2 ? 5 : jornada <= 3 ? 8 : 6;
-    case 'cantidad':
-      return 1;
-    case 'ladrillo':
-      return squadLen < 3 ? 3 : 5;
-    default:
-      return squadLen < 4 ? 4 : 5;
-  }
-}
-
-/** Cuántos pips de mejora justifican vender al peor de la plantilla. */
-const UPGRADE_STEP: Record<BotStyle, number> = { equilibrado: 3, estrellas: 2, cantidad: 4, ladrillo: 4, tiburon: 3 };
-/** Pips mínimos para plantearse pagar una cláusula. */
-const CLAUSE_FLOOR: Record<BotStyle, number> = { equilibrado: 10, estrellas: 9, cantidad: 12, ladrillo: 12, tiburon: 8 };
 
 /** Devuelve la siguiente acción del bot al que le toca. Llamar en bucle hasta que devuelva endTurn. */
 export function botAction(state: GameState, style: BotStyle = 'equilibrado'): Action {
@@ -55,26 +51,23 @@ export function botAction(state: GameState, style: BotStyle = 'equilibrado'): Ac
   if (state.phase === 'summary') return { type: 'nextJornada' };
   const me = currentPlayer(state);
   if (!me) return { type: 'endTurn' };
-  const J = state.jornada;
-  const remaining = state.totalJornadas - J + 1;
+  const remaining = state.totalJornadas - state.jornada + 1;
   const ok = (a: Action) => check(state, a) === null;
 
   const card = pickCardToPlay(state, me, style, remaining);
   if (card && ok(card)) return card;
 
-  const steps = style === 'ladrillo' ? [stadium, transfer] : [transfer, stadium];
-  for (const step of steps) {
+  for (const step of [transfer, stadium]) {
     const a = step(state, me, style, remaining);
     if (a && ok(a)) return a;
   }
 
   const buy: Action = { type: 'buySpecial' };
-  const cardBudget = style === 'tiburon' ? 0 : 6;
-  if (remaining >= 2 && me.squad.length >= 2 && me.money - CONFIG.special.cost >= cardBudget && ok(buy)) return buy;
+  if (remaining >= 2 && me.squad.length >= 4 && me.money - CONFIG.special.cost >= 8 && ok(buy)) return buy;
 
   for (const e of me.squad) {
     const a: Action = { type: 'shield', cardId: e.cardId };
-    if (pips(e.cardId) >= 12 && remaining >= 4 && me.money - shieldCost(e.cardId) >= 10 && ok(a)) return a;
+    if (basePrice(e.cardId) >= 38 && remaining >= 4 && me.money - shieldCost(e.cardId) >= 12 && ok(a)) return a;
   }
   return { type: 'endTurn' };
 }
@@ -82,41 +75,60 @@ export function botAction(state: GameState, style: BotStyle = 'equilibrado'): Ac
 function transfer(state: GameState, me: Player, style: BotStyle, remaining: number): Action | null {
   if (state.turn.signed) return null;
   const J = state.jornada;
+  const want = TACTICS[style];
+  const have = lineup(me);
   const full = me.squad.length >= CONFIG.squadSize;
-  const weakest = full ? [...me.squad].sort((a, b) => pips(a.cardId) - pips(b.cardId))[0] : null;
-  const budget = me.money + (weakest ? sellValue(weakest.cardId) : 0);
-  const floor = weakest ? pips(weakest.cardId) + UPGRADE_STEP[style] : minPipsWanted(style, me.squad.length, remaining, J);
+  const needs = (pos: Position) => have[pos] < want[pos];
+  const anyNeed = (['POR', 'DEF', 'MED', 'DEL'] as Position[]).some(needs);
 
-  const marketBest = state.market
-    .filter((id) => pips(id) >= floor && signPrice(state, id) <= budget)
-    .sort((a, b) => pips(b) - pips(a))[0];
+  if (!full) {
+    // Hueco libre: primero las posiciones que pide la táctica; si ya están, refuerza la más usada.
+    const allowed = (id: string) => {
+      const pos = posOf(id);
+      if (pos === 'POR') return want.POR > 0 && have.POR === 0;
+      return anyNeed ? needs(pos) : want[pos] > 0;
+    };
+    const market = state.market.filter((id) => allowed(id) && signPrice(state, id) <= me.money).sort((a, b) => pips(b) - pips(a));
+    // No se gasta todo en el primer fichaje: reserva para completar la plantilla.
+    const slotsLeft = CONFIG.squadSize - me.squad.length;
+    const budget = remaining <= 2 ? me.money : Math.max(me.money / Math.min(slotsLeft, 3), 10);
+    const pick = market.find((id) => signPrice(state, id) <= budget) ?? (state.jornada >= 3 ? market[market.length - 1] : undefined);
 
-  // Cláusulas: solo por futbolistas claramente mejores que lo que ofrece el mercado.
-  const clauseFloor = Math.max(CLAUSE_FLOOR[style], (marketBest ? pips(marketBest) : 0) + 1, floor);
-  let target: { ownerId: number; entry: SquadEntry } | null = null;
-  if (remaining >= 3) {
-    for (const rival of state.players) {
-      if (rival.id === me.id) continue;
-      for (const e of rival.squad) {
-        if (isProtected(e, J) || pips(e.cardId) < clauseFloor || clauseOf(e) > budget) continue;
-        if (!target || pips(e.cardId) > pips(target.entry.cardId)) target = { ownerId: rival.id, entry: e };
+    let target: { ownerId: number; entry: SquadEntry } | null = null;
+    if (remaining >= 3) {
+      for (const rival of state.players) {
+        if (rival.id === me.id) continue;
+        for (const e of rival.squad) {
+          const pos = posOf(e.cardId);
+          if (isProtected(e, J) || clauseOf(e) > me.money || !allowed(e.cardId)) continue;
+          if (pips(e.cardId) < (pick ? pips(pick) : 0) + 4 || basePrice(e.cardId) < 24) continue;
+          if (pos === 'POR' && have.POR > 0) continue;
+          if (!target || pips(e.cardId) > pips(target.entry.cardId)) target = { ownerId: rival.id, entry: e };
+        }
       }
     }
+    if (target) return { type: 'clause', ownerId: target.ownerId, cardId: target.entry.cardId };
+    return pick ? { type: 'sign', cardId: pick } : null;
   }
-  if (!target && !marketBest) return null;
-  if (weakest) return { type: 'sell', cardId: weakest.cardId };
-  if (target) return { type: 'clause', ownerId: target.ownerId, cardId: target.entry.cardId };
-  return { type: 'sign', cardId: marketBest };
+
+  // Plantilla completa: cambia al peor de una posición por uno claramente mejor de esa misma posición.
+  for (const id of [...state.market].sort((a, b) => pips(b) - pips(a))) {
+    const pos = posOf(id);
+    const worst = me.squad.filter((e) => posOf(e.cardId) === pos).sort((a, b) => pips(a.cardId) - pips(b.cardId))[0];
+    if (!worst || pips(id) < pips(worst.cardId) + 3) continue;
+    if (signPrice(state, id) <= me.money + sellValue(worst.cardId)) return { type: 'sell', cardId: worst.cardId };
+  }
+  return null;
 }
 
 function stadium(state: GameState, me: Player, style: BotStyle, remaining: number): Action | null {
   const cost = upgradeCost(me);
   if (cost === null || state.turn.upgraded || cost > me.money) return null;
-  const minSquad = style === 'ladrillo' ? 2 : 3;
+  const minSquad = 4;
   if (me.squad.length < minSquad) return null;
   // Rentabilidad: +1M por gol durante las jornadas que quedan (el partido de esta jornada cuenta).
   const gain = expectedGoals(me, state.jornada) * remaining;
-  const margin = style === 'ladrillo' ? 0.9 : 1.25;
+  const margin = 1.25;
   return gain >= cost * margin ? { type: 'upgradeStadium' } : null;
 }
 
@@ -145,7 +157,7 @@ function pickCardToPlay(state: GameState, me: Player, style: BotStyle, remaining
         break;
       }
       case 'cantera': {
-        const e = myBest((x) => !isProtected(x, J) && pips(x.cardId) >= 10);
+        const e = myBest((x) => !isProtected(x, J) && basePrice(x.cardId) >= 24);
         if (e && remaining >= 2) a = { type: 'playCard', handIndex, targetCardId: e.cardId };
         break;
       }
@@ -186,9 +198,8 @@ function pickCardToPlay(state: GameState, me: Player, style: BotStyle, remaining
         break;
       }
       case 'ojeador': {
-        const want = minPipsWanted(style, me.squad.length, remaining, J);
         const hasBargain = state.market.some(
-          (id) => pips(id) >= Math.max(want, 6) && basePrice(id) * (1 - CONFIG.special.scoutDiscount) <= me.money,
+          (id) => pips(id) >= 6 && basePrice(id) * (1 - CONFIG.special.scoutDiscount) <= me.money && (posOf(id) !== 'POR' || lineup(me).POR === 0),
         );
         if (!state.turn.signed && me.squad.length < CONFIG.squadSize && hasBargain) a = { type: 'playCard', handIndex };
         break;

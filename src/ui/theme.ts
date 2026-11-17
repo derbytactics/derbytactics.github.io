@@ -24,6 +24,9 @@ export const TIER_COLOR: Record<string, string> = {
   Crack: '#FF7A4D',
 };
 
+/** Color de cada posición en el campo. */
+export const POS_COLOR: Record<string, string> = { POR: '#F5A742', DEF: '#5B9BFF', MED: '#4CC38A', DEL: '#F0585D' };
+
 /** Colores de club, por orden de asiento. */
 export const CLUB_COLORS = ['#E5484D', '#3E8BFF', '#F5C542', '#35C98A', '#A07CF5', '#FF8A3D', '#2CC7D8', '#F06CA8'];
 export const clubColor = (playerId: number) => CLUB_COLORS[playerId % CLUB_COLORS.length];

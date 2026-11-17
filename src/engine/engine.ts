@@ -4,6 +4,7 @@ import {
   SPECIAL_INFO,
   basePrice,
   footballer,
+  roleOf,
   specialCard,
   totalPips,
 } from './cards';
@@ -18,7 +19,7 @@ export interface SquadEntry {
   shielded: boolean;
   /** No se puede pagar su cláusula hasta pasada esta jornada (fichaje reciente o cantera). */
   noClauseUntil: number;
-  /** Goles dobles hasta esta jornada incluida. */
+  /** Doble fuerza (en racha) hasta esta jornada incluida. */
   streakUntil: number;
   /** Lesionado/sancionado hasta esta jornada incluida. */
   outUntil: number;
@@ -36,7 +37,9 @@ export interface Player {
   /** Nivel de estadio 1..5. */
   stadium: number;
   points: number;
+  /** Goles a favor y en contra en toda la temporada. */
   goals: number;
+  against: number;
   closedDoorsUntil: number;
   clubDayJornada: number;
   subsidy: boolean;
@@ -44,17 +47,42 @@ export interface Player {
   lastSeen: number;
 }
 
+/** Una jugada de ataque: un club con atacantes en el número que ha salido. */
+export interface Play {
+  playerId: number;
+  /** Fuerza de ataque sumada. */
+  power: number;
+  /** Futbolistas que participan en el ataque. */
+  cards: string[];
+  /** Rivales que encajan gol. */
+  scored: number[];
+  /** Rivales que la paran. `keeper`: intervino su portero. `counter`: su defensa robó y marcó a la contra. */
+  stopped: { playerId: number; keeper: boolean; counter: boolean }[];
+}
+
 export interface RollReport {
   dice: [number, number];
   sum: number;
-  goals: { playerId: number; cardId: string; goals: number }[];
+  plays: Play[];
   /** En un 7: clubes que roban carta especial, y cuál. */
   varDraws: { playerId: number; cardId: string }[];
 }
 
 export interface MatchResult {
   playerId: number;
+  /** Goles a favor (uno por cada rival batido), en contra y diferencia en esta jornada. */
   goals: number;
+  against: number;
+  diff: number;
+  /** Jugadas propias que acabaron en gol: son las que llenan la taquilla. */
+  scoringPlays: number;
+  /** Jugadas rivales paradas con intervención del portero. */
+  saves: number;
+  /** Goles marcados a la contra tras robar con un defensa. */
+  counters: number;
+  saveBonus: number;
+  /** Carta especial ganada por el portero, si la hubo. */
+  keeperCard: string | null;
   rank: number;
   points: number;
   prize: number;
@@ -205,18 +233,51 @@ export function financeBonus(money: number): number {
 /** Clasificación: puntos, goles totales, dinero. */
 export function standings(state: GameState): Player[] {
   return [...state.players].sort(
-    (a, b) => b.points - a.points || b.goals - a.goals || b.money - a.money || a.id - b.id,
+    (a, b) => b.points - a.points || b.goals - b.against - (a.goals - a.against) || b.goals - a.goals || b.money - a.money || a.id - b.id,
   );
 }
 
-/** Goles esperados por jornada de una plantilla (sin contar rachas). */
+/** Fuerza de un futbolista ahora mismo: su posición, doblada si está en racha, cero si está de baja. */
+export function powerOf(entry: SquadEntry, jornada: number): { attack: number; defense: number } {
+  if (isOut(entry, jornada)) return { attack: 0, defense: 0 };
+  const role = roleOf(footballer(entry.cardId).position);
+  const k = onStreak(entry, jornada) ? 2 : 1;
+  return { attack: role.attack * k, defense: role.defense * k };
+}
+
+/** Ataque y defensa de un club con un número concreto. */
+export function strengthOn(player: Player, n: number, jornada: number) {
+  let attack = 0;
+  let defense = 0;
+  let keeper = false;
+  let defender = false;
+  const attackers: string[] = [];
+  for (const e of player.squad) {
+    if (!activeNumbers(e, jornada).includes(n)) continue;
+    const pw = powerOf(e, jornada);
+    if (pw.attack > 0) attackers.push(e.cardId);
+    if (pw.defense > 0 && footballer(e.cardId).position === 'POR') keeper = true;
+    if (pw.defense > 0 && footballer(e.cardId).position === 'DEF') defender = true;
+    attack += pw.attack;
+    defense += pw.defense;
+  }
+  return { attack, defense, keeper, defender, attackers };
+}
+
+/** Jugadas de ataque esperadas por jornada (antes de que los rivales intenten pararlas). */
 export function expectedGoals(player: Player, jornada: number): number {
   let pips = 0;
-  for (const e of player.squad) {
-    if (isOut(e, jornada)) continue;
-    pips += totalPips(activeNumbers(e, jornada)) * (onStreak(e, jornada) ? 2 : 1);
+  for (const n of [2, 3, 4, 5, 6, 8, 9, 10, 11, 12]) {
+    if (strengthOn(player, n, jornada).attack > 0) pips += 6 - Math.abs(7 - n);
   }
   return (pips * CONFIG.rollsPerMatchday) / 36;
+}
+
+export const hasKeeper = (player: Player) => player.squad.some((e) => footballer(e.cardId).position === 'POR');
+export function lineup(player: Player): Record<'POR' | 'DEF' | 'MED' | 'DEL', number> {
+  const out = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
+  for (const e of player.squad) out[footballer(e.cardId).position] += 1;
+  return out;
 }
 
 // ---------------------------------------------------------------- Crear partida
@@ -241,6 +302,7 @@ export function createGame(opts: NewGameOptions): GameState {
       stadium: 1,
       points: 0,
       goals: 0,
+      against: 0,
       closedDoorsUntil: 0,
       clubDayJornada: 0,
       subsidy: false,
@@ -287,6 +349,7 @@ export function check(state: GameState, action: Action): string | null {
       if (!state.market.includes(action.cardId)) return 'Ese futbolista no está en el mercado.';
       if (state.turn.signed) return 'Solo un fichaje por turno.';
       if (me.squad.length >= CONFIG.squadSize) return 'Plantilla completa: vende antes a alguien.';
+      if (footballer(action.cardId).position === 'POR' && hasKeeper(me)) return 'Ya tienes portero: véndelo antes de fichar otro.';
       if (me.money < signPrice(state, action.cardId)) return 'No tienes dinero suficiente.';
       return null;
     }
@@ -297,6 +360,7 @@ export function check(state: GameState, action: Action): string | null {
       if (!entry) return 'Ese club no tiene a ese futbolista.';
       if (state.turn.signed) return 'Solo un fichaje por turno.';
       if (me.squad.length >= CONFIG.squadSize) return 'Plantilla completa: vende antes a alguien.';
+      if (footballer(action.cardId).position === 'POR' && hasKeeper(me)) return 'Ya tienes portero: véndelo antes de fichar otro.';
       if (isProtected(entry, J)) return 'Ese futbolista está protegido y no se puede fichar ahora.';
       if (me.money < clauseOf(entry)) return 'No te llega para pagar la cláusula.';
       return null;
@@ -518,11 +582,11 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
       break;
     case 'racha':
       own!.streakUntil = J + S.streakRounds - 1;
-      say(state, `${footballer(own!.cardId).name} (${me.name}) está en racha: goles dobles ${S.streakRounds} jornadas.`);
+      say(state, `${footballer(own!.cardId).name} (${me.name}) está en racha: doble fuerza ${S.streakRounds} jornadas.`);
       break;
     case 'olfato':
       own!.extra = { number: card.value!, until: J + S.extraNumberRounds - 1 };
-      say(state, `${footballer(own!.cardId).name} (${me.name}) también marca con el ${card.value} durante ${S.extraNumberRounds} jornadas.`);
+      say(state, `${footballer(own!.cardId).name} (${me.name}) también actúa con el ${card.value} durante ${S.extraNumberRounds} jornadas.`);
       break;
     case 'cantera':
       own!.noClauseUntil = Math.max(own!.noClauseUntil, J + S.academyRounds);
@@ -552,7 +616,7 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
 function playMatch(state: GameState): GameState {
   const J = state.jornada;
   const n = state.players.length;
-  const goals = new Map<number, number>(state.players.map((p) => [p.id, 0]));
+  const tally = new Map(state.players.map((p) => [p.id, { goals: 0, against: 0, scoringPlays: 0, saves: 0, counters: 0 }]));
   // En un 7 (VAR) roba carta la mitad baja de la clasificación previa a la jornada.
   const bottom = standings(state)
     .slice(n - Math.max(1, Math.floor(n / 2)))
@@ -561,7 +625,7 @@ function playMatch(state: GameState): GameState {
   for (let r = 0; r < CONFIG.rollsPerMatchday; r++) {
     const d1 = 1 + Math.floor(rand(state) * 6);
     const d2 = 1 + Math.floor(rand(state) * 6);
-    const roll: RollReport = { dice: [d1, d2], sum: d1 + d2, goals: [], varDraws: [] };
+    const roll: RollReport = { dice: [d1, d2], sum: d1 + d2, plays: [], varDraws: [] };
     if (roll.sum === 7) {
       for (const id of bottom) {
         const cardId = drawSpecial(state, state.players[id]);
@@ -572,35 +636,76 @@ function playMatch(state: GameState): GameState {
         say(state, `VAR en la jornada ${J}: ${ids.map((id) => state.players[id].name).join(', ')} ${ids.length > 1 ? 'roban' : 'roba'} carta especial.`);
       }
     } else {
+      // Todos contra todos: cada ataque se enfrenta a la defensa de cada rival por separado.
+      const strength = state.players.map((p) => strengthOn(p, roll.sum, J));
       for (const p of state.players) {
-        for (const e of p.squad) {
-          if (isOut(e, J) || !activeNumbers(e, J).includes(roll.sum)) continue;
-          const g = onStreak(e, J) ? 2 : 1;
-          roll.goals.push({ playerId: p.id, cardId: e.cardId, goals: g });
-          goals.set(p.id, goals.get(p.id)! + g);
+        const mine = strength[p.id];
+        if (mine.attack <= 0) continue;
+        const play: Play = { playerId: p.id, power: mine.attack, cards: mine.attackers, scored: [], stopped: [] };
+        for (const rival of state.players) {
+          if (rival.id === p.id) continue;
+          const theirs = strength[rival.id];
+          if (theirs.defense >= mine.attack) {
+            const counter = CONFIG.counterAttack && theirs.defender;
+            play.stopped.push({ playerId: rival.id, keeper: theirs.keeper, counter });
+            if (theirs.keeper) tally.get(rival.id)!.saves += 1;
+            if (counter) {
+              tally.get(rival.id)!.goals += 1;
+              tally.get(rival.id)!.counters += 1;
+              tally.get(p.id)!.against += 1;
+            }
+          } else {
+            play.scored.push(rival.id);
+            tally.get(rival.id)!.against += 1;
+          }
         }
+        const t = tally.get(p.id)!;
+        t.goals += play.scored.length;
+        if (play.scored.length) t.scoringPlays += 1;
+        roll.plays.push(play);
       }
     }
     rolls.push(roll);
   }
+  const diff = (id: number) => tally.get(id)!.goals - tally.get(id)!.against;
+  const better = (a: number, b: number) => diff(a) > diff(b) || (diff(a) === diff(b) && tally.get(a)!.goals > tally.get(b)!.goals);
   const results: MatchResult[] = state.players.map((p) => {
-    const g = goals.get(p.id)!;
-    const rank = 1 + state.players.filter((o) => goals.get(o.id)! > g).length;
+    const t = tally.get(p.id)!;
+    const rank = 1 + state.players.filter((o) => better(o.id, p.id)).length;
     const closedDoors = p.closedDoorsUntil >= J;
     const clubDay = p.clubDayJornada === J;
-    const ticket = closedDoors ? 0 : g * ticketPerGoal(p.stadium) * (clubDay ? 2 : 1);
-    return { playerId: p.id, goals: g, rank, points: pointsForRank(rank, n), prize: prizeForRank(rank, n), ticket, closedDoors, clubDay };
+    const ticket = closedDoors ? 0 : t.scoringPlays * ticketPerGoal(p.stadium) * (clubDay ? 2 : 1);
+    const keeperCard = t.saves >= CONFIG.savesForCard ? drawSpecial(state, p) : null;
+    return {
+      playerId: p.id,
+      goals: t.goals,
+      against: t.against,
+      diff: t.goals - t.against,
+      scoringPlays: t.scoringPlays,
+      saves: t.saves,
+      counters: t.counters,
+      saveBonus: t.saves * CONFIG.saveBonus,
+      keeperCard,
+      rank,
+      points: pointsForRank(rank, n),
+      prize: prizeForRank(rank, n),
+      ticket,
+      closedDoors,
+      clubDay,
+    };
   });
   for (const r of results) {
     const p = state.players[r.playerId];
     p.goals += r.goals;
+    p.against += r.against;
     p.points += r.points;
-    p.money += r.prize + r.ticket;
+    p.money += r.prize + r.ticket + r.saveBonus;
   }
   results.sort((a, b) => a.rank - b.rank || a.playerId - b.playerId);
   state.lastMatch = { jornada: J, rolls, results };
   const winners = results.filter((r) => r.rank === 1).map((r) => state.players[r.playerId].name);
-  say(state, `Jornada ${J}: gana ${winners.join(' y ')} con ${results[0].goals} goles.`);
+  const top = results[0];
+  say(state, `Jornada ${J}: gana ${winners.join(' y ')} (${top.goals} a favor, ${top.against} en contra).`);
   state.phase = 'summary';
   return state;
 }

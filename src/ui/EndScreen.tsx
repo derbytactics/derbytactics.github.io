@@ -18,7 +18,7 @@ export function EndScreen({ state, onRestart, extra }: { state: GameState; onRes
         <Overline>CAMPEÓN DE LIGA</Overline>
         <Text style={[s.h1, { fontSize: 32, textAlign: 'center', marginTop: 4 }]}>{champ.name}</Text>
         <Text style={[s.p, { textAlign: 'center', marginTop: 4 }]}>
-          {champ.points} puntos · {champ.goals} goles en {state.totalJornadas} jornadas
+          {champ.points} puntos · {champ.goals} goles a favor y {champ.against} en contra en {state.totalJornadas} jornadas
         </Text>
       </View>
 
