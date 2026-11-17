@@ -41,7 +41,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Step
         n={2}
         title="Ataque contra defensa"
-        text="Se tiran dos dados 6 veces, en un solo partido de todos contra todos. Con el número que sale: cada delantero suma 2 de ataque y cada medio 1; el portero suma 2 de defensa, y cada defensa y cada medio 1. Tu jugada es gol contra cada rival cuya defensa en ese número sea menor que tu ataque."
+        text="Un solo partido de todos contra todos. Cada club tira los dados en su turno. Con el número que sale atacan los que lo tengan: cada delantero suma 2 y cada medio 1. Cada rival defiende con los suyos: el portero suma 2 y cada defensa 1. Tu jugada es gol contra cada rival cuya defensa en ese número sea menor que tu ataque."
         art={
           <View style={[s.row, { gap: 6 }]}>
             <Die value={5} size={40} />
@@ -52,7 +52,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Step
         n={3}
         title="Qué hace cada posición"
-        text="Delantero: remata (ataque 2), solo lo para un portero o varios defensores. Medio: ataca 1 y defiende 1; junto a un delantero forma una jugada combinada que un portero solo no para. Defensa: defiende 1 y, si la jugada se para, sale a la contra y marca al que atacó. Portero: defiende 2, cobra prima por parada y con 3 paradas en una jornada gana una carta."
+        text="Delantero: ataque 2; solo lo para un portero o dos defensas. Medio: ataque 1; da el pase que convierte el remate en jugada combinada y, si participa, nadie te puede hacer un contragolpe. Defensa: defensa 1; si tu equipo para una jugada sin medio, roba y marca a la contra. Portero: defensa 2 en tres o cuatro números; cobra prima por parada y con 3 en una jornada gana una carta."
         art={<Text style={{ fontSize: 40 }}>🧤</Text>}
       />
       <Step

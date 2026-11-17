@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
-import { Action, GameState, currentPlayer } from '../engine';
+import { Action, GameState, currentPlayer, currentRoller } from '../engine';
 import { Crest } from './art';
 import { Btn, Chronicle, ExitContext, NavBar, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
 import { EndScreen } from './EndScreen';
 import { GameScreen } from './GameScreen';
-import { KickoffScreen, MatchScreen } from './MatchScreen';
+import { MatchScreen } from './MatchScreen';
 import { C, clubColor } from './theme';
 
 export interface OnlineInfo {
@@ -64,8 +64,7 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
   const last = game.jornada >= game.totalJornadas;
 
   if (game.phase === 'finished') return <EndScreen state={game} onRestart={props.onExit} extra={props.endExtra} />;
-  if (game.phase === 'match') return <KickoffScreen state={game} focus={focus} onPlay={() => dispatch({ type: 'playMatch' })} />;
-  if (game.phase === 'summary') {
+  if (game.phase === 'match' || game.phase === 'summary') {
     const footer = !online ? undefined : !online.iAmReady ? (
       <Btn label={last ? '🏆 Listo: ver el final' : '✓ Listo para la siguiente jornada'} onPress={online.onReady} />
     ) : (
@@ -75,7 +74,21 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
         {online.onForceNext ? <Btn small kind="ghost" label="Continuar sin esperar" onPress={online.onForceNext} style={{ marginTop: 10 }} /> : null}
       </View>
     );
-    return <MatchScreen key={game.jornada} state={game} report={game.lastMatch!} focus={focus} footer={footer} onNext={() => dispatch({ type: 'nextJornada' })} />;
+    const roller = currentRoller(game);
+    const absent = roller !== null && !game.players[roller].isBot && roller !== seat;
+    return (
+      <MatchScreen
+        key={game.jornada}
+        state={game}
+        focus={focus}
+        // En un solo dispositivo tira cualquiera de las personas; en línea, solo el club de este móvil.
+        canRoll={(r) => (seat === null ? !game.players[r].isBot : r === seat)}
+        onRoll={() => dispatch({ type: 'roll' })}
+        onNext={() => dispatch({ type: 'nextJornada' })}
+        footer={footer}
+        waitingExtra={online?.onBotTurn && absent ? <Btn small kind="ghost" label="¿No responde? Tirar por él" onPress={online.onBotTurn} style={{ marginTop: 10 }} /> : undefined}
+      />
+    );
   }
 
   const cur = me!;

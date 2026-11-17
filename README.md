@@ -2,7 +2,7 @@
 
 Juego de cartas de fútbol para **2 a 8 jugadores**, multiplataforma (iOS, Android y web) con Expo + React Native + TypeScript.
 
-Eres el presidente de un club recién ascendido. Con 80M en caja tienes que montar una plantilla de fútbol 7 (un portero y la táctica que quieras), llenar el estadio y ganar la liga. Cada futbolista lleva números de dado, como las casillas del Catán. Cada jornada es un partido de todos contra todos: cuando sale un número, quien tiene delanteros o medios con él ataca, y los rivales lo paran si su portero y sus defensas con ese número suman al menos la misma fuerza.
+Eres el presidente de un club recién ascendido. Con 80M en caja tienes que montar una plantilla de fútbol 7 (un portero y la táctica que quieras), llenar el estadio y ganar la liga. Cada futbolista lleva números de dado, como las casillas del Catán. Cada jornada es un partido de todos contra todos: cuando sale un número, quien tiene delanteros o medios con él ataca, y los rivales lo paran si su portero y sus defensas con ese número suman al menos la misma fuerza. Los clubes tiran los dados por turnos y cada tirada se narra jugada a jugada.
 
 - **Jugar en el navegador:** https://juanrafernandez.github.io/Futcards/
 - **Reglas completas:** [docs/REGLAS.md](docs/REGLAS.md)

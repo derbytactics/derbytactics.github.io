@@ -3,7 +3,7 @@
  * El anfitrión publica el estado completo (retenido, para quien llegue tarde o se reconecte)
  * y escucha los mensajes de los invitados.
  */
-import { Action, check } from '../engine';
+import { Action, check, currentRoller } from '../engine';
 import { MqttClient } from './mqtt';
 import { ClientMsg, RoomState, hostReduce, newRoom, seatOf } from './room';
 import { remove, save } from './storage';
@@ -173,7 +173,7 @@ export class GuestSession {
     if (!room?.game) return 'La partida no ha empezado.';
     if (this.pending) return 'Enviando tu jugada anterior… espera un momento.';
     const g = room.game;
-    if (action.type !== 'playMatch' && (g.phase !== 'market' || g.turnOrder[g.turnIndex] !== this.seat)) return 'No es tu turno.';
+    if (action.type === 'roll' ? currentRoller(g) !== this.seat : g.phase !== 'market' || g.turnOrder[g.turnIndex] !== this.seat) return 'No es tu turno.';
     const error = check(g, action);
     if (!error) this.sendReliable({ t: 'act', clientId: this.clientId, seq: room.seq, action }, room.seq);
     return error;

@@ -50,7 +50,12 @@ describe('partida en línea', () => {
   it('la jornada avanza cuando todas las personas están listas', () => {
     let r = started();
     while (r.game!.phase === 'market') r = botStep(r, true);
-    r = hostReduce(r, { t: 'act', clientId: 'luis', seq: r.seq, action: { type: 'playMatch' } });
+    // Solo tira los dados el club al que le toca.
+    const first = r.game!.match!.rollers[0];
+    const wrong = ['host', 'ana', 'luis'][(first + 1) % 3];
+    expect(hostReduce(r, { t: 'act', clientId: wrong, seq: r.seq, action: { type: 'roll' } })).toBe(r);
+    expect(hostReduce(r, { t: 'act', clientId: 'ana', seq: r.seq, action: { type: 'playMatch' } })).toBe(r);
+    while (r.game!.phase === 'match') r = botStep(r, true);
     expect(r.game!.phase).toBe('summary');
     r = hostReady(r);
     r = hostReduce(r, { t: 'ready', clientId: 'ana', seq: r.seq });

@@ -1,47 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
-import { GameState, MatchReport, MatchResult, Play, RollReport, footballer, standings, ticketPerGoal } from '../engine';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, ScrollView, Text, View } from 'react-native';
+import { GameState, MatchResult, RollReport, currentRoller, standings, ticketPerGoal } from '../engine';
 import { Avatar, Crest, Die } from './art';
 import { NumberLine, SpecialCardFace } from './GameScreen';
-import { Btn, Chronicle, Overline, PhaseStepper, Pop, StandingsTable, jornadaLabel, s } from './components';
-import { C, clubColor } from './theme';
+import { Btn, Overline, PhaseStepper, Pop, StandingsTable, s } from './components';
+import { News, NewsKind, rollNews, rollScore } from './narrative';
+import { C, NATIVE_DRIVER, POS_COLOR, clubColor } from './theme';
 
 const ordinal = (n: number) => `${n}.º`;
 
-/** Antes del partido: qué va a pasar y con qué números marca cada persona. */
-export function KickoffScreen({ state, onPlay, focus }: { state: GameState; onPlay: () => void; focus?: number[] }) {
-  const humans = state.players.filter((p) => (focus ? focus.includes(p.id) : !p.isBot));
-  return (
-    <View style={{ flex: 1 }}>
-      <PhaseStepper step={1} label={jornadaLabel(state)} />
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <View style={{ alignItems: 'center', marginVertical: 12 }}>
-          <View style={[s.row, { gap: 10 }]}>
-            <Die value={6} size={64} />
-            <Die value={2} size={64} />
-          </View>
-          <Text style={[s.h1, { marginTop: 14, textAlign: 'center' }]}>Mercado cerrado. ¡A jugar!</Text>
-          <Text style={[s.p, { textAlign: 'center', marginTop: 6 }]}>
-            Un solo partido, todos contra todos. Se tiran los dados 6 veces: quien tenga delanteros o medios con ese número ataca a todos los rivales, y cada rival lo para si su portero y sus defensas con ese número suman al menos la misma fuerza. Con un 7 entra el VAR.
-          </Text>
-        </View>
-        {humans.map((p) => (
-          <View key={p.id} style={[s.panel, { borderColor: clubColor(p.id) + '88' }]}>
-            <View style={[s.row, { marginBottom: 8 }]}>
-              <Crest name={p.name} color={clubColor(p.id)} size={24} />
-              <Text style={{ color: C.text, fontWeight: '800', marginLeft: 8, flex: 1 }}>{p.name}</Text>
-              <Overline>TUS NÚMEROS</Overline>
-            </View>
-            <NumberLine player={p} jornada={state.jornada} state={state} />
-          </View>
-        ))}
-        <Btn label="🎲 Tirar los dados" onPress={onPlay} />
-        <Text style={[s.h2, { marginTop: 22 }]}>Lo que ha pasado en el mercado</Text>
-        <Chronicle state={state} max={10} />
-      </ScrollView>
-    </View>
-  );
-}
+/** Ritmo de la crónica: tiempo de dados, entre noticias y de lectura final antes de poder seguir. */
+const SPEED = (globalThis as { __FUTCARDS_SPEED__?: number }).__FUTCARDS_SPEED__ ?? 1;
+const DICE_MS = 1000 / SPEED;
+const NEWS_MS = 2300 / SPEED;
+const READ_MS = 1800 / SPEED;
 
 function useCountUp(target: number, run: boolean): number {
   const [v, setV] = useState(0);
@@ -118,336 +90,335 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
   );
 }
 
-const list = (names: string[]) => (names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`);
+const NEWS_STYLE: Record<NewsKind, { color: string; icon: string }> = {
+  attack: { color: '#C9D3DC', icon: '⚽' },
+  goal: { color: C.accent, icon: '🥅' },
+  stopped: { color: '#8FA89A', icon: '🧤' },
+  counterAgainst: { color: C.danger, icon: '⚡' },
+  concede: { color: C.danger, icon: '😖' },
+  save: { color: C.good, icon: '🧤' },
+  counterFor: { color: C.accent, icon: '⚡' },
+  info: { color: C.line, icon: '•' },
+  var: { color: C.danger, icon: '📺' },
+  card: { color: C.good, icon: '🃏' },
+};
 
-/** Cuenta lo que pasa en una jugada de ataque, con tono de crónica. */
-export function narrate(state: GameState, sum: number, play: Play): string {
-  const club = state.players[play.playerId].name;
-  const who = list(play.cards.map((id) => footballer(id).name));
-  const name = (id: number) => state.players[id].name;
-  const kind = play.cards.length > 1 ? 'Jugada combinada' : footballer(play.cards[0]).position === 'MED' ? 'Tiro lejano' : 'Remate';
-  const parts: string[] = [`${kind} de ${who} (${club}) con el ${sum}.`];
-  if (play.scored.length) parts.push(`Gol a ${list(play.scored.map(name))}.`);
-  const plain = play.stopped.filter((x) => !x.counter);
-  const counters = play.stopped.filter((x) => x.counter);
-  if (plain.length) parts.push(`Lo ${plain.length > 1 ? 'paran' : 'para'} ${list(plain.map((x) => name(x.playerId)))}.`);
-  if (counters.length) parts.push(`${list(counters.map((x) => name(x.playerId)))} ${counters.length > 1 ? 'roban y marcan' : 'roba y marca'} a la contra.`);
-  return parts.join(' ');
-}
-
-/** Una línea del acta: qué salió y qué jugadas hubo. */
-function ActaLine({ state, roll, index, mine }: { state: GameState; roll: RollReport; index: number; mine: number[] }) {
-  const name = (id: number) => state.players[id].name;
-  const isVar = roll.sum === 7;
+/** Una noticia de la tirada: aparece con una pequeña animación. */
+function NewsCard({ news, big }: { news: News; big: boolean }) {
+  const st = NEWS_STYLE[news.kind];
+  const strong = news.kind === 'goal' || news.kind === 'counterFor' || news.kind === 'concede' || news.kind === 'counterAgainst' || news.kind === 'save';
   return (
-    <View style={[s.row, { alignItems: 'flex-start', paddingVertical: 7, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }]}>
-      <View style={{ width: 34, height: 34, borderRadius: 9, borderWidth: 1.5, borderColor: isVar ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: C.text, fontWeight: '800' }}>{roll.sum}</Text>
-      </View>
-      <View style={{ flex: 1, marginLeft: 10 }}>
-        <Text style={[s.overline, { marginBottom: 2 }]}>OCASIÓN {index + 1}</Text>
-        {isVar ? (
-          <Text style={{ color: '#FFB3B5', fontWeight: '700' }}>
-            VAR: sin jugadas.{roll.varDraws.length ? ` Roban carta: ${roll.varDraws.map((d) => name(d.playerId)).join(', ')}.` : ''}
-          </Text>
-        ) : roll.plays.length === 0 ? (
-          <Text style={s.p}>Nadie atacaba con el {roll.sum}.</Text>
-        ) : (
-          roll.plays.map((pl, i) => {
-            const own = mine.includes(pl.playerId) || pl.scored.some((id) => mine.includes(id)) || pl.stopped.some((x) => mine.includes(x.playerId));
-            return (
-              <Text key={i} style={{ color: own ? C.text : C.dim, fontWeight: own ? '700' : '500', fontSize: 13, lineHeight: 19, marginBottom: 2 }}>
-                <Text style={{ color: clubColor(pl.playerId) }}>● </Text>
-                {narrate(state, roll.sum, pl)}
-              </Text>
-            );
-          })
-        )}
-      </View>
-    </View>
-  );
-}
-
-function Banner({ color, title, children, trigger }: { color: string; title: string; children: React.ReactNode; trigger: number }) {
-  return (
-    <Pop trigger={trigger} style={{ alignSelf: 'stretch', marginTop: 12 }}>
-      <View style={{ borderRadius: 16, borderWidth: 2, borderColor: color, backgroundColor: color + '26', padding: 12 }}>
-        <Text style={{ color, fontSize: 24, fontWeight: '900', textAlign: 'center', letterSpacing: 0.5 }}>{title}</Text>
-        {children}
+    <Pop style={{ alignSelf: 'stretch', marginTop: 8 }}>
+      <View style={{ borderRadius: 14, borderWidth: strong ? 2 : 1, borderColor: st.color, backgroundColor: strong ? st.color + '24' : C.panelAlt, padding: 12 }}>
+        <View style={s.row}>
+          {news.cards?.length && news.club !== undefined ? (
+            <View style={[s.row, { marginRight: 10 }]}>
+              {news.cards.slice(0, 2).map((id, i) => (
+                <View key={id} style={{ marginLeft: i ? -14 : 0 }}>
+                  <Avatar seed={id} size={big && strong ? 46 : 38} jersey={clubColor(news.club!)} ring={st.color} />
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={{ fontSize: 22, marginRight: 10 }}>{st.icon}</Text>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: strong ? st.color : C.text, fontSize: strong ? 20 : 14, fontWeight: '900' }}>{news.title}</Text>
+            <Text style={{ color: C.text, fontSize: 14, lineHeight: 20, marginTop: 2 }}>{news.text}</Text>
+          </View>
+        </View>
+        {news.specialCardId ? (
+          <View style={{ marginTop: 10 }}>
+            <SpecialCardFace id={news.specialCardId} />
+          </View>
+        ) : null}
       </View>
     </Pop>
   );
 }
 
-export function MatchScreen(props: { state: GameState; report: MatchReport; onNext: () => void; focus?: number[]; footer?: React.ReactNode }) {
-  const { state, report, onNext, focus } = props;
-  const [shown, setShown] = useState(0);
-  const [reparto, setReparto] = useState(false);
-  const total = report.rolls.length;
-  /** Clubes de quien mira esta pantalla: lo que les pasa se destaca a lo grande. */
+/** Barra que se llena mientras se lee la jugada; al completarse se puede seguir. */
+function ReadingBar({ duration, token }: { duration: number; token: string }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    v.setValue(0);
+    Animated.timing(v, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: NATIVE_DRIVER }).start();
+  }, [token, duration, v]);
+  return (
+    <View style={{ height: 6, borderRadius: 3, backgroundColor: C.panelAlt, overflow: 'hidden', marginTop: 8 }}>
+      <Animated.View style={{ height: 6, width: '100%', backgroundColor: C.accent, transform: [{ translateX: v.interpolate({ inputRange: [0, 1], outputRange: [-420, 0] }) }] }} />
+    </View>
+  );
+}
+
+/** Dados que ruedan un instante antes de mostrar el resultado. */
+function Dice({ roll, rolling }: { roll: RollReport | null; rolling: boolean }) {
+  const [faces, setFaces] = useState<[number, number]>([1, 1]);
+  useEffect(() => {
+    if (!rolling) return;
+    const t = setInterval(() => setFaces([1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)]), 90);
+    return () => clearInterval(t);
+  }, [rolling]);
+  const show = rolling || !roll ? faces : roll.dice;
+  const tone = !roll ? 'ghost' : !rolling && roll.sum === 7 ? 'var' : 'light';
+  const sum = roll && !rolling ? roll.sum : null;
+  return (
+    <Pop trigger={`${rolling}-${sum}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 }}>
+      <Die value={show[0]} size={64} tone={tone} />
+      <Die value={show[1]} size={64} tone={tone} />
+      <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: sum === null ? C.panelAlt : sum === 7 ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: sum === null ? C.faint : sum === 7 ? '#fff' : C.accentText, fontSize: 30, fontWeight: '900' }}>{sum ?? '?'}</Text>
+      </View>
+    </Pop>
+  );
+}
+
+/**
+ * El partido, tirada a tirada. Sirve tanto mientras se juega (fase 'match') como después
+ * (fase 'summary'): cada dispositivo lee las tiradas a su ritmo y luego ve el reparto.
+ */
+export function MatchScreen(props: {
+  state: GameState;
+  /** Clubes de quien mira esta pantalla. */
+  focus?: number[];
+  /** Si quien mira puede tirar los dados cuando le toca a ese club. */
+  canRoll: (roller: number) => boolean;
+  onRoll: () => void;
+  onNext: () => void;
+  /** Sustituye al botón de pasar de jornada (partidas en línea). */
+  footer?: React.ReactNode;
+  /** Contenido extra mientras se espera a que otro tire los dados. */
+  waitingExtra?: React.ReactNode;
+}) {
+  const { state, focus } = props;
+  const live = state.phase === 'match' && !!state.match;
+  const rolls = live ? state.match!.rolls : state.lastMatch?.rolls ?? [];
+  const rollers = live ? state.match!.rollers : state.lastMatch?.rollers ?? [];
+  const total = rollers.length;
+  const report = live ? null : state.lastMatch;
   const mine = focus ?? state.players.filter((p) => !p.isBot).map((p) => p.id);
   const isMine = (id: number) => mine.includes(id);
-  const visible = report.rolls.slice(0, shown);
-  const current = visible[visible.length - 1];
+  /** Con un solo club delante se cuenta en segunda persona; si no, de forma neutral. */
+  const viewer = mine.length === 1 ? mine[0] : null;
   const name = (id: number) => state.players[id].name;
 
-  // Lo que le pasa a quien mira en la tirada actual.
-  const plays = current?.plays ?? [];
-  const myAttacks = plays.filter((pl) => isMine(pl.playerId));
-  const myGoals = myAttacks.filter((pl) => pl.scored.length > 0);
-  const myStopped = myAttacks.filter((pl) => pl.scored.length === 0);
-  const conceded = plays.filter((pl) => pl.scored.some(isMine));
-  const saved = plays.filter((pl) => pl.stopped.some((x) => isMine(x.playerId)));
-  const counterAgainst = myAttacks.flatMap((pl) => pl.stopped.filter((x) => x.counter && !isMine(x.playerId)));
-  const myDraws = current ? current.varDraws.filter((d) => isMine(d.playerId)) : [];
-  const involved = myAttacks.length + conceded.length + saved.length + myDraws.length > 0;
+  /** Tirada que se está contando (-1: ninguna todavía). */
+  const [cur, setCur] = useState(-1);
+  const [rolling, setRolling] = useState(false);
+  const [revealed, setRevealed] = useState(0);
+  const [ready, setReady] = useState(true);
+  const [reparto, setReparto] = useState(false);
 
-  // Las tiradas avanzan solas, con más pausa cuando te afecta. La última no se quita sola.
+  const roll = cur >= 0 ? rolls[cur] ?? null : null;
+  const news = roll ? rollNews(state, roll, state.jornada * 100 + cur, viewer) : [];
+
+  // Máquina de ritmo: dados → noticias una a una → tiempo de lectura → se puede seguir.
   useEffect(() => {
-    if (reparto || shown >= total) return;
-    const delay = shown === 0 ? 900 : involved ? 5200 : 3000;
-    const t = setTimeout(() => setShown((x) => x + 1), delay);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shown, reparto, total]);
-
-  const last = state.jornada >= state.totalJornadas;
-  const score = (id: number) => {
-    let gf = 0;
-    let gc = 0;
-    for (const r of visible) {
-      for (const pl of r.plays) {
-        const counters = pl.stopped.filter((x) => x.counter);
-        if (pl.playerId === id) {
-          gf += pl.scored.length;
-          gc += counters.length;
-        } else {
-          if (pl.scored.includes(id)) gc += 1;
-          if (counters.some((x) => x.playerId === id)) gf += 1;
-        }
-      }
+    if (reparto) return;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    if (ready && cur < rolls.length - 1) {
+      setCur(cur + 1);
+      setRolling(true);
+      setRevealed(0);
+      setReady(false);
+    } else if (rolling) {
+      t = setTimeout(() => {
+        setRolling(false);
+        setRevealed(1);
+      }, DICE_MS);
+    } else if (!ready && cur >= 0) {
+      t = revealed < news.length ? setTimeout(() => setRevealed((x) => x + 1), NEWS_MS) : setTimeout(() => setReady(true), READ_MS);
     }
-    return { gf, gc };
-  };
-  const maxGoals = Math.max(1, ...report.results.map((r) => r.goals));
-  const humans = report.results.filter((r) => isMine(r.playerId));
-  const heroes = humans.length ? humans : report.results.filter((r) => r.rank === 1).slice(0, 1);
-  const tone = !current ? 'ghost' : current.sum === 7 ? 'var' : 'light';
-  const attackers = (pl: Play) => list(pl.cards.map((id) => footballer(id).name));
+    return () => {
+      if (t) clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cur, rolling, revealed, ready, rolls.length, reparto]);
+
+  const caughtUp = ready && cur === rolls.length - 1;
+  const roller = live ? currentRoller(state) : null;
+  const iRoll = roller !== null && props.canRoll(roller);
+  const counted = rolls.slice(0, rolling ? cur : cur + 1);
+  const score = (id: number) => counted.reduce((a, r) => ({ gf: a.gf + rollScore(r, id).gf, gc: a.gc + rollScore(r, id).gc }), { gf: 0, gc: 0 });
+  const maxGoals = Math.max(1, ...state.players.map((p) => score(p.id).gf));
+  const delta = roll && !rolling && viewer !== null && revealed >= news.length ? rollScore(roll, viewer) : null;
+  const last = state.jornada >= state.totalJornadas;
+  const readToken = `${cur}`;
+  const readDuration = DICE_MS + news.length * NEWS_MS + READ_MS;
+
+  if (reparto && report) {
+    const humans = report.results.filter((r) => isMine(r.playerId));
+    const heroes = humans.length ? humans : report.results.filter((r) => r.rank === 1).slice(0, 1);
+    return (
+      <View style={{ flex: 1 }}>
+        <PhaseStepper step={2} label="REPARTO" />
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
+          <Text style={s.h1}>Final de la jornada</Text>
+          <Text style={[s.p, { marginBottom: 12 }]}>La jornada se ordena por diferencia de goles. Cuanto más arriba, más puntos de liga y mejor premio.</Text>
+          {heroes.map((r) => (
+            <HeroResult key={r.playerId} state={state} r={r} />
+          ))}
+          <View style={s.panel}>
+            <View style={[s.row, { marginBottom: 6 }]}>
+              <Text style={[s.th, { flex: 1, textAlign: 'left' }]}>REPARTO DE LA JORNADA</Text>
+              <Text style={[s.th, { width: 50 }]}>GOLES</Text>
+              <Text style={[s.th, { width: 52 }]}>PUNTOS</Text>
+              <Text style={[s.th, { width: 56 }]}>DINERO</Text>
+            </View>
+            {report.results.map((r) => (
+              <View key={r.playerId} style={[s.row, s.tr]}>
+                <Text style={{ color: C.faint, width: 20, fontWeight: '700' }}>{r.rank}</Text>
+                <Crest name={name(r.playerId)} color={clubColor(r.playerId)} size={24} />
+                <Text numberOfLines={1} style={{ color: C.text, flex: 1, fontWeight: '700', marginLeft: 8 }}>{name(r.playerId)}</Text>
+                <Text style={[s.td, { width: 50, color: C.text, fontWeight: '800' }]}>{r.goals}:{r.against}</Text>
+                <Text style={[s.td, { width: 52, color: C.accent, fontWeight: '900', fontSize: 15 }]}>+{r.points}</Text>
+                <Text style={[s.td, { width: 56, color: C.good, fontWeight: '800' }]}>+{r.prize + r.ticket + r.saveBonus}M</Text>
+              </View>
+            ))}
+          </View>
+          <StandingsTable state={state} />
+          {props.footer ?? <Btn label={last ? '🏆 Ver el final de temporada' : `Ir al mercado de la jornada ${state.jornada + 1} →`} onPress={props.onNext} />}
+          <Acta state={state} rolls={rolls} rollers={rollers} />
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
-      <PhaseStepper step={reparto ? 2 : 1} label={reparto ? 'REPARTO' : 'DÍA DE PARTIDO'} />
+      <PhaseStepper step={1} label="DÍA DE PARTIDO" />
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        {!reparto ? (
+        {cur < 0 ? (
           <>
-            <View style={[s.panel, { alignItems: 'center', paddingVertical: 18 }]}>
-              <Overline>{shown === 0 ? 'SALTAN AL CAMPO…' : `OCASIÓN ${shown} DE ${total}`}</Overline>
-              <Pop trigger={shown} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 }}>
-                <Die value={current?.dice[0] ?? 1} size={70} tone={tone} />
-                <Die value={current?.dice[1] ?? 1} size={70} tone={tone} />
-                <View style={{ width: 70, height: 70, borderRadius: 35, backgroundColor: !current ? C.panelAlt : current.sum === 7 ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ color: !current ? C.faint : current.sum === 7 ? '#fff' : C.accentText, fontSize: 34, fontWeight: '900' }}>{current ? current.sum : '?'}</Text>
+            <Text style={s.h1}>Mercado cerrado. ¡A jugar!</Text>
+            <Text style={[s.p, { marginTop: 6, marginBottom: 12 }]}>
+              Un partido de todos contra todos, a {total} tiradas. Cada club tira los dados en su turno. Con el número que salga atacan los delanteros y medios que lo tengan, y cada rival lo para si su portero y sus defensas con ese número suman al menos la misma fuerza.
+            </Text>
+            {state.players.filter((p) => isMine(p.id)).map((p) => (
+              <View key={p.id} style={[s.panel, { borderColor: clubColor(p.id) + '88' }]}>
+                <View style={[s.row, { marginBottom: 8 }]}>
+                  <Crest name={p.name} color={clubColor(p.id)} size={24} />
+                  <Text style={{ color: C.text, fontWeight: '800', marginLeft: 8, flex: 1 }}>{p.name}</Text>
+                  <Overline>TUS NÚMEROS</Overline>
                 </View>
-              </Pop>
-
-              {conceded.length ? (
-                <Banner color={C.danger} title={myGoals.length ? 'Encajas…' : '¡Gol en contra!'} trigger={shown}>
-                  {conceded.map((pl, i) => (
-                    <Text key={i} style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
-                      {attackers(pl)} <Text style={{ color: clubColor(pl.playerId) }}>({name(pl.playerId)})</Text> te marca{pl.cards.length > 1 ? 'n en jugada combinada' : ''}: tu defensa no llega a fuerza {pl.power} con el {current!.sum}.
-                    </Text>
-                  ))}
-                </Banner>
-              ) : null}
-
-              {myGoals.length ? (
-                <Banner color={C.accent} title={conceded.length ? '…¡y respondes! ¡GOOOL!' : '¡GOOOL!'} trigger={shown}>
-                  {conceded.length ? <Text style={{ color: C.dim, textAlign: 'center', fontSize: 12, marginTop: 2 }}>Sacas de centro, te lanzas al ataque y marcas.</Text> : null}
-                  {myGoals.map((pl, i) => (
-                    <View key={i} style={{ marginTop: 8 }}>
-                      <View style={[s.row, { justifyContent: 'center', gap: 6 }]}>
-                        {pl.cards.map((id) => (
-                          <Avatar key={id} seed={id} size={46} jersey={clubColor(pl.playerId)} ring={C.accent} />
-                        ))}
-                      </View>
-                      <Text style={{ color: C.text, fontSize: 16, fontWeight: '900', textAlign: 'center', marginTop: 4 }}>{attackers(pl)}</Text>
-                      <Text style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 2 }}>
-                        {pl.scored.length} {pl.scored.length === 1 ? 'gol' : 'goles'}: marcas a {list(pl.scored.map(name))}.
-                      </Text>
-                      {pl.stopped.length ? (
-                        <Text style={{ color: C.dim, fontSize: 12, textAlign: 'center', marginTop: 2 }}>
-                          Te lo {pl.stopped.length > 1 ? 'paran' : 'para'} {list(pl.stopped.map((x) => name(x.playerId)))}.
-                        </Text>
-                      ) : null}
-                    </View>
-                  ))}
-                </Banner>
-              ) : null}
-
-              {myStopped.length ? (
-                <Banner color="#8FA89A" title="Te la paran" trigger={shown}>
-                  {myStopped.map((pl, i) => (
-                    <Text key={i} style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
-                      {attackers(pl)} lo intenta con el {current!.sum}, pero {list(pl.stopped.map((x) => name(x.playerId)))} {pl.stopped.length > 1 ? 'tienen' : 'tiene'} defensa suficiente.
-                    </Text>
-                  ))}
-                </Banner>
-              ) : null}
-
-              {counterAgainst.length ? (
-                <Banner color={C.danger} title="¡Contragolpe!" trigger={shown}>
-                  <Text style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
-                    {list(counterAgainst.map((x) => name(x.playerId)))} {counterAgainst.length > 1 ? 'roban' : 'roba'} el balón con su defensa y te {counterAgainst.length > 1 ? 'marcan' : 'marca'} a la contra.
-                  </Text>
-                </Banner>
-              ) : null}
-
-              {saved.length ? (
-                <Banner color={C.good} title={saved.some((pl) => pl.stopped.some((x) => isMine(x.playerId) && x.keeper)) ? '¡Paradón!' : '¡Bien defendido!'} trigger={shown}>
-                  {saved.map((pl, i) => {
-                    const st = pl.stopped.find((x) => isMine(x.playerId))!;
-                    return (
-                      <Text key={i} style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
-                        Paras a {attackers(pl)} <Text style={{ color: clubColor(pl.playerId) }}>({name(pl.playerId)})</Text>
-                        {st.counter ? ' y tu defensa sale a la contra: ¡gol!' : '.'}
-                      </Text>
-                    );
-                  })}
-                </Banner>
-              ) : null}
-
-              {myDraws.length ? (
-                <Banner color={C.good} title="📺 ¡El VAR te da una carta!" trigger={shown}>
-                  {myDraws.map((d) =>
-                    mine.length === 1 ? (
-                      <View key={d.playerId} style={{ marginTop: 10 }}>
-                        <SpecialCardFace id={d.cardId} />
-                      </View>
-                    ) : (
-                      <Text key={d.playerId} style={{ color: C.text, fontWeight: '700', textAlign: 'center', marginTop: 6 }}>
-                        {name(d.playerId)} roba una carta especial: la verá en su turno.
-                      </Text>
-                    ),
-                  )}
-                </Banner>
-              ) : null}
-
-              <View style={{ marginTop: 14, alignItems: 'center' }}>
-                {!current ? <Text style={s.p}>Los dados están en el aire…</Text> : null}
-                {current && current.sum === 7 ? (
-                  <Text style={{ color: '#FFB3B5', fontWeight: '800', textAlign: 'center' }}>
-                    ¡VAR! No hay jugadas.{current.varDraws.length ? ` Roban carta: ${current.varDraws.map((d) => name(d.playerId)).join(', ')}.` : ''}
-                  </Text>
-                ) : null}
-                {current && current.sum !== 7 && plays.length === 0 ? <Text style={s.p}>Nadie ataca con el {current.sum}. Balón al centro del campo.</Text> : null}
-                {current && current.sum !== 7 && plays.length > 0 && !involved ? <Text style={s.p}>Hay jugadas con el {current.sum}, pero a ti no te afectan. Están en el acta.</Text> : null}
+                <NumberLine player={p} jornada={state.jornada} state={state} />
               </View>
-
-              <View style={[s.row, { gap: 6, marginTop: 12 }]}>
-                {report.rolls.map((r, i) => {
-                  const on = i < visible.length;
-                  return (
-                    <View key={i} style={{ width: 34, height: 34, borderRadius: 9, borderWidth: 1.5, borderColor: on ? (r.sum === 7 ? C.danger : C.accent) : C.line, backgroundColor: on && i === visible.length - 1 ? (r.sum === 7 ? C.danger + '33' : C.accent + '33') : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ color: on ? C.text : C.faint, fontWeight: '800' }}>{on ? r.sum : '·'}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-
-            {shown >= total ? (
-              <Btn label="Ver el reparto de la jornada →" onPress={() => setReparto(true)} style={{ marginBottom: 12 }} />
-            ) : (
-              <View style={[s.row, { gap: 8, marginBottom: 12 }]}>
-                <Btn kind="ghost" label="Siguiente tirada ▸" onPress={() => setShown((x) => Math.min(total, x + 1))} style={{ flex: 1 }} />
-                <Btn kind="ghost" label="Saltar al reparto" onPress={() => { setShown(total); setReparto(true); }} style={{ flex: 1 }} />
-              </View>
-            )}
-
-            <View style={s.panel}>
-              <View style={s.row}>
-                <Text style={[s.overline, { flex: 1 }]}>MARCADOR EN DIRECTO</Text>
-                <Text style={s.overline}>A FAVOR : EN CONTRA</Text>
-              </View>
-              {state.players.map((p) => {
-                const sc = score(p.id);
-                const active = plays.some((pl) => pl.playerId === p.id || pl.scored.includes(p.id) || pl.stopped.some((x) => x.playerId === p.id));
-                return (
-                  <View key={p.id} style={[s.row, { marginTop: 8, padding: 6, borderRadius: 10, backgroundColor: active ? clubColor(p.id) + '2E' : 'transparent' }]}>
-                    <Crest name={p.name} color={clubColor(p.id)} size={28} />
-                    <View style={{ flex: 1, marginLeft: 8 }}>
-                      <Text numberOfLines={1} style={{ color: C.text, fontWeight: '700', fontSize: 13 }}>
-                        {p.name}
-                        {isMine(p.id) && mine.length < state.players.length ? <Text style={{ color: C.accent }}> · TÚ</Text> : null}
-                      </Text>
-                      <View style={{ height: 6, borderRadius: 3, backgroundColor: C.panelAlt, marginTop: 4 }}>
-                        <View style={{ height: 6, borderRadius: 3, backgroundColor: clubColor(p.id), width: `${Math.min(100, (100 * sc.gf) / maxGoals)}%` }} />
-                      </View>
-                    </View>
-                    <Text style={{ color: C.text, fontSize: 22, fontWeight: '900', width: 64, textAlign: 'right' }}>
-                      {sc.gf}
-                      <Text style={{ color: C.faint }}> : </Text>
-                      <Text style={{ color: C.dim }}>{sc.gc}</Text>
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-
-            {visible.length ? (
-              <View style={s.panel}>
-                <Overline>ACTA DEL PARTIDO</Overline>
-                <View style={{ marginTop: 6 }}>
-                  {visible.map((r, i) => (
-                    <ActaLine key={i} state={state} roll={r} index={i} mine={mine} />
-                  ))}
-                </View>
-              </View>
-            ) : null}
+            ))}
           </>
         ) : (
-          <>
-            <Text style={s.h1}>Final de la jornada</Text>
-            <Text style={[s.p, { marginBottom: 12 }]}>La jornada se ordena por diferencia de goles. Cuanto más arriba, más puntos de liga y mejor premio.</Text>
-            {heroes.map((r) => (
-              <HeroResult key={r.playerId} state={state} r={r} />
-            ))}
-
-            <View style={s.panel}>
-              <View style={[s.row, { marginBottom: 6 }]}>
-                <Text style={[s.th, { flex: 1, textAlign: 'left' }]}>REPARTO DE LA JORNADA</Text>
-                <Text style={[s.th, { width: 50 }]}>GOLES</Text>
-                <Text style={[s.th, { width: 52 }]}>PUNTOS</Text>
-                <Text style={[s.th, { width: 56 }]}>DINERO</Text>
+          <View style={[s.panel, { alignItems: 'center', paddingVertical: 16 }]}>
+            <View style={[s.row, { alignSelf: 'stretch' }]}>
+              <Text style={[s.overline, { flex: 1 }]}>TIRADA {cur + 1} DE {total}</Text>
+              <View style={s.row}>
+                <Crest name={name(rollers[cur])} color={clubColor(rollers[cur])} size={18} />
+                <Text style={[s.overline, { marginLeft: 6, color: C.dim }]}>TIRA {name(rollers[cur]).toUpperCase()}</Text>
               </View>
-              {report.results.map((r) => (
-                <View key={r.playerId} style={[s.row, s.tr]}>
-                  <Text style={{ color: C.faint, width: 20, fontWeight: '700' }}>{r.rank}</Text>
-                  <Crest name={name(r.playerId)} color={clubColor(r.playerId)} size={24} />
-                  <Text numberOfLines={1} style={{ color: C.text, flex: 1, fontWeight: '700', marginLeft: 8 }}>{name(r.playerId)}</Text>
-                  <Text style={[s.td, { width: 50, color: C.text, fontWeight: '800' }]}>{r.goals}:{r.against}</Text>
-                  <Text style={[s.td, { width: 52, color: C.accent, fontWeight: '900', fontSize: 15 }]}>+{r.points}</Text>
-                  <Text style={[s.td, { width: 56, color: C.good, fontWeight: '800' }]}>+{r.prize + r.ticket + r.saveBonus}M</Text>
+            </View>
+            <Dice roll={roll} rolling={rolling} />
+            {rolling ? <Text style={[s.p, { marginTop: 12 }]}>Los dados están en el aire…</Text> : null}
+            {!rolling ? news.slice(0, revealed).map((nw, i) => <NewsCard key={`${cur}-${i}`} news={nw} big={i === revealed - 1} />) : null}
+            {delta && (delta.gf || delta.gc) ? (
+              <Pop style={{ marginTop: 10 }}>
+                <View style={[s.row, { gap: 8 }]}>
+                  {delta.gf ? <View style={{ backgroundColor: C.good + '2E', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}><Text style={{ color: C.good, fontWeight: '900' }}>+{delta.gf} a favor</Text></View> : null}
+                  {delta.gc ? <View style={{ backgroundColor: C.danger + '2E', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}><Text style={{ color: C.danger, fontWeight: '900' }}>+{delta.gc} en contra</Text></View> : null}
                 </View>
+              </Pop>
+            ) : null}
+          </View>
+        )}
+
+        {/* Qué toca ahora: leer, tirar los dados, esperar o pasar al reparto. */}
+        <View style={[s.panel, { borderColor: caughtUp && (iRoll || !live) ? C.accent : C.line }]}>
+          {!caughtUp ? (
+            <>
+              <Text style={{ color: C.dim, fontWeight: '700', textAlign: 'center' }}>
+                {cur < rolls.length - 1 ? 'Hay más tiradas por contar…' : 'Leyendo la jugada…'}
+              </Text>
+              <ReadingBar duration={readDuration} token={readToken} />
+            </>
+          ) : live && roller !== null ? (
+            iRoll ? (
+              <>
+                <Text style={{ color: C.text, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
+                  {viewer === null ? `Le toca tirar a ${name(roller)}` : cur < 0 ? 'Abres tú el partido' : '¡Te toca tirar!'}
+                </Text>
+                <Btn label="🎲 Tirar los dados" onPress={props.onRoll} />
+              </>
+            ) : (
+              <>
+                <View style={[s.row, { justifyContent: 'center' }]}>
+                  <Crest name={name(roller)} color={clubColor(roller)} size={24} />
+                  <Text style={{ color: C.text, fontWeight: '800', marginLeft: 8 }}>
+                    {state.players[roller].isBot ? `${name(roller)} va a tirar los dados…` : `Esperando a que ${name(roller)} tire los dados…`}
+                  </Text>
+                </View>
+                {props.waitingExtra}
+              </>
+            )
+          ) : (
+            <Btn label="Ver el reparto de la jornada →" onPress={() => setReparto(true)} />
+          )}
+        </View>
+
+        <View style={s.panel}>
+          <View style={s.row}>
+            <Text style={[s.overline, { flex: 1 }]}>MARCADOR</Text>
+            <Text style={s.overline}>A FAVOR : EN CONTRA</Text>
+          </View>
+          {state.players.map((p) => {
+            const sc = score(p.id);
+            return (
+              <View key={p.id} style={[s.row, { marginTop: 8, padding: 6, borderRadius: 10, backgroundColor: isMine(p.id) && viewer !== null ? clubColor(p.id) + '22' : 'transparent' }]}>
+                <Crest name={p.name} color={clubColor(p.id)} size={28} />
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text numberOfLines={1} style={{ color: C.text, fontWeight: '700', fontSize: 13 }}>
+                    {p.name}
+                    {viewer === p.id ? <Text style={{ color: C.accent }}> · TÚ</Text> : null}
+                  </Text>
+                  <View style={{ height: 6, borderRadius: 3, backgroundColor: C.panelAlt, marginTop: 4 }}>
+                    <View style={{ height: 6, borderRadius: 3, backgroundColor: clubColor(p.id), width: `${Math.min(100, (100 * sc.gf) / maxGoals)}%` }} />
+                  </View>
+                </View>
+                <Text style={{ color: C.text, fontSize: 22, fontWeight: '900', width: 64, textAlign: 'right' }}>
+                  {sc.gf}
+                  <Text style={{ color: C.faint }}> : </Text>
+                  <Text style={{ color: C.dim }}>{sc.gc}</Text>
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {cur > 0 ? <Acta state={state} rolls={rolls.slice(0, cur)} rollers={rollers} /> : null}
+      </ScrollView>
+    </View>
+  );
+}
+
+/** Crónica neutral de las tiradas ya jugadas. */
+function Acta({ state, rolls, rollers }: { state: GameState; rolls: RollReport[]; rollers: number[] }) {
+  return (
+    <View style={[s.panel, { marginTop: 4 }]}>
+      <Overline>ACTA DEL PARTIDO</Overline>
+      <View style={{ marginTop: 6 }}>
+        {rolls.map((r, i) => (
+          <View key={i} style={[s.row, { alignItems: 'flex-start', paddingVertical: 7, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }]}>
+            <View style={{ width: 34, height: 34, borderRadius: 9, borderWidth: 1.5, borderColor: r.sum === 7 ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: C.text, fontWeight: '800' }}>{r.sum}</Text>
+            </View>
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={[s.overline, { marginBottom: 2 }]}>TIRADA {i + 1} · {state.players[rollers[i]]?.name.toUpperCase()}</Text>
+              {rollNews(state, r, state.jornada * 100 + i, null).map((nw, k) => (
+                <Text key={k} style={{ color: C.dim, fontSize: 13, lineHeight: 19, marginBottom: 2 }}>
+                  {nw.club !== undefined ? <Text style={{ color: clubColor(nw.club), fontWeight: '800' }}>{state.players[nw.club].name}: </Text> : null}
+                  {nw.text}
+                </Text>
               ))}
             </View>
-
-            <StandingsTable state={state} />
-            {props.footer ?? <Btn label={last ? '🏆 Ver el final de temporada' : `Ir al mercado de la jornada ${state.jornada + 1} →`} onPress={onNext} />}
-
-            <View style={[s.panel, { marginTop: 14 }]}>
-              <Overline>ACTA DEL PARTIDO</Overline>
-              <View style={{ marginTop: 6 }}>
-                {report.rolls.map((r, i) => (
-                  <ActaLine key={i} state={state} roll={r} index={i} mine={mine} />
-                ))}
-              </View>
-            </View>
-            <Btn kind="ghost" small label="◂ Volver a ver las tiradas" onPress={() => { setShown(0); setReparto(false); }} />
-          </>
-        )}
-      </ScrollView>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }

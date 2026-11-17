@@ -36,7 +36,7 @@ Un futbolista vale más cuanto más probables son sus números, y cada posición
 
 ## El partido: todos contra todos
 
-Cada jornada se juega **un solo partido entre todos los clubes**. Se tiran los dos dados **6 veces**. Con el número que sale:
+Cada jornada se juega **un solo partido entre todos los clubes**. Los clubes **tiran los dados por turnos**: cada uno lanza al menos una vez y nunca hay menos de 6 tiradas (6 con 2, 3 o 6 clubes; 8 con 4 u 8; 10 con 5; 7 con 7). Con el número que sale:
 
 1. **Ataca** cada club que tenga delanteros o medios con ese número. Su **fuerza de ataque** es la suma:
    - cada delantero: **2**
@@ -44,7 +44,6 @@ Cada jornada se juega **un solo partido entre todos los clubes**. Se tiran los d
 2. **Defiende** cada rival con sus futbolistas que tengan ese mismo número. Su **fuerza de defensa** es la suma:
    - el portero: **2**
    - cada defensa: **1**
-   - cada medio: **1**
 3. La jugada es **gol contra cada rival cuya defensa sea menor que el ataque**. Si la defensa iguala o supera al ataque, la para.
 
 Un mismo ataque puede ser gol contra unos rivales y parada para otros. Y en la misma tirada puedes encajar un gol y marcar otro.
@@ -53,17 +52,21 @@ Un mismo ataque puede ser gol contra unos rivales y parada para otros. Y en la m
 
 | Atacas con | Fuerza | Te lo para un rival que tenga el 8 en… |
 |---|---|---|
-| Un medio | 1 | un defensa, un medio o el portero |
-| Un delantero | 2 | el portero, o dos entre defensas y medios |
-| Medio y delantero (jugada combinada) | 3 | el portero y además un defensa o un medio |
-| Dos delanteros | 4 | el portero y dos más |
+| Un medio (disparo lejano) | 1 | un defensa o el portero |
+| Un delantero (remate) | 2 | el portero, o dos defensas |
+| Medio y delantero (jugada combinada) | 3 | el portero y un defensa |
+| Dos delanteros | 4 | el portero y dos defensas |
 
 ### Qué aporta cada posición
 
-- **Delantero:** el que marca. Fuerza 2, no defiende.
-- **Medio:** juega en las dos áreas. Suma 1 al ataque y 1 a la defensa, y convierte el remate de un delantero en una jugada combinada.
-- **Defensa:** suma 1 a la defensa y **sale a la contra**: si tu equipo para una jugada y tienes un defensa con ese número, marcas un gol al club que atacó.
-- **Portero:** suma 2 a la defensa en 3 o 4 números. Cobra **1M de prima** por cada jugada rival que ayude a parar y, con **3 paradas en una jornada**, gana una carta especial.
+| Posición | Ataque | Defensa | Lo que le define |
+|---|---|---|---|
+| **Delantero** | 2 | – | Es el que marca. |
+| **Medio** | 1 | – | Da el pase: convierte un remate en jugada combinada. Y **cubre la espalda**: si participa en tu ataque, no te pueden hacer un contragolpe. |
+| **Defensa** | – | 1 | **Sale a la contra**: si tu equipo para una jugada en la que no había medios y tienes un defensa con ese número, marcas un gol al club que atacó. |
+| **Portero** | – | 2 | Tiene 3 o 4 números. Cobra **1M de prima** por cada jugada que ayude a parar y, con **3 paradas en una jornada**, gana una carta especial. |
+
+Atacan delanteros y medios; defienden porteros y defensas. Nadie hace las dos cosas.
 
 **Si sale un 7, interviene el VAR:** no hay jugadas y la mitad baja de la clasificación (redondeando hacia abajo, mínimo un club) roba una carta especial gratis.
 
@@ -91,7 +94,7 @@ Al empezar cada jornada, el futbolista más antiguo del mercado se retira y entr
 
 ### 2. Partido
 
-Las 6 tiradas descritas arriba.
+Las tiradas descritas arriba, por turnos. Tras cada tirada se cuenta lo que ha pasado, noticia a noticia, antes de que el siguiente club pueda tirar.
 
 ### 3. Recuento y reparto
 
@@ -134,5 +137,5 @@ Tras la última jornada, **balance final:** cada club suma 1 punto por cada 20M 
 
 - Mira los números de los rivales antes de fichar: un delantero con el 6 vale poco si todos tienen portero con el 6, y uno con el 11 marca pocas veces pero casi nadie se lo para.
 - En «Mi club» ves, para cada número, tu ataque, tu defensa y a cuántos rivales marcarías hoy.
-- Atacar con un medio suelto contra equipos con defensas es regalarles un contragolpe.
+- Un delantero que ataca solo contra equipos con defensas se expone al contragolpe; con un medio en el mismo número, no.
 - Sin portero encajas casi todo lo que te lancen.

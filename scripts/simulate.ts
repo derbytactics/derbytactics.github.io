@@ -38,7 +38,7 @@ function playGame(n: number, seed: number) {
     if (a.type === 'clause') clauses++;
     if (a.type === 'playCard') cards++;
     s = apply(s, a);
-    if (a.type === 'playMatch') {
+    if (a.type === 'roll' && s.phase === 'summary') {
       for (const r of s.lastMatch!.rolls) for (const pl of r.plays) { plays++; stopped += pl.stopped.length; scored += pl.scored.length; }
     }
     if (s.phase === 'summary' && s.jornada === Math.ceil(s.totalJornadas / 3)) earlyLeader = standings(s)[0].id;

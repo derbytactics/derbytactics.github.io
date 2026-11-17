@@ -13,6 +13,8 @@ import {
   clauseOf,
   createGame,
   currentPlayer,
+  currentRoller,
+  rollsFor,
   hasKeeper,
   lineup,
   pipsOf,
@@ -173,6 +175,7 @@ describe('partido', () => {
     s.players[0].squad = a;
     s.players[1].squad = b;
     s.phase = 'match';
+    s.match = null;
     tweak?.(s);
     const after = apply(s, { type: 'playMatch' });
     const m = after.lastMatch!;
@@ -184,7 +187,7 @@ describe('partido', () => {
   it('un delantero marca a quien no tiene portero en ese número, y cobra taquilla y premio', () => {
     const { after, m, hits, r0, r1 } = play([entry(DEL68)], []);
     expect(hits).toBeGreaterThan(0);
-    expect(m.rolls).toHaveLength(CONFIG.rollsPerMatchday);
+    expect(m.rolls).toHaveLength(6);
     expect([r0.goals, r0.against, r1.goals, r1.against]).toEqual([hits, 0, 0, hits]);
     expect(r0.rank).toBe(1);
     expect(r0.ticket).toBe(hits * CONFIG.stadium.ticketPerGoal[0]);
@@ -204,10 +207,33 @@ describe('partido', () => {
     const { hits, r0, r1 } = play([entry(DEL68), entry(MED68)], [entry(POR)]);
     expect([r0.goals, r1.against]).toEqual([hits, hits]);
   });
-  it('portero y defensa paran la combinada, y el defensa sale a la contra', () => {
-    const { hits, r0, r1 } = play([entry(DEL68), entry(MED68)], [entry(POR), entry(DEF68)]);
+  it('portero y defensa paran la combinada, y el medio evita el contragolpe', () => {
+    const { r0, r1 } = play([entry(DEL68), entry(MED68)], [entry(POR), entry(DEF68)]);
+    expect([r0.goals, r0.against, r1.goals, r1.counters]).toEqual([0, 0, 0, 0]);
+  });
+  it('si paras un remate sin medio y tienes un defensa, sales a la contra y marcas', () => {
+    const { hits, r0, r1 } = play([entry(DEL68)], [entry(POR), entry(DEF68)]);
     expect([r0.goals, r0.against]).toEqual([0, hits]);
     expect([r1.goals, r1.counters, r1.against]).toEqual([hits, hits, 0]);
+  });
+  it('el medio no defiende: un medio rival no para nada', () => {
+    const { hits, r0 } = play([entry(MED68)], [entry(card('MED', [5, 6, 9])), entry(card('MED', [4, 6, 8]))]);
+    expect(r0.goals).toBe(hits);
+  });
+  it('se juega tirada a tirada y cada club tira los dados en su turno', () => {
+    let s = newGame(3, 11);
+    s.phase = 'match';
+    s.match = null;
+    s = apply(s, { type: 'roll' });
+    expect(s.match!.rolls).toHaveLength(1);
+    expect(s.match!.rollers).toEqual([0, 1, 2, 0, 1, 2]);
+    expect(currentRoller(s)).toBe(1);
+    expect(s.phase).toBe('match');
+    for (let i = 0; i < 5; i++) s = apply(s, { type: 'roll' });
+    expect(s.phase).toBe('summary');
+    expect(s.match).toBeNull();
+    expect(s.lastMatch!.rolls).toHaveLength(6);
+    expect([2, 4, 5, 8].map(rollsFor)).toEqual([6, 8, 10, 8]);
   });
   it('la racha dobla la fuerza, la baja la anula y a puerta cerrada no hay taquilla', () => {
     const streak = play([entry(DEL68, { streakUntil: 1 })], [entry(POR), entry(DEF68)]);

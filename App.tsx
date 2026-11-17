@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { backendEnabled, getAccount, initAccount, refreshProfile } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
-import { Action, BOT_STYLES, GameState, apply, botAction, check, createGame, currentPlayer } from './src/engine';
+import { Action, BOT_STYLES, GameState, apply, botAction, check, createGame, currentPlayer, currentRoller } from './src/engine';
 import { RoomState } from './src/net/room';
 import { GUEST_KEY, HOST_KEY, normalizeCode } from './src/net/session';
 import { load } from './src/net/storage';
@@ -59,16 +59,24 @@ export default function App() {
 
   // Partida en un solo dispositivo: la IA juega sola, acción a acción, con una pequeña pausa.
   const me = mode.kind === 'local' && game ? currentPlayer(game) : null;
+  const roller = mode.kind === 'local' && game ? currentRoller(game) : null;
+  const botRolls = roller !== null && !!game?.players[roller].isBot;
   useEffect(() => {
-    if (!me?.isBot) return;
-    const t = setTimeout(() => {
-      setGame((g) => {
-        const p = g && currentPlayer(g);
-        return g && p?.isBot ? apply(g, botAction(g, BOT_STYLES[p.id % BOT_STYLES.length])) : g;
-      });
-    }, 350);
+    if (!me?.isBot && !botRolls) return;
+    const t = setTimeout(
+      () => {
+        setGame((g) => {
+          if (!g) return g;
+          const p = currentPlayer(g);
+          if (p?.isBot) return apply(g, botAction(g, BOT_STYLES[p.id % BOT_STYLES.length]));
+          const r = currentRoller(g);
+          return r !== null && g.players[r].isBot ? apply(g, { type: 'roll' }) : g;
+        });
+      },
+      botRolls ? 1500 : 350,
+    );
     return () => clearTimeout(t);
-  }, [game, me]);
+  }, [game, me, botRolls]);
 
   const toMenu = () => {
     setGame(null);

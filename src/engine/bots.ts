@@ -47,7 +47,7 @@ const entryPower = (e: SquadEntry, J: number) =>
 
 /** Devuelve la siguiente acción del bot al que le toca. Llamar en bucle hasta que devuelva endTurn. */
 export function botAction(state: GameState, style: BotStyle = 'equilibrado'): Action {
-  if (state.phase === 'match') return { type: 'playMatch' };
+  if (state.phase === 'match') return { type: 'roll' };
   if (state.phase === 'summary') return { type: 'nextJornada' };
   const me = currentPlayer(state);
   if (!me) return { type: 'endTurn' };

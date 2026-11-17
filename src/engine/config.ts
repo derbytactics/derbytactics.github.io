@@ -17,17 +17,19 @@ export const CONFIG = {
   roles: {
     POR: { attack: 0, defense: 2 },
     DEF: { attack: 0, defense: 1 },
-    MED: { attack: 1, defense: 1 },
+    MED: { attack: 1, defense: 0 },
     DEL: { attack: 2, defense: 0 },
   } as Record<'POR' | 'DEF' | 'MED' | 'DEL', { attack: number; defense: number }>,
   /** Contragolpe: si paras una jugada con un defensa en ese número, marcas un gol a quien atacó. */
   counterAttack: true,
+  /** Si en tu ataque participa un medio, cubre la espalda: no te pueden hacer contragolpe. */
+  midfieldCoversCounter: true,
   /** Prima por cada jugada rival que para tu portero. */
   saveBonus: 1,
   /** Paradas del portero en una jornada que dan una carta especial. */
   savesForCard: 3,
-  /** Tiradas de 2 dados por jornada (ocasiones de gol). */
-  rollsPerMatchday: 6,
+  /** Mínimo de tiradas por jornada. Se tira por turnos: cada club lanza los dados al menos una vez. */
+  minRollsPerMatchday: 6,
   /** Duración de la temporada en jornadas. */
   seasonLengths: { corta: 8, estandar: 12, larga: 16 } as Record<SeasonLength, number>,
 
@@ -35,7 +37,7 @@ export const CONFIG = {
    * Precio = factor de posición × (perPip·pips + quad·pips²).
    * Los pips son la frecuencia de sus números; el factor refleja cuánto pesa su papel.
    */
-  price: { perPip: 1.8, quad: 0.1, factor: { POR: 0.5, DEF: 0.9, MED: 0.7, DEL: 1 } as Record<'POR' | 'DEF' | 'MED' | 'DEL', number> },
+  price: { perPip: 1.8, quad: 0.1, factor: { POR: 0.5, DEF: 0.7, MED: 0.6, DEL: 1.05 } as Record<'POR' | 'DEF' | 'MED' | 'DEL', number> },
   /** Al vender al banco se recupera este porcentaje del precio. */
   sellRatio: 0.5,
   /** Cláusula = precio × multiplicador. */
