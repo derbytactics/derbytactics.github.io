@@ -116,6 +116,7 @@ export type SpecialKind =
   | 'incidentes'
   | 'puertaCerrada'
   | 'lesion'
+  | 'amarilla'
   | 'roja'
   | 'racha'
   | 'olfato'
@@ -162,12 +163,19 @@ export const SPECIAL_INFO: Record<
     copies: 2,
     text: () => `Un futbolista rival se pierde ${S.injuryRounds} jornadas: ni ataca ni defiende.`,
   },
+  amarilla: {
+    title: 'Tarjeta amarilla',
+    target: 'rivalFootballer',
+    sanction: true,
+    copies: 4,
+    text: () => `Un futbolista rival juega esta jornada con ${S.yellowPenalty} menos de fuerza. Si ya tenía amarilla, es expulsado esta jornada.`,
+  },
   roja: {
     title: 'Tarjeta roja',
     target: 'rivalFootballer',
     sanction: true,
-    copies: 3,
-    text: () => `Un futbolista rival queda sancionado ${S.redCardRounds} jornada: ni ataca ni defiende.`,
+    copies: 2,
+    text: () => `Un futbolista rival es expulsado: ni ataca ni defiende esta jornada ni la siguiente.`,
   },
   racha: {
     title: 'Jugador en racha',

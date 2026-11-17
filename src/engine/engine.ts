@@ -23,6 +23,8 @@ export interface SquadEntry {
   streakUntil: number;
   /** Lesionado/sancionado hasta esta jornada incluida. */
   outUntil: number;
+  /** Amonestado (juega con menos fuerza) hasta esta jornada incluida. */
+  yellowUntil?: number;
   /** Número extra temporal. */
   extra: { number: number; until: number } | null;
 }
@@ -206,6 +208,7 @@ export function activeNumbers(entry: SquadEntry, jornada: number): number[] {
 }
 export const isOut = (e: SquadEntry, jornada: number) => e.outUntil >= jornada;
 export const onStreak = (e: SquadEntry, jornada: number) => e.streakUntil >= jornada;
+export const isBooked = (e: SquadEntry, jornada: number) => (e.yellowUntil ?? 0) >= jornada;
 export const isProtected = (e: SquadEntry, jornada: number) => e.noClauseUntil >= jornada;
 
 export function sellValue(cardId: string): number {
@@ -255,7 +258,9 @@ export function powerOf(entry: SquadEntry, jornada: number): { attack: number; d
   if (isOut(entry, jornada)) return { attack: 0, defense: 0 };
   const role = roleOf(footballer(entry.cardId).position);
   const k = onStreak(entry, jornada) ? 2 : 1;
-  return { attack: role.attack * k, defense: role.defense * k };
+  // La amarilla resta fuerza a lo que el futbolista haga (atacar o defender), sin bajar de cero.
+  const minus = isBooked(entry, jornada) ? CONFIG.special.yellowPenalty : 0;
+  return { attack: Math.max(0, role.attack * k - minus), defense: Math.max(0, role.defense * k - minus) };
 }
 
 /** Ataque y defensa de un club con un número concreto. */
@@ -594,9 +599,18 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
       theirs!.outUntil = J + S.injuryRounds - 1;
       say(state, `${footballer(theirs!.cardId).name} (${rival!.name}) se lesiona: ${S.injuryRounds} jornadas de baja.`, [rival!.id]);
       break;
+    case 'amarilla':
+      if (isBooked(theirs!, J)) {
+        theirs!.outUntil = Math.max(theirs!.outUntil, J);
+        say(state, `Segunda amarilla a ${footballer(theirs!.cardId).name} (${rival!.name}): expulsado esta jornada.`, [rival!.id]);
+      } else {
+        theirs!.yellowUntil = J;
+        say(state, `Amarilla a ${footballer(theirs!.cardId).name} (${rival!.name}): juega esta jornada con menos fuerza.`, [rival!.id]);
+      }
+      break;
     case 'roja':
       theirs!.outUntil = J + S.redCardRounds - 1;
-      say(state, `Roja a ${footballer(theirs!.cardId).name} (${rival!.name}): se pierde esta jornada.`, [rival!.id]);
+      say(state, `Roja a ${footballer(theirs!.cardId).name} (${rival!.name}): expulsado esta jornada y la siguiente.`, [rival!.id]);
       break;
     case 'racha':
       own!.streakUntil = J + S.streakRounds - 1;

@@ -172,6 +172,7 @@ function pickCardToPlay(state: GameState, me: Player, style: BotStyle, remaining
         break;
       }
       case 'lesion':
+      case 'amarilla':
       case 'roja': {
         let best: { r: Player; e: SquadEntry } | null = null;
         for (const r of rivals.slice(0, 2)) {

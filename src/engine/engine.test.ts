@@ -243,6 +243,28 @@ describe('partido', () => {
     }
     expect(sevens).toBeGreaterThan(0);
   });
+  it('la amarilla resta 1 de fuerza y la segunda amarilla expulsa', () => {
+    // Delantero amonestado: ataque 1, lo para hasta un medio... no: lo para el portero y también marcaría a quien no defienda.
+    const booked = play([entry(DEL68, { yellowUntil: 1 }), entry(MED68)], [entry(POR)]);
+    expect(booked.r0.goals).toBe(0); // 1 + 1 = 2 no supera al portero (2)
+    const keeperBooked = play([entry(DEL68)], [entry(POR, { yellowUntil: 1 })]);
+    expect(keeperBooked.r0.goals).toBe(keeperBooked.hits); // portero amonestado defiende 1
+    let s = give(give(newGame(2), 0, 'amarilla-1'), 0, 'amarilla-2');
+    s.turnOrder = [0, 1];
+    s.players[1].squad = [entry(DEL68)];
+    s = apply(s, { type: 'playCard', handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 });
+    expect(s.players[1].squad[0].yellowUntil).toBe(1);
+    expect(s.players[1].squad[0].outUntil).toBe(0);
+    s = apply(s, { type: 'playCard', handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 });
+    expect(s.players[1].squad[0].outUntil).toBe(1);
+  });
+  it('la roja expulsa esta jornada y la siguiente', () => {
+    let s = give(newGame(2), 0, 'roja-1');
+    s.turnOrder = [0, 1];
+    s.players[1].squad = [entry(DEL68)];
+    s = apply(s, { type: 'playCard', handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 });
+    expect(s.players[1].squad[0].outUntil).toBe(2);
+  });
   it('la racha dobla la fuerza, la baja la anula y a puerta cerrada no hay taquilla', () => {
     const streak = play([entry(DEL68, { streakUntil: 1 })], [entry(POR)]);
     expect(streak.r0.goals).toBe(streak.hits);

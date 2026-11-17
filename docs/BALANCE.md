@@ -49,6 +49,19 @@ Con esta muestra, diferencias de ±0,12 son ruido. En esas partidas se para en t
 | Taquilla por jugada de gol, no por rival batido | Si no, con 8 clubes un gol llenaba el estadio siete veces. |
 | Una tirada por club y jornada | Cada persona tira sus dados. Con un 7, quien tira roba carta. |
 
+## Alternativas probadas para el defensa
+
+Ratio de campeonatos de las tácticas ofensiva y defensiva (500 temporadas por mesa, solo las cuatro tácticas jugables):
+
+| Variante | Ofensivo (2 / 4 / 8 clubes) | Defensivo (2 / 4 / 8 clubes) |
+|---|---|---|
+| Defensa con fuerza 2 (la actual) | 0,87 / 0,95 / 1,07 | 1,05 / 0,98 / 1,15 |
+| Defensa con fuerza 1 | 1,11 / 1,43 / 1,62 | 0,82 / 0,59 / 0,61 |
+| Defensa con fuerza 1 y cada parada vale medio gol en la clasificación de la jornada | 1,12 / 1,30 / 1,18 | 0,85 / 0,75 / 0,93 |
+| Defensa con fuerza 1 y cada parada vale un gol | 1,12 / 1,33 / 0,94 | 0,85 / 0,69 / 1,26 |
+
+Con el defensa a 1, llenar el equipo de delanteros vuelve a compensar. Premiar las paradas lo corrige solo a medias y de forma distinta según el número de clubes.
+
 ## Problemas conocidos
 
 - **Con pocos clubes pasan pocas cosas por jornada.** Con 2 hay solo 2 tiradas: de media, menos de una jugada de ataque y unos 0,6 goles por club y jornada, y muchas jornadas acaban 0-0. Con 4 hay unas 2 jugadas por club; con 8, unas 4.

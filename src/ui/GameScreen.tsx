@@ -30,6 +30,7 @@ export const SPECIAL_ICON: Record<SpecialKind, string> = {
   incidentes: '🚨',
   puertaCerrada: '🚪',
   lesion: '🩹',
+  amarilla: '🟨',
   roja: '🟥',
   racha: '🔥',
   olfato: '🎯',

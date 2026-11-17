@@ -7,6 +7,7 @@ import {
   activeNumbers,
   basePrice,
   footballer,
+  isBooked,
   isOut,
   isProtected,
   onStreak,
@@ -114,9 +115,10 @@ export function FootballerCard(props: { cardId: string; entry?: SquadEntry; stat
           ))}
         </View>
       </View>
-      {e && (out || onStreak(e, J) || isProtected(e, J) || e.shielded) ? (
+      {e && (out || isBooked(e, J) || onStreak(e, J) || isProtected(e, J) || e.shielded) ? (
         <View style={[s.row, { paddingHorizontal: 12, paddingBottom: 6, flexWrap: 'wrap' }]}>
           {out ? <Tag text={`🩹 De baja hasta J${e.outUntil}`} color={C.danger} /> : null}
+          {!out && isBooked(e, J) ? <Tag text="🟨 Amonestado: −1 de fuerza" color={C.accent} /> : null}
           {onStreak(e, J) ? <Tag text={`🔥 Doble fuerza hasta J${e.streakUntil}`} color={C.accent} /> : null}
           {isProtected(e, J) ? <Tag text={`🔒 Intransferible hasta J${e.noClauseUntil}`} color={C.good} /> : null}
           {e.shielded ? <Tag text="🛡 Blindado" color={C.good} /> : null}

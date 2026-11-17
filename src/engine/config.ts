@@ -64,8 +64,10 @@ export const CONFIG = {
     maxPlayedPerTurn: 2,
     fine: 6,
     closedDoorsRounds: 2,
-    injuryRounds: 2,
-    redCardRounds: 1,
+    injuryRounds: 3,
+    redCardRounds: 2,
+    /** Fuerza que pierde un futbolista amonestado durante la jornada. */
+    yellowPenalty: 1,
     streakRounds: 2,
     extraNumberRounds: 3,
     academyRounds: 3,
