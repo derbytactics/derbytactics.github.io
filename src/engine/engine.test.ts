@@ -175,7 +175,8 @@ describe('partido', () => {
     s.players[0].squad = a;
     s.players[1].squad = b;
     s.phase = 'match';
-    s.match = null;
+    // Partido de prueba a 12 tiradas para que salgan el 6 y el 8 con seguridad.
+    s.match = { jornada: 1, rolls: [], rollers: Array.from({ length: 12 }, (_, i) => i % 2) };
     tweak?.(s);
     const after = apply(s, { type: 'playMatch' });
     const m = after.lastMatch!;
@@ -187,7 +188,8 @@ describe('partido', () => {
   it('un delantero marca a quien no tiene portero en ese número, y cobra taquilla y premio', () => {
     const { after, m, hits, r0, r1 } = play([entry(DEL68)], []);
     expect(hits).toBeGreaterThan(0);
-    expect(m.rolls).toHaveLength(6);
+    const cardsWon = m.rolls.flatMap((r) => r.varDraws).length;
+    expect(m.rolls).toHaveLength(12);
     expect([r0.goals, r0.against, r1.goals, r1.against]).toEqual([hits, 0, 0, hits]);
     expect(r0.rank).toBe(1);
     expect(r0.ticket).toBe(hits * CONFIG.stadium.ticketPerGoal[0]);
@@ -207,36 +209,42 @@ describe('partido', () => {
     const { hits, r0, r1 } = play([entry(DEL68), entry(MED68)], [entry(POR)]);
     expect([r0.goals, r1.against]).toEqual([hits, hits]);
   });
-  it('portero y defensa paran la combinada, y el medio evita el contragolpe', () => {
+  it('portero y defensa paran la combinada; el defensa solo defiende', () => {
     const { r0, r1 } = play([entry(DEL68), entry(MED68)], [entry(POR), entry(DEF68)]);
-    expect([r0.goals, r0.against, r1.goals, r1.counters]).toEqual([0, 0, 0, 0]);
-  });
-  it('si paras un remate sin medio y tienes un defensa, sales a la contra y marcas', () => {
-    const { hits, r0, r1 } = play([entry(DEL68)], [entry(POR), entry(DEF68)]);
-    expect([r0.goals, r0.against]).toEqual([0, hits]);
-    expect([r1.goals, r1.counters, r1.against]).toEqual([hits, hits, 0]);
+    expect([r0.goals, r0.against, r1.goals, r1.against]).toEqual([0, 0, 0, 0]);
   });
   it('el medio no defiende: un medio rival no para nada', () => {
     const { hits, r0 } = play([entry(MED68)], [entry(card('MED', [5, 6, 9])), entry(card('MED', [4, 6, 8]))]);
     expect(r0.goals).toBe(hits);
   });
-  it('se juega tirada a tirada y cada club tira los dados en su turno', () => {
-    let s = newGame(3, 11);
-    s.phase = 'match';
-    s.match = null;
-    s = apply(s, { type: 'roll' });
-    expect(s.match!.rolls).toHaveLength(1);
-    expect(s.match!.rollers).toEqual([0, 1, 2, 0, 1, 2]);
-    expect(currentRoller(s)).toBe(1);
-    expect(s.phase).toBe('match');
-    for (let i = 0; i < 5; i++) s = apply(s, { type: 'roll' });
-    expect(s.phase).toBe('summary');
-    expect(s.match).toBeNull();
-    expect(s.lastMatch!.rolls).toHaveLength(6);
-    expect([2, 4, 5, 8].map(rollsFor)).toEqual([6, 8, 10, 8]);
+  it('cada club tira los dados una vez por jornada, y con un 7 roba carta quien tiró', () => {
+    expect([2, 4, 5, 8].map(rollsFor)).toEqual([2, 4, 5, 8]);
+    let sevens = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      let s = newGame(3, seed);
+      s.phase = 'match';
+      s.match = null;
+      s = apply(s, { type: 'roll' });
+      expect(s.match!.rollers).toEqual([0, 1, 2]);
+      expect(currentRoller(s)).toBe(1);
+      const first = s.match!.rolls[0];
+      if (first.sum === 7) {
+        sevens++;
+        expect(first.plays).toHaveLength(0);
+        expect(first.varDraws.map((d) => d.playerId)).toEqual([0]);
+        expect(s.players.map((p) => p.hand.length)).toEqual([1, 0, 0]);
+      } else {
+        expect(first.varDraws).toHaveLength(0);
+      }
+      s = apply(apply(s, { type: 'roll' }), { type: 'roll' });
+      expect(s.phase).toBe('summary');
+      expect(s.match).toBeNull();
+      expect(s.lastMatch!.rolls).toHaveLength(3);
+    }
+    expect(sevens).toBeGreaterThan(0);
   });
   it('la racha dobla la fuerza, la baja la anula y a puerta cerrada no hay taquilla', () => {
-    const streak = play([entry(DEL68, { streakUntil: 1 })], [entry(POR), entry(DEF68)]);
+    const streak = play([entry(DEL68, { streakUntil: 1 })], [entry(POR)]);
     expect(streak.r0.goals).toBe(streak.hits);
     const injured = play([entry(DEL68)], [entry(POR, { outUntil: 1 })]);
     expect(injured.r0.goals).toBe(injured.hits);

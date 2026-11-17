@@ -4,7 +4,7 @@
  */
 import { GameState, Play, RollReport, activeNumbers, footballer, isOut } from '../engine';
 
-export type NewsKind = 'attack' | 'goal' | 'stopped' | 'counterAgainst' | 'concede' | 'save' | 'counterFor' | 'info' | 'var' | 'card';
+export type NewsKind = 'attack' | 'goal' | 'stopped' | 'concede' | 'save' | 'info' | 'var' | 'card';
 
 export interface News {
   kind: NewsKind;
@@ -37,7 +37,11 @@ const GOAL_TITLE = ['¡GOOOL!', '¡Golazo!', '¡A la red!', '¡Gol!'];
 const BEAT = ['Bates a', 'Superas a', 'La mandas a la red de', 'Perforas la portería de'];
 const KEEPER_SAVE = ['vuela y la saca con la manopla', 'detiene abajo, muy seguro', 'despeja a córner con una mano salvadora', 'adivina el lado y la atrapa', 'saca un pie milagroso'];
 const DEF_STOP = ['se anticipa y corta el pase', 'roba la pelota con un cruce perfecto', 'mete la pierna y despeja', 'gana el duelo y recupera', 'tapa el disparo con el cuerpo'];
-const COUNTER = ['recupera y lanza la contra', 'roba y sale como un rayo', 'corta y monta el contragolpe', 'se la quita y conduce hasta el área'];
+/** Tras una parada propia, cómo sale el balón hacia el ataque. */
+const OUTLET_KEEPER = ['saca rápido con la mano', 'pone el balón en juego en largo', 'no se lo piensa y lanza la contra'];
+const OUTLET_BACK = ['sale jugando desde atrás', 'levanta la cabeza y lanza en largo', 'inicia la contra'];
+const MID_RUN = ['desborda por banda', 'conduce hasta la frontal', 'se va de dos rivales'];
+const THROUGH = ['pase al hueco', 'balón largo a la espalda de la defensa', 'envío medido'];
 const CONCEDE_TITLE = ['Gol en contra', 'Te marcan', 'Encajas'];
 const RESTART = ['Sacas de centro y te lanzas al ataque.', 'No hay tiempo para lamentarse: balón al centro y arriba.', 'Respondes nada más sacar de centro.'];
 const NOTHING = [
@@ -45,14 +49,20 @@ const NOTHING = [
   (n: number) => `Con el ${n} no hay jugada: partido trabado en el centro del campo.`,
   (n: number) => `El ${n} no le sirve a nadie. Saque de puerta.`,
 ];
-const VAR = ['El árbitro se lleva la mano al pinganillo: revisión del VAR. No hay jugada.', 'Parón por el VAR. Nadie ataca en esta tirada.', 'El VAR detiene el partido. Esta tirada no cuenta.'];
+const VAR = ['El árbitro se lleva la mano al pinganillo: revisión del VAR. No hay jugada.', 'Parón por el VAR. Nadie ataca en esta tirada.', 'El VAR detiene el partido. En esta tirada no hay jugada.'];
 
 /** Describe cómo se arma una jugada de ataque según quién participa. */
 function buildUp(play: Play, pick: ReturnType<typeof picker>): { title: string; text: string } {
   const mids = play.cards.filter((id) => footballer(id).position === 'MED').map((id) => footballer(id).name);
   const fwds = play.cards.filter((id) => footballer(id).position === 'DEL').map((id) => footballer(id).name);
-  if (fwds.length === 0) return { title: 'Disparo lejano', text: `${list(mids)} ${pick(LONG_SHOT)}.` };
-  if (mids.length > 0) return { title: 'Jugada combinada', text: `${list(mids)} ${pick(PASS)} y ${list(fwds)} ${pick(SHOT)}.` };
+  const midsMany = mids.length > 1;
+  if (fwds.length === 0) {
+    return { title: 'Disparo lejano', text: midsMany ? `${list(mids)} combinan en la frontal y disparan desde lejos.` : `${mids[0]} ${pick(LONG_SHOT)}.` };
+  }
+  if (mids.length > 0) {
+    const pass = midsMany ? pick(['mueven el balón con criterio y lo ponen al área', 'triangulan y filtran el pase', 'tocan rápido y encuentran el hueco']) : pick(PASS);
+    return { title: 'Jugada combinada', text: `${list(mids)} ${pass} y ${list(fwds)} ${fwds.length > 1 ? 'rematan a puerta' : pick(SHOT)}.` };
+  }
   if (fwds.length > 1) return { title: 'Jugada en el área', text: `${list(fwds)} ${pick(WALL)} y rematan a puerta.` };
   return { title: 'Remate a puerta', text: `${fwds[0]} ${pick(SHOT)}.` };
 }
@@ -73,10 +83,7 @@ function neutral(state: GameState, sum: number, play: Play, pick: ReturnType<typ
   const b = buildUp(play, pick);
   const parts = [b.text];
   if (play.scored.length) parts.push(`Gol a ${list(play.scored.map(name))}.`);
-  const plain = play.stopped.filter((x) => !x.counter);
-  const counters = play.stopped.filter((x) => x.counter);
-  if (plain.length) parts.push(`${list(plain.map((x) => name(x.playerId)))} lo ${plain.length > 1 ? 'paran' : 'para'}.`);
-  if (counters.length) parts.push(`${list(counters.map((x) => name(x.playerId)))} ${counters.length > 1 ? 'roban y marcan' : 'roba y marca'} a la contra.`);
+  if (play.stopped.length) parts.push(`${list(play.stopped.map((x) => name(x.playerId)))} lo ${play.stopped.length > 1 ? 'paran' : 'para'}.`);
   return { kind: 'info', title: `${name(play.playerId)} · ${b.title.toLowerCase()}`, text: parts.join(' '), cards: play.cards, club: play.playerId };
 }
 
@@ -91,11 +98,14 @@ export function rollNews(state: GameState, roll: RollReport, seed: number, viewe
 
   if (n === 7) {
     const out: News[] = [{ kind: 'var', title: 'VAR', text: pick(VAR) }];
-    const drawers = roll.varDraws.map((d) => d.playerId);
-    const mine = roll.varDraws.find((d) => d.playerId === viewer);
-    if (mine) out.push({ kind: 'card', title: '¡Te llevas una carta!', text: 'Como vas en la mitad baja de la tabla, el VAR te compensa con una carta especial.', specialCardId: mine.cardId });
-    const others = drawers.filter((id) => id !== viewer);
-    if (others.length) out.push({ kind: 'info', title: 'Cartas del VAR', text: `${list(others.map(name))} ${others.length > 1 ? 'roban' : 'roba'} una carta especial.` });
+    const draw = roll.varDraws[0];
+    if (!draw) {
+      out.push({ kind: 'info', title: 'Sin carta', text: 'Quien tiró los dados tiene la mano llena y no puede robar carta.' });
+    } else if (draw.playerId === viewer) {
+      out.push({ kind: 'card', title: '¡Te llevas una carta!', text: 'Has sacado un 7: el VAR te compensa con una carta especial.', specialCardId: draw.cardId });
+    } else {
+      out.push({ kind: 'info', title: 'Carta del VAR', text: `${name(draw.playerId)} ha sacado el 7 y roba una carta especial.` });
+    }
     return out;
   }
   if (roll.plays.length === 0) return [{ kind: 'info', title: `Sale el ${n}`, text: pick(NOTHING)(n) }];
@@ -114,10 +124,12 @@ export function rollNews(state: GameState, roll: RollReport, seed: number, viewe
     const why = mineDef.keeper || mineDef.backs.length ? `Tu defensa con el ${n} no basta contra un ataque de fuerza ${pl.power}.` : `No tienes a nadie que defienda el ${n}.`;
     out.push({ kind: 'concede', title: pick(CONCEDE_TITLE), text: `${name(pl.playerId)}: ${b.text} ${why}`, cards: pl.cards, club: pl.playerId });
   }
+  let lastHero: ReturnType<typeof footballer> | null = null;
   for (const pl of saved) {
     const st = pl.stopped.find((x) => x.playerId === viewer)!;
     const b = buildUp(pl, pick);
     const hero = st.keeper && mineDef.keeper ? mineDef.keeper : mineDef.backs[0] ?? mineDef.keeper;
+    lastHero = hero ?? lastHero;
     const action = hero?.position === 'POR' ? pick(KEEPER_SAVE) : pick(DEF_STOP);
     out.push({
       kind: 'save',
@@ -126,42 +138,36 @@ export function rollNews(state: GameState, roll: RollReport, seed: number, viewe
       cards: hero ? [hero.id] : undefined,
       club: viewer,
     });
-    if (st.counter) {
-      const back = mineDef.backs[0];
-      out.push({
-        kind: 'counterFor',
-        title: '¡Contragolpe y gol!',
-        text: `${back?.name ?? 'Tu defensa'} ${pick(COUNTER)}: pillas descolocado a ${name(pl.playerId)} y marcas.`,
-        cards: back ? [back.id] : undefined,
-        club: viewer,
-      });
-    }
   }
 
-  // 2. Tu ataque.
+  // 2. Tu ataque. Si vienes de parar, la jugada nace de esa recuperación; si vienes de encajar, del saque de centro.
   if (mine) {
-    const b = buildUp(mine, pick);
+    let b = buildUp(mine, pick);
+    if (lastHero && !conceded.length) {
+      const mids = mine.cards.filter((id) => footballer(id).position === 'MED').map((id) => footballer(id).name);
+      const fwds = mine.cards.filter((id) => footballer(id).position === 'DEL').map((id) => footballer(id).name);
+      const outlet = `${lastHero.name} ${lastHero.position === 'POR' ? pick(OUTLET_KEEPER) : pick(OUTLET_BACK)}`;
+      // Con varios medios se cuenta en plural para que la frase concuerde.
+      const many = mids.length > 1;
+      const run = many ? pick(['combinan por banda', 'avanzan tocando hasta la frontal', 'se van en pared']) : pick(MID_RUN);
+      const text =
+        fwds.length === 0
+          ? `${outlet}: balón para ${list(mids)}, que ${run} y ${many ? pick(['disparan', 'chutan a puerta', 'prueban al portero']) : pick(['dispara', 'chuta a puerta', 'prueba al portero'])}.`
+          : mids.length > 0
+            ? `${outlet}: ${list(mids)} ${run}, ${many ? pick(['centran al área', 'la ponen atrás', 'filtran el pase']) : pick(['centra al área', 'la pone atrás', 'filtra el pase'])} y ${list(fwds)} ${fwds.length > 1 ? 'rematan a puerta' : pick(SHOT)}.`
+            : `${outlet}: ${pick(THROUGH)} para ${list(fwds)}, que ${fwds.length > 1 ? pick(['encaran y disparan', 'combinan y rematan']) : pick(['encara y dispara', 'se planta solo y define', 'controla y remata'])}.`;
+      b = { title: '¡A la contra!', text };
+    }
     out.push({ kind: 'attack', title: b.title, text: `${conceded.length ? pick(RESTART) + ' ' : ''}${b.text}`, cards: mine.cards, club: viewer });
     if (mine.scored.length) {
       out.push({ kind: 'goal', title: pick(GOAL_TITLE), text: `${pick(BEAT)} ${list(mine.scored.map(name))}.`, cards: mine.cards, club: viewer });
     }
-    const plain = mine.stopped.filter((x) => !x.counter);
-    if (plain.length) {
-      const lines = plain.map((x) => {
+    if (mine.stopped.length) {
+      const lines = mine.stopped.map((x) => {
         const d = defenders(state, x.playerId, n);
         return x.keeper && d.keeper ? `${d.keeper.name} (${name(x.playerId)}) ${pick(KEEPER_SAVE)}` : `${d.backs[0]?.name ?? 'la defensa'} (${name(x.playerId)}) ${pick(DEF_STOP)}`;
       });
       out.push({ kind: 'stopped', title: mine.scored.length ? 'No a todos' : pick(['Te la paran', 'Sin premio', 'Se queda en nada']), text: `${lines.join('. ')}.` });
-    }
-    for (const x of mine.stopped.filter((y) => y.counter)) {
-      const d = defenders(state, x.playerId, n);
-      out.push({
-        kind: 'counterAgainst',
-        title: '¡Te pillan a la contra!',
-        text: `${d.backs[0]?.name ?? 'Su defensa'} (${name(x.playerId)}) ${pick(COUNTER)} y te marca. Ningún medio cubría tu ataque.`,
-        cards: d.backs[0] ? [d.backs[0].id] : undefined,
-        club: x.playerId,
-      });
     }
   }
 
@@ -178,14 +184,8 @@ export function rollScore(roll: RollReport, club: number): { gf: number; gc: num
   let gf = 0;
   let gc = 0;
   for (const pl of roll.plays) {
-    const counters = pl.stopped.filter((x) => x.counter);
-    if (pl.playerId === club) {
-      gf += pl.scored.length;
-      gc += counters.length;
-    } else {
-      if (pl.scored.includes(club)) gc += 1;
-      if (counters.some((x) => x.playerId === club)) gf += 1;
-    }
+    if (pl.playerId === club) gf += pl.scored.length;
+    else if (pl.scored.includes(club)) gc += 1;
   }
   return { gf, gc };
 }

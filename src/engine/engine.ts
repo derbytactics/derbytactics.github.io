@@ -56,17 +56,15 @@ export interface Play {
   cards: string[];
   /** Rivales que encajan gol. */
   scored: number[];
-  /** Participa un medio: cubre la espalda y no hay contragolpe posible. */
-  covered: boolean;
-  /** Rivales que la paran. `keeper`: intervino su portero. `counter`: su defensa robó y marcó a la contra. */
-  stopped: { playerId: number; keeper: boolean; counter: boolean }[];
+  /** Rivales que la paran; `keeper` indica si intervino su portero. */
+  stopped: { playerId: number; keeper: boolean }[];
 }
 
 export interface RollReport {
   dice: [number, number];
   sum: number;
   plays: Play[];
-  /** En un 7: clubes que roban carta especial, y cuál. */
+  /** En un 7: quien tiró los dados roba una carta especial (vacío si tenía la mano llena). */
   varDraws: { playerId: number; cardId: string }[];
 }
 
@@ -80,8 +78,6 @@ export interface MatchResult {
   scoringPlays: number;
   /** Jugadas rivales paradas con intervención del portero. */
   saves: number;
-  /** Goles marcados a la contra tras robar con un defensa. */
-  counters: number;
   saveBonus: number;
   /** Carta especial ganada por el portero, si la hubo. */
   keeperCard: string | null;
@@ -116,8 +112,6 @@ export interface MatchProgress {
   rolls: RollReport[];
   /** A quién le toca tirar los dados en cada tirada. */
   rollers: number[];
-  /** Clubes que roban carta si sale un 7 (mitad baja de la tabla al empezar la jornada). */
-  bottom: number[];
 }
 
 export type Phase = 'market' | 'match' | 'summary' | 'finished';
@@ -291,7 +285,7 @@ export function expectedGoals(player: Player, jornada: number): number {
   for (const n of [2, 3, 4, 5, 6, 8, 9, 10, 11, 12]) {
     if (strengthOn(player, n, jornada).attack > 0) pips += 6 - Math.abs(7 - n);
   }
-  return (pips * rollsFor(4)) / 36;
+  return (pips * 4) / 36;
 }
 
 export const hasKeeper = (player: Player) => player.squad.some((e) => footballer(e.cardId).position === 'POR');
@@ -637,9 +631,9 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
 
 // ---------------------------------------------------------------- Partido
 
-/** Tiradas por jornada: cada club tira al menos una vez y nunca hay menos de seis. */
+/** Tiradas por jornada: una por club. */
 export function rollsFor(players: number): number {
-  return players * Math.max(1, Math.ceil(CONFIG.minRollsPerMatchday / players));
+  return players;
 }
 
 /** Club al que le toca tirar los dados, o null si no hay partido en juego. */
@@ -652,11 +646,7 @@ function startMatch(state: GameState) {
   const n = state.players.length;
   // Empieza a tirar un club distinto cada jornada.
   const rollers = Array.from({ length: rollsFor(n) }, (_, i) => (state.jornada - 1 + i) % n);
-  // En un 7 (VAR) roba carta la mitad baja de la clasificación previa a la jornada.
-  const bottom = standings(state)
-    .slice(n - Math.max(1, Math.floor(n / 2)))
-    .map((p) => p.id);
-  state.match = { jornada: state.jornada, rolls: [], rollers, bottom };
+  state.match = { jornada: state.jornada, rolls: [], rollers };
 }
 
 function rollOnce(state: GameState): GameState {
@@ -667,13 +657,12 @@ function rollOnce(state: GameState): GameState {
   const d2 = 1 + Math.floor(rand(state) * 6);
   const roll: RollReport = { dice: [d1, d2], sum: d1 + d2, plays: [], varDraws: [] };
   if (roll.sum === 7) {
-    for (const id of m.bottom) {
-      const cardId = drawSpecial(state, state.players[id]);
-      if (cardId) roll.varDraws.push({ playerId: id, cardId });
-    }
-    if (roll.varDraws.length) {
-      const ids = roll.varDraws.map((d) => d.playerId);
-      say(state, `VAR en la jornada ${J}: ${ids.map((id) => state.players[id].name).join(', ')} ${ids.length > 1 ? 'roban' : 'roba'} carta especial.`);
+    // Con un 7 no hay jugada: quien ha tirado los dados se lleva una carta especial.
+    const roller = m.rollers[m.rolls.length];
+    const cardId = drawSpecial(state, state.players[roller]);
+    if (cardId) {
+      roll.varDraws.push({ playerId: roller, cardId });
+      say(state, `VAR en la jornada ${J}: ${state.players[roller].name} roba una carta especial.`);
     }
   } else {
     // Todos contra todos: cada ataque se enfrenta a la defensa de cada rival por separado.
@@ -681,13 +670,12 @@ function rollOnce(state: GameState): GameState {
     for (const p of state.players) {
       const mine = strength[p.id];
       if (mine.attack <= 0) continue;
-      const covered = CONFIG.midfieldCoversCounter && mine.midfield;
-      const play: Play = { playerId: p.id, power: mine.attack, cards: mine.attackers, covered, scored: [], stopped: [] };
+      const play: Play = { playerId: p.id, power: mine.attack, cards: mine.attackers, scored: [], stopped: [] };
       for (const rival of state.players) {
         if (rival.id === p.id) continue;
         const theirs = strength[rival.id];
         if (theirs.defense >= mine.attack) {
-          play.stopped.push({ playerId: rival.id, keeper: theirs.keeper, counter: CONFIG.counterAttack && theirs.defender && !covered });
+          play.stopped.push({ playerId: rival.id, keeper: theirs.keeper });
         } else {
           play.scored.push(rival.id);
         }
@@ -710,7 +698,7 @@ function finishMatch(state: GameState) {
   const J = state.jornada;
   const n = state.players.length;
   const rolls = state.match!.rolls;
-  const tally = new Map(state.players.map((p) => [p.id, { goals: 0, against: 0, scoringPlays: 0, saves: 0, counters: 0 }]));
+  const tally = new Map(state.players.map((p) => [p.id, { goals: 0, against: 0, scoringPlays: 0, saves: 0 }]));
   for (const roll of rolls) {
     for (const play of roll.plays) {
       const t = tally.get(play.playerId)!;
@@ -720,11 +708,6 @@ function finishMatch(state: GameState) {
       for (const st of play.stopped) {
         const r = tally.get(st.playerId)!;
         if (st.keeper) r.saves += 1;
-        if (st.counter) {
-          r.goals += 1;
-          r.counters += 1;
-          t.against += 1;
-        }
       }
     }
   }
@@ -744,7 +727,6 @@ function finishMatch(state: GameState) {
       diff: t.goals - t.against,
       scoringPlays: t.scoringPlays,
       saves: t.saves,
-      counters: t.counters,
       saveBonus: t.saves * CONFIG.saveBonus,
       keeperCard,
       rank,

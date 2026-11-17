@@ -75,12 +75,8 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
             : `taquilla ${r.ticket}M (${r.scoringPlays} ${r.scoringPlays === 1 ? 'jugada de gol' : 'jugadas de gol'} × ${ticketPerGoal(p.stadium)}M${r.clubDay ? ' × 2 Día del club' : ''})`}
           {r.saves ? ` · ${r.saves} ${r.saves === 1 ? 'parada' : 'paradas'} del portero: ${r.saveBonus}M` : ''}
         </Text>
-        {r.counters || r.keeperCard ? (
-          <Text style={{ color: C.good, fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
-            {r.counters ? `${r.counters} ${r.counters === 1 ? 'gol' : 'goles'} a la contra` : ''}
-            {r.counters && r.keeperCard ? ' · ' : ''}
-            {r.keeperCard ? 'Tu portero gana una carta especial por sus paradas' : ''}
-          </Text>
+        {r.keeperCard ? (
+          <Text style={{ color: C.good, fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Tu portero gana una carta especial por sus paradas</Text>
         ) : null}
         <Text style={{ color: C.text, fontSize: 13, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
           Llevas {p.points} puntos · vas {ordinal(leaguePos)} en la liga · {p.money}M en caja
@@ -94,10 +90,8 @@ const NEWS_STYLE: Record<NewsKind, { color: string; icon: string }> = {
   attack: { color: '#C9D3DC', icon: '⚽' },
   goal: { color: C.accent, icon: '🥅' },
   stopped: { color: '#8FA89A', icon: '🧤' },
-  counterAgainst: { color: C.danger, icon: '⚡' },
   concede: { color: C.danger, icon: '😖' },
   save: { color: C.good, icon: '🧤' },
-  counterFor: { color: C.accent, icon: '⚡' },
   info: { color: C.line, icon: '•' },
   var: { color: C.danger, icon: '📺' },
   card: { color: C.good, icon: '🃏' },
@@ -106,7 +100,7 @@ const NEWS_STYLE: Record<NewsKind, { color: string; icon: string }> = {
 /** Una noticia de la tirada: aparece con una pequeña animación. */
 function NewsCard({ news, big }: { news: News; big: boolean }) {
   const st = NEWS_STYLE[news.kind];
-  const strong = news.kind === 'goal' || news.kind === 'counterFor' || news.kind === 'concede' || news.kind === 'counterAgainst' || news.kind === 'save';
+  const strong = news.kind === 'goal' || news.kind === 'concede' || news.kind === 'save';
   return (
     <Pop style={{ alignSelf: 'stretch', marginTop: 8 }}>
       <View style={{ borderRadius: 14, borderWidth: strong ? 2 : 1, borderColor: st.color, backgroundColor: strong ? st.color + '24' : C.panelAlt, padding: 12 }}>
@@ -292,7 +286,7 @@ export function MatchScreen(props: {
           <>
             <Text style={s.h1}>Mercado cerrado. ¡A jugar!</Text>
             <Text style={[s.p, { marginTop: 6, marginBottom: 12 }]}>
-              Un partido de todos contra todos, a {total} tiradas. Cada club tira los dados en su turno. Con el número que salga atacan los delanteros y medios que lo tengan, y cada rival lo para si su portero y sus defensas con ese número suman al menos la misma fuerza.
+              Un partido de todos contra todos: cada club tira los dados una vez ({total} tiradas). Si te sale un 7, no hay jugada pero robas una carta especial. Con el número que salga atacan los delanteros y medios que lo tengan, y cada rival lo para si su portero y sus defensas con ese número suman al menos la misma fuerza.
             </Text>
             {state.players.filter((p) => isMine(p.id)).map((p) => (
               <View key={p.id} style={[s.panel, { borderColor: clubColor(p.id) + '88' }]}>

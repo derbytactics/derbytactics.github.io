@@ -41,7 +41,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Step
         n={2}
         title="Ataque contra defensa"
-        text="Un solo partido de todos contra todos. Cada club tira los dados en su turno. Con el número que sale atacan los que lo tengan: cada delantero suma 2 y cada medio 1. Cada rival defiende con los suyos: el portero suma 2 y cada defensa 1. Tu jugada es gol contra cada rival cuya defensa en ese número sea menor que tu ataque."
+        text="Un solo partido de todos contra todos. Cada club tira los dados una vez. Con el número que sale atacan los que lo tengan: cada delantero suma 2 y cada medio 1. Cada rival defiende con los suyos: el portero y cada defensa suman 2. Tu jugada es gol contra cada rival cuya defensa en ese número sea menor que tu ataque."
         art={
           <View style={[s.row, { gap: 6 }]}>
             <Die value={5} size={40} />
@@ -52,13 +52,13 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Step
         n={3}
         title="Qué hace cada posición"
-        text="Delantero: ataque 2; solo lo para un portero o dos defensas. Medio: ataque 1; da el pase que convierte el remate en jugada combinada y, si participa, nadie te puede hacer un contragolpe. Defensa: defensa 1; si tu equipo para una jugada sin medio, roba y marca a la contra. Portero: defensa 2 en tres o cuatro números; cobra prima por parada y con 3 en una jornada gana una carta."
+        text="Delantero: ataque 2; lo para un portero o un defensa. Medio: ataque 1; con un delantero forma la jugada combinada (fuerza 3), que solo paran un portero y un defensa juntos. Defensa: defensa 2. Portero: defensa 2 en tres o cuatro números; cobra prima por parada y con 3 en una jornada gana una carta."
         art={<Text style={{ fontSize: 40 }}>🧤</Text>}
       />
       <Step
         n={4}
         title="Reparto: puntos y dinero"
-        text={`La jornada se ordena por diferencia de goles: quien queda más arriba se lleva más puntos de liga y más premio (de ${CONFIG.prize.first}M a ${CONFIG.prize.last}M). Además cobras taquilla por cada jugada de gol: amplía tu estadio para cobrar más. Con un 7 entra el VAR: no hay jugadas y los últimos de la tabla roban carta.`}
+        text={`La jornada se ordena por diferencia de goles: quien queda más arriba se lleva más puntos de liga y más premio (de ${CONFIG.prize.first}M a ${CONFIG.prize.last}M). Además cobras taquilla por cada jugada de gol: amplía tu estadio para cobrar más. Si sacas un 7 entra el VAR: no hay jugada, pero te llevas una carta especial.`}
         art={<StadiumArt level={4} color="#3E8BFF" width={92} />}
       />
       <Step
