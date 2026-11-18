@@ -1,25 +1,34 @@
 {
   "expo": {
     "name": "Futcards",
-    "slug": "Futcards",
+    "slug": "futcards",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.juanrafernandez.futcards"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#07160F",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.juanrafernandez.futcards"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "name": "Futcards",
+      "shortName": "Futcards",
+      "themeColor": "#07160F",
+      "backgroundColor": "#07160F",
+      "lang": "es"
+    },
+    "description": "Juego de cartas de fútbol para 2 a 8 jugadores: ficha, amplía tu estadio y gana la liga a golpe de dado.",
+    "backgroundColor": "#07160F"
   }
 }

@@ -26,6 +26,10 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      # El lint avisa pero no bloquea la publicación.
+      - name: Lint
+        run: npx expo lint
+        continue-on-error: true
       - name: Comprobar configuración de cuentas
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
@@ -48,6 +52,26 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
+  # Prueba el esquema de la base de datos contra un PostgreSQL real.
+  base-de-datos:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/test-db.sh
+        env:
+          PGHOST: localhost
+          PGUSER: postgres
+          PGPASSWORD: postgres
 
   deploy:
     needs: build

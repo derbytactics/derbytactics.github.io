@@ -4,6 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 PSQL="${PSQL:-psql -X -v ON_ERROR_STOP=1}"
 DB=futcards_test_$$
+# En CI se conecta por red con PGHOST/PGUSER/PGPASSWORD; en local, por el socket.
 $PSQL -q -d postgres -c "create database $DB"
 trap '$PSQL -q -d postgres -c "drop database $DB"' EXIT
 $PSQL -q -d "$DB" -f supabase/local-stub.sql

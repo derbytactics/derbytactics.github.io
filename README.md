@@ -5,6 +5,7 @@ Juego de cartas de fútbol para **2 a 8 jugadores**, multiplataforma (iOS, Andro
 Eres el presidente de un club recién ascendido. Con 80M en caja tienes que montar una plantilla de fútbol 7 (un portero y la táctica que quieras), llenar el estadio y ganar la liga. Cada futbolista lleva números de dado, como las casillas del Catán. Cada jornada es un partido de todos contra todos: cuando sale un número, quien tiene delanteros o medios con él ataca, y los rivales lo paran si su portero y sus defensas con ese número suman al menos la misma fuerza. Los clubes tiran los dados por turnos y cada tirada se narra jugada a jugada.
 
 - **Jugar en el navegador:** https://juanrafernandez.github.io/Futcards/
+- **Qué falta para producción:** [docs/PRODUCCION.md](docs/PRODUCCION.md)
 - **Reglas completas:** [docs/REGLAS.md](docs/REGLAS.md)
 - **Equilibrio y cómo se ha afinado:** [docs/BALANCE.md](docs/BALANCE.md)
 
@@ -68,7 +69,4 @@ docs/                Reglas y notas de equilibrio
 
 ## Pendiente
 
-- Guardar y reanudar la partida.
-- Servidor propio para el multijugador (más fiable y sin exponer las manos de los rivales).
-- Sonido y animación de la tirada de dados.
-- Tutorial interactivo.
+Ver [docs/PRODUCCION.md](docs/PRODUCCION.md).
