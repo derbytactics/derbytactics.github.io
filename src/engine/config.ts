@@ -51,6 +51,12 @@ export const CONFIG = {
     upgradeCost: [10, 18, 28, 40],
   },
 
+  /**
+   * Mesas pequeñas: al empezar cada jornada (desde la 2) cada club cobra derechos de TV
+   * y roba una carta especial, para compensar que hay pocas tiradas.
+   */
+  tvRights: { maxPlayers: 2, money: 5, card: true },
+
   /** Premio de jornada: interpolación lineal entre el primero y el último. */
   prize: { first: 8, last: 3 },
   /** Punto extra de liga para quien gana la jornada. */

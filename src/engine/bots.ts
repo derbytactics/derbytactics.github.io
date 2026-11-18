@@ -1,4 +1,4 @@
-import { Position, SPECIAL_INFO, basePrice, footballer, specialCard, totalPips } from './cards';
+import { Position, SPECIAL_INFO, basePrice, footballer, pipsOf, roleOf, specialCard, totalPips } from './cards';
 import { CONFIG } from './config';
 import {
   Action,
@@ -18,6 +18,7 @@ import {
   shieldCost,
   signPrice,
   standings,
+  strengthOn,
   ticketPerGoal,
   upgradeCost,
 } from './engine';
@@ -44,6 +45,44 @@ const pips = (cardId: string) => totalPips(footballer(cardId).numbers);
 const posOf = (cardId: string) => footballer(cardId).position;
 const entryPower = (e: SquadEntry, J: number) =>
   isOut(e, J) ? 0 : totalPips(activeNumbers(e, J)) * (onStreak(e, J) ? 2 : 1);
+
+/**
+ * Cuánto mejora un futbolista a este club tal como están hoy los rivales:
+ * un atacante vale por los rivales a los que pasaría a marcar con cada número,
+ * y un defensor por los ataques rivales que pasaría a parar. Con `smart` desactivado
+ * (o sin rivales con plantilla) solo cuenta la frecuencia de sus números.
+ */
+export function worth(state: GameState, me: Player, cardId: string, smart = true): number {
+  const f = footballer(cardId);
+  const base = totalPips(f.numbers);
+  const rivals = state.players.filter((p) => p.id !== me.id && p.squad.length > 0);
+  if (!smart || rivals.length === 0) return base;
+  const J = state.jornada;
+  const role = roleOf(f.position);
+  let gain = 0;
+  for (const n of f.numbers) {
+    const mine = strengthOn(me, n, J);
+    let delta = 0;
+    for (const r of rivals) {
+      const theirs = strengthOn(r, n, J);
+      if (role.attack > 0) {
+        const before = mine.attack > 0 && theirs.defense < mine.attack;
+        const after = theirs.defense < mine.attack + role.attack;
+        if (after && !before) delta += 1;
+      } else if (theirs.attack > 0) {
+        const before = mine.defense >= theirs.attack;
+        const after = mine.defense + role.defense >= theirs.attack;
+        if (after && !before) delta += 1;
+      }
+    }
+    gain += (pipsOf(n) * delta) / rivals.length;
+  }
+  // Mezcla: lo que aporta hoy contra estos rivales y su valor general, por si cambian de plantilla.
+  return gain * 1.5 + base * 0.5;
+}
+
+/** Con FUT_NAIVE=1,3… esos asientos fichan sin mirar a los rivales (para medir cuánto ayuda). */
+const NAIVE = new Set((typeof process !== 'undefined' && process.env?.FUT_NAIVE ? process.env.FUT_NAIVE.split(',') : []).map(Number));
 
 /** Devuelve la siguiente acción del bot al que le toca. Llamar en bucle hasta que devuelva endTurn. */
 export function botAction(state: GameState, style: BotStyle = 'equilibrado'): Action {
@@ -89,7 +128,9 @@ function transfer(state: GameState, me: Player, style: BotStyle, remaining: numb
       if (pos === 'DEL' && have.DEL >= CONFIG.maxForwards) return false;
       return anyNeed ? needs(pos) : want[pos] > 0;
     };
-    const market = state.market.filter((id) => allowed(id) && signPrice(state, id) <= me.money).sort((a, b) => pips(b) - pips(a));
+    const smart = !NAIVE.has(me.id);
+    const value = (id: string) => worth(state, me, id, smart);
+    const market = state.market.filter((id) => allowed(id) && signPrice(state, id) <= me.money).sort((a, b) => value(b) - value(a));
     // No se gasta todo en el primer fichaje: reserva para completar la plantilla.
     const slotsLeft = CONFIG.squadSize - me.squad.length;
     const budget = remaining <= 2 ? me.money : Math.max(me.money / Math.min(slotsLeft, 3), 10);

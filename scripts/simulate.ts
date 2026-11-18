@@ -52,6 +52,7 @@ const fmt = (x: number, d = 1) => x.toFixed(d);
 for (const n of sizes) {
   const wins: Record<string, number> = {};
   const seats: Record<string, number> = {};
+  let naiveWins = 0;
   let firstPickWins = 0, earlyLeaderWins = 0, clauses = 0, cards = 0;
   let goals = 0, money = 0, stadium = 0, gap = 0, lastShare = 0, plays = 0, stopped = 0, scored = 0, squad = 0, keepers = 0;
   for (let g = 0; g < games; g++) {
@@ -59,6 +60,7 @@ for (const n of sizes) {
     const champ = r.table[0];
     wins[r.styles[champ.id]] = (wins[r.styles[champ.id]] ?? 0) + 1;
     r.styles.forEach((st) => (seats[st] = (seats[st] ?? 0) + 1));
+    if (process.env.FUT_NAIVE && process.env.FUT_NAIVE.split(',').map(Number).includes(champ.id)) naiveWins++;
     if (champ.id === r.firstPick) firstPickWins++;
     if (champ.id === r.earlyLeader) earlyLeaderWins++;
     clauses += r.clauses;
@@ -79,6 +81,11 @@ for (const n of sizes) {
     'Victorias por estilo (ratio sobre lo esperado, 1.00 = equilibrado): ' +
       BOT_STYLES.map((st) => `${st} ${fmt(((wins[st] ?? 0) / games) / ((seats[st] ?? 1) / (games * n)), 2)}`).join(' · '),
   );
+  if (process.env.FUT_NAIVE) {
+    const naive = new Set<number>(process.env.FUT_NAIVE.split(',').map(Number));
+    const share = [...naive].filter((i) => i < n).length / n;
+    console.log(`Gana un bot que NO mira a los rivales: ${fmt((100 * naiveWins) / games)}% (justo: ${fmt(100 * share)}%)`);
+  }
   console.log(`Gana quien eligió primero en pretemporada: ${fmt((100 * firstPickWins) / games)}% (justo: ${fmt(100 / n)}%)`);
   console.log(`Gana el líder del primer tercio: ${fmt((100 * earlyLeaderWins) / games)}%`);
   console.log(`Puntos del colista respecto al campeón: ${fmt((100 * lastShare) / games)}%`);

@@ -299,6 +299,17 @@ describe('partido', () => {
     const closed = play([entry(DEL68)], [], (s) => { s.players[0].closedDoorsUntil = 1; });
     expect(closed.r0.ticket).toBe(0);
   });
+  it('con 2 clubes, cada jornada reparte derechos de TV y una carta; con 3 no', () => {
+    let two = newGame(2, 3);
+    two.phase = 'summary';
+    two = apply(two, { type: 'nextJornada' });
+    expect(two.players.map((p) => p.money)).toEqual([CONFIG.startingMoney + CONFIG.tvRights.money, CONFIG.startingMoney + CONFIG.tvRights.money]);
+    expect(two.players.map((p) => p.hand.length)).toEqual([1, 1]);
+    let three = newGame(3, 3);
+    three.phase = 'summary';
+    three = apply(three, { type: 'nextJornada' });
+    expect(three.players.every((p) => p.money === CONFIG.startingMoney && p.hand.length === 0)).toBe(true);
+  });
   it('tras la jornada el colista abre el mercado', () => {
     let s = newGame(3, 3);
     s.phase = 'summary';

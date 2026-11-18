@@ -808,6 +808,14 @@ function startNextJornada(state: GameState): GameState {
   state.turnOrder = standings(state)
     .reverse()
     .map((p) => p.id);
+  // Con pocos clubes hay pocas tiradas: derechos de TV y una carta para cada uno.
+  if (state.players.length <= CONFIG.tvRights.maxPlayers) {
+    for (const p of state.players) {
+      p.money += CONFIG.tvRights.money;
+      if (CONFIG.tvRights.card) drawSpecial(state, p);
+    }
+    say(state, `Derechos de televisión: cada club cobra ${CONFIG.tvRights.money}M${CONFIG.tvRights.card ? ' y roba una carta especial' : ''}.`);
+  }
   // El mercado se mueve: sale el futbolista que más tiempo lleva expuesto.
   const fresh = state.footballDeck.shift();
   if (fresh && state.market.length > 0) {
