@@ -171,10 +171,9 @@ export function rollNews(state: GameState, roll: RollReport, seed: number, viewe
     }
   }
 
-  // 3. Si nada de esto te toca, un resumen de lo que hacen los demás.
+  // 3. Si no te toca nada, se dice y punto: el resto de jugadas está en el acta.
   if (out.length === 0) {
-    out.push({ kind: 'info', title: `Sale el ${n}`, text: `A ti no te afecta: ni atacas ni te atacan con el ${n}.` });
-    for (const pl of roll.plays.slice(0, 2)) out.push(neutral(state, n, pl, pick));
+    out.push({ kind: 'info', title: `Sale el ${n}`, text: pick([`A ti no te afecta: ni atacas ni te atacan con el ${n}.`, `Con el ${n} no pasa nada en tu área ni en tu ataque.`, `El ${n} no va contigo. Sigue el partido.`]) });
   }
   return out;
 }

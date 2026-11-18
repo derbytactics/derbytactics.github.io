@@ -3,7 +3,7 @@ import { Animated, Easing, ScrollView, Text, View } from 'react-native';
 import { GameState, MatchResult, RollReport, currentRoller, standings, ticketPerGoal } from '../engine';
 import { Avatar, Crest, Die } from './art';
 import { NumberLine, SpecialCardFace } from './GameScreen';
-import { Btn, Overline, PhaseStepper, Pop, StandingsTable, s } from './components';
+import { Btn, FootballerCard, Overline, PhaseStepper, Pop, StandingsTable, s } from './components';
 import { News, NewsKind, rollNews, rollScore } from './narrative';
 import { C, NATIVE_DRIVER, POS_COLOR, clubColor } from './theme';
 
@@ -12,8 +12,11 @@ const ordinal = (n: number) => `${n}.º`;
 /** Ritmo de la crónica: tiempo de dados, entre noticias y de lectura final antes de poder seguir. */
 const SPEED = (globalThis as { __FUTCARDS_SPEED__?: number }).__FUTCARDS_SPEED__ ?? 1;
 const DICE_MS = 1000 / SPEED;
-const NEWS_MS = 2300 / SPEED;
-const READ_MS = 1800 / SPEED;
+const NEWS_MS = 2800 / SPEED;
+const READ_MS = 1200 / SPEED;
+/** Segundos que da el árbitro para seguir una vez leída la jugada. */
+const REFEREE_S = 5;
+const TICK_MS = 1000 / SPEED;
 
 function useCountUp(target: number, run: boolean): number {
   const [v, setV] = useState(0);
@@ -145,6 +148,44 @@ function ReadingBar({ duration, token }: { duration: number; token: string }) {
   );
 }
 
+/**
+ * Botón con cuenta atrás: si nadie lo pulsa, el árbitro ordena seguir y se ejecuta solo.
+ * `token` reinicia la cuenta cuando cambia lo que se está esperando.
+ */
+function RefereeButton({ label, seconds, token, onGo }: { label: string; seconds: number; token: string; onGo: (forced: boolean) => void }) {
+  const [left, setLeft] = useState(seconds);
+  const fired = useRef(false);
+  useEffect(() => {
+    fired.current = false;
+    setLeft(seconds);
+    const t = setInterval(() => setLeft((x) => x - 1), TICK_MS);
+    return () => clearInterval(t);
+  }, [token, seconds]);
+  useEffect(() => {
+    if (left <= 0 && !fired.current) {
+      fired.current = true;
+      onGo(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [left]);
+  const go = () => {
+    if (fired.current) return;
+    fired.current = true;
+    onGo(false);
+  };
+  return (
+    <View>
+      <Btn label={label} onPress={go} />
+      <View style={[s.row, { justifyContent: 'center', marginTop: 8 }]}>
+        <View style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: left <= 2 ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: left <= 2 ? C.danger : C.accent, fontWeight: '900', fontSize: 13 }}>{Math.max(0, left)}</Text>
+        </View>
+        <Text style={{ color: C.dim, fontSize: 12, fontWeight: '700', marginLeft: 8 }}>El árbitro cuenta: si no, ordena seguir</Text>
+      </View>
+    </View>
+  );
+}
+
 /** Dados que ruedan un instante antes de mostrar el resultado. */
 function Dice({ roll, rolling }: { roll: RollReport | null; rolling: boolean }) {
   const [faces, setFaces] = useState<[number, number]>([1, 1]);
@@ -183,6 +224,8 @@ export function MatchScreen(props: {
   footer?: React.ReactNode;
   /** Contenido extra mientras se espera a que otro tire los dados. */
   waitingExtra?: React.ReactNode;
+  /** Solo anfitrión: tira por una persona que no responde, pasado un tiempo. */
+  onForceAbsent?: () => void;
 }) {
   const { state, focus } = props;
   const live = state.phase === 'match' && !!state.match;
@@ -200,21 +243,34 @@ export function MatchScreen(props: {
   const [cur, setCur] = useState(-1);
   const [rolling, setRolling] = useState(false);
   const [revealed, setRevealed] = useState(0);
+  /** Ya ha pasado el tiempo mínimo de lectura de la tirada actual. */
   const [ready, setReady] = useState(true);
   const [reparto, setReparto] = useState(false);
+  /** He pedido tirar: en cuanto llegue la tirada se cuenta, sin volver a preguntar. */
+  const [awaiting, setAwaiting] = useState(false);
+  /** Tirada que empezó porque se agotó la cuenta del árbitro. */
+  const [forcedRoll, setForcedRoll] = useState(-1);
+  const [showCards, setShowCards] = useState(false);
 
   const roll = cur >= 0 ? rolls[cur] ?? null : null;
   const news = roll ? rollNews(state, roll, state.jornada * 100 + cur, viewer) : [];
 
-  // Máquina de ritmo: dados → noticias una a una → tiempo de lectura → se puede seguir.
+  const advance = (forced: boolean) => {
+    if (cur >= rolls.length - 1) return;
+    if (forced) setForcedRoll(cur + 1);
+    setCur(cur + 1);
+    setRolling(true);
+    setRevealed(0);
+    setReady(false);
+    setAwaiting(false);
+  };
+
+  // Ritmo de cada tirada: dados → noticias una a una → tiempo mínimo de lectura.
   useEffect(() => {
     if (reparto) return;
     let t: ReturnType<typeof setTimeout> | undefined;
-    if (ready && cur < rolls.length - 1) {
-      setCur(cur + 1);
-      setRolling(true);
-      setRevealed(0);
-      setReady(false);
+    if (awaiting && ready && cur < rolls.length - 1) {
+      advance(forcedRoll === -2);
     } else if (rolling) {
       t = setTimeout(() => {
         setRolling(false);
@@ -227,11 +283,35 @@ export function MatchScreen(props: {
       if (t) clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cur, rolling, revealed, ready, rolls.length, reparto]);
+  }, [cur, rolling, revealed, ready, rolls.length, reparto, awaiting]);
 
-  const caughtUp = ready && cur === rolls.length - 1;
+  const queued = cur < rolls.length - 1;
+  const caughtUp = ready && !queued;
   const roller = live ? currentRoller(state) : null;
   const iRoll = roller !== null && props.canRoll(roller);
+  const waitingHuman = caughtUp && live && roller !== null && !iRoll;
+
+  // Anfitrión: si una persona no tira, pasado un tiempo se tira por ella.
+  useEffect(() => {
+    if (!waitingHuman || !props.onForceAbsent) return;
+    const t = setTimeout(props.onForceAbsent, 12 * TICK_MS);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waitingHuman, rolls.length]);
+
+  // Si la tirada pedida no llega (conexión, turno ya pasado), se vuelve a ofrecer el botón.
+  useEffect(() => {
+    if (!awaiting) return;
+    const t = setTimeout(() => setAwaiting(false), 6000);
+    return () => clearTimeout(t);
+  }, [awaiting, rolls.length]);
+
+  const doRoll = (forced: boolean) => {
+    // -2 marca que la próxima tirada llegará por orden del árbitro.
+    setForcedRoll(forced ? -2 : -1);
+    setAwaiting(true);
+    props.onRoll();
+  };
   const counted = rolls.slice(0, rolling ? cur : cur + 1);
   const score = (id: number) => counted.reduce((a, r) => ({ gf: a.gf + rollScore(r, id).gf, gc: a.gc + rollScore(r, id).gc }), { gf: 0, gc: 0 });
   const maxGoals = Math.max(1, ...state.players.map((p) => score(p.id).gf));
@@ -309,6 +389,11 @@ export function MatchScreen(props: {
               </View>
             </View>
             <Dice roll={roll} rolling={rolling} />
+            {forcedRoll === cur ? (
+              <View style={{ backgroundColor: C.panelAlt, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, marginTop: 10 }}>
+                <Text style={{ color: C.dim, fontSize: 12, fontWeight: '700' }}>⏱ El árbitro ordena que siga el partido.</Text>
+              </View>
+            ) : null}
             {rolling ? <Text style={[s.p, { marginTop: 12 }]}>Los dados están en el aire…</Text> : null}
             {!rolling ? news.slice(0, revealed).map((nw, i) => <NewsCard key={`${cur}-${i}`} news={nw} big={i === revealed - 1} />) : null}
             {delta && (delta.gf || delta.gc) ? (
@@ -322,30 +407,36 @@ export function MatchScreen(props: {
           </View>
         )}
 
-        {/* Qué toca ahora: leer, tirar los dados, esperar o pasar al reparto. */}
-        <View style={[s.panel, { borderColor: caughtUp && (iRoll || !live) ? C.accent : C.line }]}>
-          {!caughtUp ? (
+        {/* Qué toca ahora: leer, seguir, tirar los dados, esperar o pasar al reparto. */}
+        <View style={[s.panel, { borderColor: ready && !awaiting ? C.accent : C.line }]}>
+          {!ready || awaiting ? (
             <>
-              <Text style={{ color: C.dim, fontWeight: '700', textAlign: 'center' }}>
-                {cur < rolls.length - 1 ? 'Hay más tiradas por contar…' : 'Leyendo la jugada…'}
-              </Text>
+              <Text style={{ color: C.dim, fontWeight: '700', textAlign: 'center' }}>{awaiting && ready ? 'Tirando los dados…' : 'Leyendo la jugada…'}</Text>
               <ReadingBar duration={readDuration} token={readToken} />
             </>
+          ) : queued ? (
+            <RefereeButton token={`q${cur}`} seconds={REFEREE_S} label={cur < 0 ? 'Ver la primera tirada ▸' : 'Ver la siguiente tirada ▸'} onGo={advance} />
           ) : live && roller !== null ? (
             iRoll ? (
               <>
-                <Text style={{ color: C.text, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
-                  {viewer === null ? `Le toca tirar a ${name(roller)}` : cur < 0 ? 'Abres tú el partido' : '¡Te toca tirar!'}
-                </Text>
-                <Btn label="🎲 Tirar los dados" onPress={props.onRoll} />
+                <View style={[s.row, { justifyContent: 'center', marginBottom: 8 }]}>
+                  <Crest name={name(roller)} color={clubColor(roller)} size={22} />
+                  <Text style={{ color: C.text, fontWeight: '800', marginLeft: 8 }}>
+                    {roller === viewer ? (cur < 0 ? 'Abres tú el partido' : '¡Te toca tirar!') : `Turno de ${name(roller)}`}
+                  </Text>
+                </View>
+                <RefereeButton
+                  token={`r${rolls.length}`}
+                  seconds={cur < 0 ? REFEREE_S * 2 : REFEREE_S}
+                  label={roller === viewer || viewer === null ? '🎲 Tirar los dados' : `🎲 Que tire ${name(roller)}`}
+                  onGo={doRoll}
+                />
               </>
             ) : (
               <>
                 <View style={[s.row, { justifyContent: 'center' }]}>
                   <Crest name={name(roller)} color={clubColor(roller)} size={24} />
-                  <Text style={{ color: C.text, fontWeight: '800', marginLeft: 8 }}>
-                    {state.players[roller].isBot ? `${name(roller)} va a tirar los dados…` : `Esperando a que ${name(roller)} tire los dados…`}
-                  </Text>
+                  <Text style={{ color: C.text, fontWeight: '800', marginLeft: 8 }}>Esperando a que {name(roller)} tire los dados…</Text>
                 </View>
                 {props.waitingExtra}
               </>
@@ -354,6 +445,27 @@ export function MatchScreen(props: {
             <Btn label="Ver el reparto de la jornada →" onPress={() => setReparto(true)} />
           )}
         </View>
+
+        {/* Tus números y tus cartas, siempre a mano durante el partido. */}
+        {cur >= 0
+          ? state.players.filter((p) => isMine(p.id)).map((p) => (
+              <View key={p.id} style={[s.panel, { borderColor: clubColor(p.id) + '66' }]}>
+                <View style={[s.row, { marginBottom: 8 }]}>
+                  <Crest name={p.name} color={clubColor(p.id)} size={20} />
+                  <Text style={[s.overline, { flex: 1, marginLeft: 8 }]}>{viewer === null ? p.name.toUpperCase() : 'TUS NÚMEROS'}</Text>
+                  {viewer !== null ? <Btn small kind="ghost" label={showCards ? 'Ocultar cartas' : 'Ver mis cartas'} onPress={() => setShowCards((x) => !x)} /> : null}
+                </View>
+                <NumberLine player={p} jornada={state.jornada} state={state} highlight={roll && !rolling ? roll.sum : undefined} />
+                {showCards && viewer !== null ? (
+                  <View style={{ marginTop: 10 }}>
+                    {p.squad.map((e) => (
+                      <FootballerCard key={e.cardId} cardId={e.cardId} entry={e} state={state} owner={p} />
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ))
+          : null}
 
         <View style={s.panel}>
           <View style={s.row}>

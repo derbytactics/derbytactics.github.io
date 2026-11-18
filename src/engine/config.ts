@@ -13,10 +13,12 @@ export const CONFIG = {
   squadSize: 7,
   /** Como mucho un portero por club. */
   maxKeepers: 1,
+  /** Como mucho dos delanteros por club: el resto del ataque lo ponen los medios. */
+  maxForwards: 2,
   /** Fuerza de ataque y defensa de cada posición cuando sale uno de sus números. */
   roles: {
     POR: { attack: 0, defense: 2 },
-    DEF: { attack: 0, defense: 2 },
+    DEF: { attack: 0, defense: 1 },
     MED: { attack: 1, defense: 0 },
     DEL: { attack: 2, defense: 0 },
   } as Record<'POR' | 'DEF' | 'MED' | 'DEL', { attack: number; defense: number }>,
@@ -31,7 +33,7 @@ export const CONFIG = {
    * Precio = factor de posición × (perPip·pips + quad·pips²).
    * Los pips son la frecuencia de sus números; el factor refleja cuánto pesa su papel.
    */
-  price: { perPip: 1.8, quad: 0.1, factor: { POR: 0.5, DEF: 0.75, MED: 0.45, DEL: 1 } as Record<'POR' | 'DEF' | 'MED' | 'DEL', number> },
+  price: { perPip: 1.8, quad: 0.1, factor: { POR: 0.45, DEF: 0.38, MED: 0.75, DEL: 1.05 } as Record<'POR' | 'DEF' | 'MED' | 'DEL', number> },
   /** Al vender al banco se recupera este porcentaje del precio. */
   sellRatio: 0.5,
   /** Cláusula = precio × multiplicador. */

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { HostCard, backendEnabled, getAccount, refreshProfile, rpc } from '../account/api';
 import { useAccount } from '../account/useAccount';
-import { CONFIG, SeasonLength, currentRoller, standings } from '../engine';
+import { CONFIG, SeasonLength, standings } from '../engine';
 import { RoomState, botStep, finalSeats, hostAct, hostReady, pendingReady, playTurnForAbsent, setLobby, startGame } from '../net/room';
 import { GuestSession, HostSession } from '../net/session';
 import { deviceId } from '../net/storage';
@@ -124,12 +124,10 @@ export function OnlineHost(props: { name: string; resume: RoomState | null; onHe
 
   // La IA de los clubes sin persona juega en el dispositivo del anfitrión.
   const g = room?.game;
-  const botRoller = g ? currentRoller(g) : null;
-  const botRolls = botRoller !== null && g!.players[botRoller].isBot;
-  const botTurn = botRolls || (!!g && g.phase === 'market' && g.players[g.turnOrder[g.turnIndex]].isBot);
+  const botTurn = !!g && g.phase === 'market' && g.players[g.turnOrder[g.turnIndex]].isBot;
   useEffect(() => {
     if (!botTurn) return;
-    const t = setTimeout(() => session.current?.update((r) => botStep(r)), botRolls ? 1500 : 350);
+    const t = setTimeout(() => session.current?.update((r) => botStep(r)), 350);
     return () => clearTimeout(t);
   }, [botTurn, room?.seq]);
 

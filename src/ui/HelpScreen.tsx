@@ -26,7 +26,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Step
         n={1}
         title="Monta tu equipo"
-        text={`Caben ${CONFIG.squadSize} futbolistas y un solo portero; el resto, con la táctica que quieras. Cada uno actúa cuando sale uno de sus números (el 6 y el 8 son los que más salen). Un fichaje por turno.`}
+        text={`Caben ${CONFIG.squadSize} futbolistas, con un portero y dos delanteros como mucho; el resto, con la táctica que quieras. Cada uno actúa cuando sale uno de sus números (el 6 y el 8 son los que más salen). Un fichaje por turno.`}
         art={
           <View style={{ alignItems: 'center' }}>
             <Avatar seed="f1" size={50} jersey="#E5484D" ring={C.accent} />
@@ -41,7 +41,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Step
         n={2}
         title="Ataque contra defensa"
-        text="Un solo partido de todos contra todos. Cada club tira los dados una vez. Con el número que sale atacan los que lo tengan: cada delantero suma 2 y cada medio 1. Cada rival defiende con los suyos: el portero y cada defensa suman 2. Tu jugada es gol contra cada rival cuya defensa en ese número sea menor que tu ataque."
+        text="Un solo partido de todos contra todos. Cada club tira los dados una vez. Con el número que sale atacan los que lo tengan: cada delantero suma 2 y cada medio 1. Cada rival defiende con los suyos: el portero suma 2 y cada defensa 1. Tu jugada es gol contra cada rival cuya defensa en ese número sea menor que tu ataque."
         art={
           <View style={[s.row, { gap: 6 }]}>
             <Die value={5} size={40} />
@@ -52,7 +52,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Step
         n={3}
         title="Qué hace cada posición"
-        text="Delantero: ataque 2; lo para un portero o un defensa. Medio: ataque 1; con un delantero forma la jugada combinada (fuerza 3), que solo paran un portero y un defensa juntos. Defensa: defensa 2. Portero: defensa 2 en tres o cuatro números; cobra prima por parada y con 3 en una jornada gana una carta."
+        text="Delantero: ataque 2; lo para el portero. Como mucho 2 por club. Medio: ataque 1; con un delantero forma la jugada combinada (fuerza 3), que solo paran el portero y un defensa juntos. Defensa: defensa 1 en tres o cuatro números; corta a los medios y completa al portero. Portero: defensa 2 en tres o cuatro números; cobra prima por parada y con 3 en una jornada gana una carta."
         art={<Text style={{ fontSize: 40 }}>🧤</Text>}
       />
       <Step

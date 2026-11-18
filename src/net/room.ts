@@ -122,7 +122,9 @@ export function hostAct(room: RoomState, action: Action): { room: RoomState; err
   const g = room.game;
   if (!g) return { room, error: 'La partida no ha empezado.' };
   if (action.type === 'roll') {
-    if (currentRoller(g) !== 0) return { room, error: 'No te toca tirar los dados.' };
+    // El anfitrión tira por su club y por los que lleva la IA.
+    const roller = currentRoller(g);
+    if (roller === null || (roller !== 0 && !g.players[roller].isBot)) return { room, error: 'No te toca tirar los dados.' };
   } else if (action.type !== 'nextJornada' && (g.phase !== 'market' || g.turnOrder[g.turnIndex] !== 0)) {
     return { room, error: 'No es tu turno.' };
   }

@@ -371,6 +371,7 @@ export function check(state: GameState, action: Action): string | null {
       if (state.turn.signed) return 'Solo un fichaje por turno.';
       if (me.squad.length >= CONFIG.squadSize) return 'Plantilla completa: vende antes a alguien.';
       if (footballer(action.cardId).position === 'POR' && hasKeeper(me)) return 'Ya tienes portero: véndelo antes de fichar otro.';
+      if (footballer(action.cardId).position === 'DEL' && lineup(me).DEL >= CONFIG.maxForwards) return `Ya tienes ${CONFIG.maxForwards} delanteros: vende uno antes de fichar otro.`;
       if (me.money < signPrice(state, action.cardId)) return 'No tienes dinero suficiente.';
       return null;
     }
@@ -382,6 +383,7 @@ export function check(state: GameState, action: Action): string | null {
       if (state.turn.signed) return 'Solo un fichaje por turno.';
       if (me.squad.length >= CONFIG.squadSize) return 'Plantilla completa: vende antes a alguien.';
       if (footballer(action.cardId).position === 'POR' && hasKeeper(me)) return 'Ya tienes portero: véndelo antes de fichar otro.';
+      if (footballer(action.cardId).position === 'DEL' && lineup(me).DEL >= CONFIG.maxForwards) return `Ya tienes ${CONFIG.maxForwards} delanteros: vende uno antes de fichar otro.`;
       if (isProtected(entry, J)) return 'Ese futbolista está protegido y no se puede fichar ahora.';
       if (me.money < clauseOf(entry)) return 'No te llega para pagar la cláusula.';
       return null;

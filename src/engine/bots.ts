@@ -26,19 +26,19 @@ import {
  * Tácticas de la IA: cuántos futbolistas quiere de cada posición (portero-defensas-medios-delanteros).
  * Sirven para jugar y para medir en el simulador que ninguna alineación domina.
  */
-export type BotStyle = 'equilibrado' | 'ofensivo' | 'defensivo' | 'medios' | 'delanteros' | 'sinPortero';
+export type BotStyle = 'equilibrado' | 'ofensivo' | 'defensivo' | 'cerrojo' | 'sinPortero' | 'sinDefensa';
 export const TACTICS: Record<BotStyle, Record<Position, number>> = {
   equilibrado: { POR: 1, DEF: 2, MED: 2, DEL: 2 },
-  ofensivo: { POR: 1, DEF: 1, MED: 1, DEL: 4 },
-  defensivo: { POR: 1, DEF: 3, MED: 2, DEL: 1 },
-  medios: { POR: 1, DEF: 1, MED: 4, DEL: 1 },
-  // Extremos, solo para el simulador: todo al ataque, y jugar sin portero.
-  delanteros: { POR: 0, DEF: 0, MED: 1, DEL: 6 },
-  sinPortero: { POR: 0, DEF: 2, MED: 2, DEL: 3 },
+  ofensivo: { POR: 1, DEF: 1, MED: 3, DEL: 2 },
+  defensivo: { POR: 1, DEF: 3, MED: 1, DEL: 2 },
+  cerrojo: { POR: 1, DEF: 4, MED: 1, DEL: 1 },
+  // Extremos, solo para el simulador: jugar sin portero y jugar sin defensas.
+  sinPortero: { POR: 0, DEF: 2, MED: 3, DEL: 2 },
+  sinDefensa: { POR: 0, DEF: 0, MED: 5, DEL: 2 },
 };
 /** Estilos con los que juega la IA en las partidas. */
-export const BOT_STYLES: BotStyle[] = ['equilibrado', 'ofensivo', 'defensivo', 'medios'];
-export const SIM_STYLES: BotStyle[] = [...BOT_STYLES, 'delanteros', 'sinPortero'];
+export const BOT_STYLES: BotStyle[] = ['equilibrado', 'ofensivo', 'defensivo', 'cerrojo'];
+export const SIM_STYLES: BotStyle[] = [...BOT_STYLES, 'sinPortero', 'sinDefensa'];
 
 const pips = (cardId: string) => totalPips(footballer(cardId).numbers);
 const posOf = (cardId: string) => footballer(cardId).position;
@@ -86,6 +86,7 @@ function transfer(state: GameState, me: Player, style: BotStyle, remaining: numb
     const allowed = (id: string) => {
       const pos = posOf(id);
       if (pos === 'POR') return want.POR > 0 && have.POR === 0;
+      if (pos === 'DEL' && have.DEL >= CONFIG.maxForwards) return false;
       return anyNeed ? needs(pos) : want[pos] > 0;
     };
     const market = state.market.filter((id) => allowed(id) && signPrice(state, id) <= me.money).sort((a, b) => pips(b) - pips(a));

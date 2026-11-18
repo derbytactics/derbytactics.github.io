@@ -37,7 +37,7 @@ function withInMarket(s: GameState, cardId: string): GameState {
 /** Busca una carta por posición y números exactos. */
 const card = (position: string, numbers: number[]) =>
   FOOTBALLERS.find((f) => f.position === position && f.numbers.join() === numbers.join())!.id;
-const CHEAP = card('DEL', [3]);
+const CHEAP = card('DEL', [5]);
 const entry = (cardId: string, extra: object = {}) => ({ cardId, shielded: false, noClauseUntil: 0, streakUntil: 0, outUntil: 0, extra: null, ...extra });
 const give = (s: GameState, playerId: number, special: string): GameState => {
   const c = structuredClone(s);
@@ -110,6 +110,14 @@ describe('mercado', () => {
     s = withInMarket(s, k2.id);
     expect(check(s, { type: 'sign', cardId: k2.id })).toMatch(/portero/);
   });
+  it('como mucho dos delanteros por club', () => {
+    const fwds = FOOTBALLERS.filter((f) => f.position === 'DEL').sort((a, b) => basePrice(a.id) - basePrice(b.id));
+    let s = newGame(2);
+    const me = currentPlayer(s)!.id;
+    s.players[me].squad = [entry(fwds[0].id), entry(fwds[1].id)];
+    s = withInMarket(s, fwds[2].id);
+    expect(check(s, { type: 'sign', cardId: fwds[2].id })).toMatch(/delanteros/);
+  });
   it('la cláusula paga al dueño, respeta la protección y el blindaje la encarece', () => {
     let s = withInMarket(newGame(2), CHEAP);
     const [first, second] = s.turnOrder;
@@ -167,7 +175,7 @@ describe('cartas especiales', () => {
 describe('partido', () => {
   const DEL68 = card('DEL', [6, 8]);
   const MED68 = card('MED', [6, 8]);
-  const DEF68 = card('DEF', [6, 8]);
+  const DEF68 = card('DEF', [4, 6, 8]);
   const POR = card('POR', [5, 6, 8, 9]);
   /** Juega una jornada entre dos plantillas y devuelve lo que pasó con el 6 y el 8. */
   function play(a: ReturnType<typeof entry>[], b: ReturnType<typeof entry>[], tweak?: (s: GameState) => void) {
@@ -209,9 +217,13 @@ describe('partido', () => {
     const { hits, r0, r1 } = play([entry(DEL68), entry(MED68)], [entry(POR)]);
     expect([r0.goals, r1.against]).toEqual([hits, hits]);
   });
-  it('portero y defensa paran la combinada; el defensa solo defiende', () => {
-    const { r0, r1 } = play([entry(DEL68), entry(MED68)], [entry(POR), entry(DEF68)]);
-    expect([r0.goals, r0.against, r1.goals, r1.against]).toEqual([0, 0, 0, 0]);
+  it('portero y defensa paran la combinada; un defensa solo no para a un delantero', () => {
+    const combo = play([entry(DEL68), entry(MED68)], [entry(POR), entry(DEF68)]);
+    expect([combo.r0.goals, combo.r1.goals]).toEqual([0, 0]);
+    const alone = play([entry(DEL68)], [entry(DEF68)]);
+    expect(alone.r0.goals).toBe(alone.hits);
+    const mid = play([entry(MED68)], [entry(DEF68)]);
+    expect(mid.r0.goals).toBe(0);
   });
   it('el medio no defiende: un medio rival no para nada', () => {
     const { hits, r0 } = play([entry(MED68)], [entry(card('MED', [5, 6, 9])), entry(card('MED', [4, 6, 8]))]);

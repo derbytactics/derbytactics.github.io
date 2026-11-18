@@ -81,12 +81,14 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
         key={game.jornada}
         state={game}
         focus={focus}
-        // En un solo dispositivo tira cualquiera de las personas; en línea, solo el club de este móvil.
-        canRoll={(r) => (seat === null ? !game.players[r].isBot : r === seat)}
+        // En un solo dispositivo se tira desde aquí por todos; en línea, cada móvil tira por su club
+        // y el anfitrión, además, por los de la IA.
+        canRoll={(r) => (seat === null ? true : r === seat || (!!online?.isHost && game.players[r].isBot))}
         onRoll={() => dispatch({ type: 'roll' })}
         onNext={() => dispatch({ type: 'nextJornada' })}
         footer={footer}
         waitingExtra={online?.onBotTurn && absent ? <Btn small kind="ghost" label="¿No responde? Tirar por él" onPress={online.onBotTurn} style={{ marginTop: 10 }} /> : undefined}
+        onForceAbsent={online?.onBotTurn && absent ? online.onBotTurn : undefined}
       />
     );
   }

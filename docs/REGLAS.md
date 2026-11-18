@@ -8,14 +8,14 @@ Tu club acaba de ascender y la directiva te ha dado 80 millones y una temporada 
 
 ## Componentes
 
-- **95 futbolistas:** 15 porteros, 24 defensas, 26 medios y 30 delanteros. Cada uno tiene números entre el 2 y el 12 (nunca el 7).
+- **95 futbolistas:** 15 porteros, 28 defensas, 32 medios y 20 delanteros. Cada uno tiene números entre el 2 y el 12 (nunca el 7).
 - **40 cartas especiales.**
 - **2 dados** y dinero (en millones, M).
 
 ## Tu plantilla
 
-- Como máximo **7 futbolistas** y **un solo portero**.
-- El resto, con la táctica que quieras: 1-2-2-2, 1-3-2-1, 1-1-1-4… Puedes incluso jugar sin portero, pero lo pagarás.
+- Como máximo **7 futbolistas**, con **un solo portero** y **dos delanteros como mucho**.
+- El resto, con la táctica que quieras: 1-2-2-2, 1-3-1-2, 1-1-3-2… Puedes incluso jugar sin portero, pero lo pagarás.
 
 ## Los números
 
@@ -29,10 +29,12 @@ Un futbolista vale más cuanto más probables son sus números, y cada posición
 
 | Posición | Cartas | Números por carta | Precio |
 |---|---|---|---|
-| Portero | 15 | 3-4 | 12-32M |
-| Defensa | 24 | 2-3 | 13-36M |
-| Medio | 26 | 2-3 | 10-28M |
-| Delantero | 30 | 1-3 | 4-45M |
+| Portero | 15 | 3-4 | 11-29M |
+| Defensa | 28 | 3-4 | 4-25M |
+| Medio | 32 | 2-3 | 11-34M |
+| Delantero | 20 | 1-3 | 9-47M |
+
+Dentro de cada posición, los futbolistas caros tienen más números o números que salen más.
 
 ## El partido: todos contra todos
 
@@ -43,7 +45,7 @@ Cada jornada se juega **un solo partido entre todos los clubes**. **Cada club ti
    - cada medio: **1**
 2. **Defiende** cada rival con sus futbolistas que tengan ese mismo número. Su **fuerza de defensa** es la suma:
    - el portero: **2**
-   - cada defensa: **2**
+   - cada defensa: **1**
 3. La jugada es **gol contra cada rival cuya defensa sea menor que el ataque**. Si la defensa iguala o supera al ataque, la para.
 
 Un mismo ataque puede ser gol contra unos rivales y parada para otros. Y en la misma tirada puedes parar un remate y marcar tú con tus atacantes de ese número: es lo que la crónica cuenta como una contra.
@@ -53,18 +55,18 @@ Un mismo ataque puede ser gol contra unos rivales y parada para otros. Y en la m
 | Atacas con | Fuerza | Te lo para un rival que tenga el 8 en… |
 |---|---|---|
 | Un medio (disparo lejano) | 1 | el portero o un defensa |
-| Un delantero (remate) | 2 | el portero o un defensa |
-| Medio y delantero (jugada combinada) | 3 | el portero y un defensa, o dos defensas |
-| Dos delanteros | 4 | el portero y un defensa, o dos defensas |
-| Dos delanteros y un medio | 5 | el portero y dos defensas |
+| Un delantero (remate) | 2 | el portero, o dos defensas |
+| Medio y delantero (jugada combinada) | 3 | el portero y un defensa |
+| Dos delanteros | 4 | el portero y dos defensas |
+| Dos delanteros y un medio | 5 | el portero y tres defensas |
 
 ### Qué aporta cada posición
 
 | Posición | Ataque | Defensa | Lo que le define |
 |---|---|---|---|
-| **Delantero** | 2 | – | Es el que marca. Tiene pocos números (1-3). |
-| **Medio** | 1 | – | Barato y con más números. Solo, es fácil de parar; junto a un delantero forma la jugada combinada, que un defensor solo no para. |
-| **Defensa** | – | 2 | Para remates en sus 2-3 números y, con el portero, las combinadas. |
+| **Delantero** | 2 | – | Es el que marca. Tiene pocos números (1-3) y solo caben **2 por club**. |
+| **Medio** | 1 | – | Con más números que el delantero. Solo, es fácil de parar; junto a un delantero forma la jugada combinada, que el portero solo no para. Como los delanteros están limitados, los medios son el resto de tu ataque. |
+| **Defensa** | – | 1 | Barato y con 3 o 4 números. Corta a los medios sueltos y, junto al portero, para las combinadas. Dos defensas con el mismo número paran a un delantero. |
 | **Portero** | – | 2 | Uno por club, con 3 o 4 números. Cobra **1M de prima** por cada jugada que ayude a parar y, con **3 paradas en una jornada**, gana una carta especial. |
 
 Atacan delanteros y medios; defienden porteros y defensas. Nadie hace las dos cosas.
@@ -95,7 +97,7 @@ Al empezar cada jornada, el futbolista más antiguo del mercado se retira y entr
 
 ### 2. Partido
 
-Una tirada por club, por turnos. Tras cada tirada se cuenta lo que ha pasado, noticia a noticia, antes de que el siguiente club pueda tirar.
+Una tirada por club, por turnos. Tras cada tirada se cuenta lo que te afecta, noticia a noticia. Después aparece el botón para tirar (los dados de la IA también se tiran con ese botón) y el árbitro da 5 segundos: si nadie lo pulsa, ordena seguir. El acta recoge todas las jugadas, también las que no te afectan.
 
 ### 3. Recuento y reparto
 
