@@ -32,6 +32,7 @@ export const SPECIAL_ICON: Record<SpecialKind, string> = {
   lesion: '🩹',
   amarilla: '🟨',
   roja: '🟥',
+  penalti: '🥅',
   racha: '🔥',
   olfato: '🎯',
   cantera: '🌱',

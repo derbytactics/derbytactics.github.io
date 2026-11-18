@@ -270,6 +270,20 @@ describe('partido', () => {
     s = apply(s, { type: 'playCard', handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 });
     expect(s.players[1].squad[0].outUntil).toBe(1);
   });
+  it('el penalti es un gol seguro al rival elegido en el partido de esa jornada', () => {
+    let s = give(newGame(2), 0, 'penalti-1');
+    s.turnOrder = [0, 1];
+    s = apply(s, { type: 'playCard', handIndex: 0, targetPlayerId: 1 });
+    s.phase = 'match';
+    s.match = null;
+    s.players[0].squad = [];
+    s.players[1].squad = [];
+    s = apply(s, { type: 'playMatch' });
+    const [r0, r1] = [0, 1].map((id) => s.lastMatch!.results.find((r) => r.playerId === id)!);
+    expect([r0.goals, r0.against, r1.goals, r1.against, r0.rank]).toEqual([1, 0, 0, 1, 1]);
+    expect(r0.ticket).toBe(CONFIG.stadium.ticketPerGoal[0]);
+    expect(s.lastMatch!.penalties).toEqual([{ playerId: 0, rival: 1 }]);
+  });
   it('la roja expulsa esta jornada y la siguiente', () => {
     let s = give(newGame(2), 0, 'roja-1');
     s.turnOrder = [0, 1];

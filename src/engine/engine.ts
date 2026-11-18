@@ -47,6 +47,8 @@ export interface Player {
   subsidy: boolean;
   /** Última entrada de la crónica que este club ya había visto al acabar su turno. */
   lastSeen: number;
+  /** Penaltis a favor conseguidos con cartas: jornada en la que se lanzan y rival que los encaja. */
+  penalties?: { jornada: number; rival: number }[];
 }
 
 /** Una jugada de ataque: un club con atacantes en el número que ha salido. */
@@ -96,6 +98,8 @@ export interface MatchReport {
   rolls: RollReport[];
   /** Quién tiró los dados en cada tirada. */
   rollers: number[];
+  /** Penaltis lanzados en la jornada (cartas especiales). */
+  penalties?: { playerId: number; rival: number }[];
   results: MatchResult[];
 }
 
@@ -291,6 +295,11 @@ export function expectedGoals(player: Player, jornada: number): number {
     if (strengthOn(player, n, jornada).attack > 0) pips += 6 - Math.abs(7 - n);
   }
   return (pips * 4) / 36;
+}
+
+/** Penaltis que se lanzan en una jornada: quién marca y a quién. */
+export function penaltiesOf(state: GameState, jornada: number): { playerId: number; rival: number }[] {
+  return state.players.flatMap((p) => (p.penalties ?? []).filter((x) => x.jornada === jornada).map((x) => ({ playerId: p.id, rival: x.rival })));
 }
 
 export const hasKeeper = (player: Player) => player.squad.some((e) => footballer(e.cardId).position === 'POR');
@@ -614,6 +623,10 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
       theirs!.outUntil = J + S.redCardRounds - 1;
       say(state, `Roja a ${footballer(theirs!.cardId).name} (${rival!.name}): expulsado esta jornada y la siguiente.`, [rival!.id]);
       break;
+    case 'penalti':
+      me.penalties = [...(me.penalties ?? []).filter((x) => x.jornada >= J), { jornada: J, rival: rival!.id }];
+      say(state, `¡Penalti a favor de ${me.name}! Lo lanzará contra ${rival!.name} en el partido de esta jornada.`, [rival!.id]);
+      break;
     case 'racha':
       own!.streakUntil = J + S.streakRounds - 1;
       say(state, `${footballer(own!.cardId).name} (${me.name}) está en racha: doble fuerza ${S.streakRounds} jornadas.`);
@@ -727,6 +740,13 @@ function finishMatch(state: GameState) {
       }
     }
   }
+  // Los penaltis conseguidos con cartas son goles seguros.
+  const penalties = penaltiesOf(state, J);
+  for (const pen of penalties) {
+    tally.get(pen.playerId)!.goals += 1;
+    tally.get(pen.playerId)!.scoringPlays += 1;
+    tally.get(pen.rival)!.against += 1;
+  }
   const diff = (id: number) => tally.get(id)!.goals - tally.get(id)!.against;
   const better = (a: number, b: number) => diff(a) > diff(b) || (diff(a) === diff(b) && tally.get(a)!.goals > tally.get(b)!.goals);
   const results: MatchResult[] = state.players.map((p) => {
@@ -761,7 +781,7 @@ function finishMatch(state: GameState) {
     p.money += r.prize + r.ticket + r.saveBonus;
   }
   results.sort((a, b) => a.rank - b.rank || a.playerId - b.playerId);
-  state.lastMatch = { jornada: J, rolls, rollers: state.match!.rollers, results };
+  state.lastMatch = { jornada: J, rolls, rollers: state.match!.rollers, penalties, results };
   state.match = null;
   const winners = results.filter((r) => r.rank === 1).map((r) => state.players[r.playerId].name);
   const top = results[0];

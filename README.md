@@ -13,7 +13,7 @@ Eres el presidente de un club recién ascendido. Con 80M en caja tienes que mont
 - **Cuentas de usuario (opcionales):** historial de partidas, ranking por victorias y reputación de anfitriones con sanciones temporales. Ver [docs/CUENTAS.md](docs/CUENTAS.md).
 - **Multijugador en línea:** cada persona desde su móvil, con salas por código o enlace de invitación.
 - Partida en un solo dispositivo: varias personas pasándoselo y/o rivales controlados por IA (cuatro tácticas).
-- Mercado de fichajes, cláusulas, blindajes, ampliación de estadio, 40 cartas especiales, recuento de goles y reparto por posición cada jornada.
+- Mercado de fichajes, cláusulas, blindajes, ampliación de estadio, 43 cartas especiales, recuento de goles y reparto por posición cada jornada.
 - Ilustraciones vectoriales generadas por código (retratos, escudos, dados, estadio) y guía de pasos en pantalla.
 - Motor de reglas independiente de la interfaz (`src/engine`), determinista y con tests.
 - Simulador de partidas entre bots para medir el equilibrio (`npm run simulate`).
@@ -54,7 +54,7 @@ npm run test:db    # pruebas de la base de datos (necesita PostgreSQL local)
 App.tsx              Decide la pantalla según la fase de la partida
 src/engine/
   config.ts          Todos los valores de equilibrio
-  cards.ts           95 futbolistas y 40 cartas especiales
+  cards.ts           95 futbolistas y 43 cartas especiales
   engine.ts          Estado, validación y aplicación de acciones
   bots.ts            IA con varias tácticas
   engine.test.ts     Tests

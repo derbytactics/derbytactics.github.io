@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, Text, View } from 'react-native';
-import { GameState, MatchResult, RollReport, currentRoller, standings, ticketPerGoal } from '../engine';
+import { GameState, MatchResult, RollReport, currentRoller, penaltiesOf, standings, ticketPerGoal } from '../engine';
 import { Avatar, Crest, Die } from './art';
 import { NumberLine, SpecialCardFace } from './GameScreen';
 import { Btn, FootballerCard, Overline, PhaseStepper, Pop, StandingsTable, s } from './components';
@@ -313,7 +313,13 @@ export function MatchScreen(props: {
     props.onRoll();
   };
   const counted = rolls.slice(0, rolling ? cur : cur + 1);
-  const score = (id: number) => counted.reduce((a, r) => ({ gf: a.gf + rollScore(r, id).gf, gc: a.gc + rollScore(r, id).gc }), { gf: 0, gc: 0 });
+  // Los penaltis (cartas) abren el marcador antes de la primera tirada.
+  const penalties = penaltiesOf(state, state.jornada);
+  const score = (id: number) =>
+    counted.reduce((a, r) => ({ gf: a.gf + rollScore(r, id).gf, gc: a.gc + rollScore(r, id).gc }), {
+      gf: penalties.filter((x) => x.playerId === id).length,
+      gc: penalties.filter((x) => x.rival === id).length,
+    });
   const maxGoals = Math.max(1, ...state.players.map((p) => score(p.id).gf));
   const delta = roll && !rolling && viewer !== null && revealed >= news.length ? rollScore(roll, viewer) : null;
   const last = state.jornada >= state.totalJornadas;
@@ -368,6 +374,14 @@ export function MatchScreen(props: {
             <Text style={[s.p, { marginTop: 6, marginBottom: 12 }]}>
               Un partido de todos contra todos: cada club tira los dados una vez ({total} tiradas). Si te sale un 7, no hay jugada pero robas una carta especial. Con el número que salga atacan los delanteros y medios que lo tengan, y cada rival lo para si su portero y sus defensas con ese número suman al menos la misma fuerza.
             </Text>
+            {penalties.map((pen, i) => (
+              <View key={i} style={[s.panel, s.row, { borderColor: isMine(pen.playerId) ? C.accent : isMine(pen.rival) ? C.danger : C.line }]}>
+                <Text style={{ fontSize: 24, marginRight: 10 }}>🥅</Text>
+                <Text style={{ color: C.text, fontWeight: '700', flex: 1 }}>
+                  Penalti a favor de {name(pen.playerId)}: lo transforma y marca a {name(pen.rival)}.
+                </Text>
+              </View>
+            ))}
             {state.players.filter((p) => isMine(p.id)).map((p) => (
               <View key={p.id} style={[s.panel, { borderColor: clubColor(p.id) + '88' }]}>
                 <View style={[s.row, { marginBottom: 8 }]}>
@@ -508,6 +522,11 @@ function Acta({ state, rolls, rollers }: { state: GameState; rolls: RollReport[]
     <View style={[s.panel, { marginTop: 4 }]}>
       <Overline>ACTA DEL PARTIDO</Overline>
       <View style={{ marginTop: 6 }}>
+        {penaltiesOf(state, state.jornada).map((pen, i) => (
+          <Text key={`p${i}`} style={{ color: C.dim, fontSize: 13, lineHeight: 19, marginBottom: 4 }}>
+            🥅 <Text style={{ color: clubColor(pen.playerId), fontWeight: '800' }}>{state.players[pen.playerId].name}</Text> marca de penalti a {state.players[pen.rival].name}.
+          </Text>
+        ))}
         {rolls.map((r, i) => (
           <View key={i} style={[s.row, { alignItems: 'flex-start', paddingVertical: 7, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }]}>
             <View style={{ width: 34, height: 34, borderRadius: 9, borderWidth: 1.5, borderColor: r.sum === 7 ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>

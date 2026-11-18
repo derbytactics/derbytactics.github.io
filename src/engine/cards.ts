@@ -122,6 +122,7 @@ export type SpecialKind =
   | 'lesion'
   | 'amarilla'
   | 'roja'
+  | 'penalti'
   | 'racha'
   | 'olfato'
   | 'cantera'
@@ -180,6 +181,13 @@ export const SPECIAL_INFO: Record<
     sanction: true,
     copies: 2,
     text: () => `Un futbolista rival es expulsado: ni ataca ni defiende esta jornada ni la siguiente.`,
+  },
+  penalti: {
+    title: 'Penalti a favor',
+    target: 'rival',
+    sanction: false,
+    copies: 3,
+    text: () => 'El árbitro señala penalti: en el partido de esta jornada marcas un gol al rival que elijas.',
   },
   racha: {
     title: 'Jugador en racha',

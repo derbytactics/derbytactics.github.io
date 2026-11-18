@@ -165,6 +165,9 @@ function pickCardToPlay(state: GameState, me: Player, style: BotStyle, remaining
       case 'incidentes':
         if (leader && leader.money >= 3) a = { type: 'playCard', handIndex, targetPlayerId: leader.id };
         break;
+      case 'penalti':
+        if (leader) a = { type: 'playCard', handIndex, targetPlayerId: leader.id };
+        break;
       case 'puertaCerrada': {
         const t = rivals
           .filter((r) => r.closedDoorsUntil < J)

@@ -9,7 +9,7 @@ Tu club acaba de ascender y la directiva te ha dado 80 millones y una temporada 
 ## Componentes
 
 - **95 futbolistas:** 15 porteros, 28 defensas, 32 medios y 20 delanteros. Cada uno tiene números entre el 2 y el 12 (nunca el 7).
-- **40 cartas especiales.**
+- **43 cartas especiales.**
 - **2 dados** y dinero (en millones, M).
 
 ## Tu plantilla
@@ -124,6 +124,7 @@ Las sanciones se juegan contra un rival; el resto, sobre tu club. Las duraciones
 | **Lesión muscular** (sanción) | 2 | Un futbolista rival ni ataca ni defiende durante 3 jornadas. |
 | **Tarjeta amarilla** (sanción) | 4 | Un futbolista rival juega esta jornada con 1 menos de fuerza (un medio amonestado no ataca; un delantero, un defensa o un portero se quedan en 1). Si ya tenía amarilla esta jornada, es expulsado. |
 | **Tarjeta roja** (sanción) | 2 | Un futbolista rival es expulsado: ni ataca ni defiende esta jornada ni la siguiente. |
+| **Penalti a favor** | 3 | El árbitro señala penalti: en el partido de esta jornada marcas un gol al rival que elijas. Cuenta como jugada de gol para la taquilla. |
 | **Jugador en racha** | 4 | Uno de tus futbolistas juega con el doble de fuerza durante 2 jornadas. |
 | **Olfato de gol** | 6 | Uno de tus futbolistas actúa también con el número de la carta (4, 5, 6, 8, 9 o 10) durante 3 jornadas. |
 | **Jugador de cantera** | 3 | Nadie puede pagar la cláusula de uno de tus futbolistas durante 3 jornadas. |
