@@ -2,7 +2,8 @@ import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { CONFIG } from '../engine';
 import { Avatar, Die, StadiumArt, Trophy } from './art';
-import { Btn, NumberToken, Overline, s } from './components';
+import { Btn, LegalLinks, NumberToken, Overline, s } from './components';
+import { resetTips } from './Tip';
 import { C } from './theme';
 
 function Step({ n, title, text, art }: { n: number; title: string; text: string; art: React.ReactNode }) {
@@ -74,6 +75,8 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
         art={<Trophy size={64} />}
       />
       <Btn label="Entendido" onPress={onClose} />
+      <Btn small kind="ghost" label="Volver a ver los consejos de primera vez" onPress={() => { resetTips(); onClose(); }} style={{ marginTop: 10 }} />
+      <LegalLinks />
     </ScrollView>
   );
 }

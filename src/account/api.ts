@@ -246,6 +246,8 @@ export async function deleteAccount(): Promise<void> {
  * o de cambio de contraseña, y carga el perfil.
  */
 export async function initAccount(): Promise<void> {
+  // En la app nativa lo guardado se carga después de arrancar: se vuelve a leer aquí.
+  set({ session: load<Session>(SESSION_KEY), avatar: load<string>(AVATAR_KEY) ?? state.avatar });
   if (!backendEnabled()) return;
   const loc = (globalThis as { location?: Location }).location;
   const hash = new URLSearchParams((loc?.hash ?? '').replace(/^#/, ''));

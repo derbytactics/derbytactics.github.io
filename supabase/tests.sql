@@ -117,6 +117,11 @@ create temp table t6 as select start_game('GGGGG', 'corta', 2, '[{"seat":0,"name
 update games set last_seen = now() - interval '31 minutes' where id = (select gid from t6);
 select pg_temp.ok((my_profile() ->> 'host_abandons')::int = 1, 'una partida sin señales 30 min cuenta como abandonada');
 
+-- Informes de error.
+select pg_temp.login(null);
+select log_client_error('fallo de prueba', 'pila', 'contexto');
+select pg_temp.ok((select count(*) = 1 and bool_and(user_id is null) from client_errors), 'los informes de error se guardan sin cuenta');
+
 -- Las tablas no son accesibles directamente.
 set role authenticated;
 do $$ begin

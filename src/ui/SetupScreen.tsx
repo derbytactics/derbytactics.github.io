@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { CONFIG, NewGameOptions, SeasonLength } from '../engine';
 import { Crest, Logo } from './art';
-import { Btn, NavBar, Overline, s } from './components';
+import { Btn, LegalLinks, NavBar, Overline, s } from './components';
 import { C, clubColor } from './theme';
 
 const DEFAULT_NAMES = ['Atlético Barrio', 'Real Chamartín', 'Sporting Ribera', 'Unión Levante', 'Deportivo Norte', 'Racing Meseta', 'CF Bahía', 'Rayo Sur'];
@@ -22,6 +22,9 @@ export function SetupScreen(props: {
   onResume: () => void;
   initialCode: string;
   initialName: string;
+  /** Descripción de la partida local guardada, si la hay. */
+  savedLocal: string | null;
+  onContinueLocal: () => void;
   /** Hay servidor de cuentas: crear salas exige estar registrado. */
   accountsOn: boolean;
   /** Comprueba si esta persona puede crear salas; devuelve el motivo si no. */
@@ -106,6 +109,14 @@ export function SetupScreen(props: {
         </>
       ) : (
         <>
+          {props.savedLocal ? (
+            <View style={[s.panel, { borderColor: C.accent }]}>
+              <Overline>PARTIDA GUARDADA</Overline>
+              <Text style={{ color: C.text, fontWeight: '700', marginVertical: 6 }}>{props.savedLocal}</Text>
+              <Btn label="Continuar la partida" onPress={props.onContinueLocal} />
+              <Text style={[s.p, { fontSize: 12, marginTop: 6 }]}>Si empiezas una nueva, esta se sustituye.</Text>
+            </View>
+          ) : null}
       <View style={[s.row, { marginBottom: 10 }]}>
             <View style={{ flex: 1 }}>
               <Overline>CLUBES EN LA LIGA</Overline>
@@ -146,6 +157,7 @@ export function SetupScreen(props: {
           <Btn label="Empezar la pretemporada" onPress={() => onStart({ players: players.slice(0, count), season })} />
         </>
       )}
+      <LegalLinks />
     </ScrollView>
     </View>
   );

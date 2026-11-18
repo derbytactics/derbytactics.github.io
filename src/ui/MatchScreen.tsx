@@ -5,6 +5,8 @@ import { Avatar, Crest, Die } from './art';
 import { NumberLine, SpecialCardFace } from './GameScreen';
 import { Btn, FootballerCard, Overline, PhaseStepper, Pop, StandingsTable, s } from './components';
 import { News, NewsKind, rollNews, rollScore } from './narrative';
+import { Sfx, play } from './sound';
+import { Tip } from './Tip';
 import { C, NATIVE_DRIVER, POS_COLOR, clubColor } from './theme';
 
 const ordinal = (n: number) => `${n}.º`;
@@ -257,7 +259,10 @@ export function MatchScreen(props: {
 
   const advance = (forced: boolean) => {
     if (cur >= rolls.length - 1) return;
-    if (forced) setForcedRoll(cur + 1);
+    if (forced) {
+      setForcedRoll(cur + 1);
+      play('whistle');
+    }
     setCur(cur + 1);
     setRolling(true);
     setRevealed(0);
@@ -284,6 +289,19 @@ export function MatchScreen(props: {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cur, rolling, revealed, ready, rolls.length, reparto, awaiting]);
+
+  // Sonido: dados al tirar y un efecto por cada noticia que aparece.
+  useEffect(() => {
+    if (rolling) play('dice');
+  }, [rolling, cur]);
+  useEffect(() => {
+    const nw = !rolling && revealed > 0 ? news[revealed - 1] : null;
+    if (!nw) return;
+    const map: Partial<Record<string, Sfx>> = { goal: 'goal', concede: 'concede', save: 'save', stopped: 'stopped', var: 'whistle', card: 'card' };
+    const sfx = map[nw.kind];
+    if (sfx) play(sfx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealed, rolling, cur]);
 
   const queued = cur < rolls.length - 1;
   const caughtUp = ready && !queued;
@@ -370,6 +388,9 @@ export function MatchScreen(props: {
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         {cur < 0 ? (
           <>
+            <Tip id="partido" title="Así se juega el partido">
+              Cada club tira los dados una vez. Con el número que salga atacan los delanteros y medios que lo tengan, y los porteros y defensas con ese mismo número intentan pararlo. Tú solo verás lo que te afecta; el resto queda en el acta.
+            </Tip>
             <Text style={s.h1}>Mercado cerrado. ¡A jugar!</Text>
             <Text style={[s.p, { marginTop: 6, marginBottom: 12 }]}>
               Un partido de todos contra todos: cada club tira los dados una vez ({total} tiradas). Si te sale un 7, no hay jugada pero robas una carta especial. Con el número que salga atacan los delanteros y medios que lo tengan, y cada rival lo para si su portero y sus defensas con ese número suman al menos la misma fuerza.

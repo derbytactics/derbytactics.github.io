@@ -20,6 +20,7 @@ import {
 } from '../engine';
 import { Crest, StadiumArt } from './art';
 import { Btn, Chronicle, FootballerCard, NumberToken, Overline, PhaseStepper, Popup, StandingsTable, Tag, jornadaLabel, s } from './components';
+import { Tip } from './Tip';
 import { C, POS_COLOR, clubColor } from './theme';
 
 const J_IS_PRESEASON = (st: GameState) => st.jornada === 1 && st.turnOrder.length > st.players.length;
@@ -220,6 +221,9 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
         {tab === 'mercado' ? (
           <>
+            <Tip id="mercado" title="Empieza por un portero y un delantero">
+              Tienes 80M para montar un equipo de 7. Un buen comienzo: un portero con números que salgan mucho (6 y 8), uno o dos delanteros y medios que compartan número con ellos. Solo puedes hacer un fichaje por turno.
+            </Tip>
             <Text style={[s.p, { marginBottom: 10 }]}>
               Los delanteros y medios atacan cuando sale su número; porteros y defensas lo paran si tienen ese mismo número. Caben 7 futbolistas y un solo portero.
             </Text>
@@ -236,6 +240,9 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
 
         {tab === 'plantilla' ? (
           <>
+            <Tip id="club" title="Tu tabla de números">
+              Para cada número ves tu ataque (⚔), tu defensa (🛡) y a cuántos rivales marcarías hoy. Busca números donde los rivales no defiendan, y tapa aquellos con los que te atacan.
+            </Tip>
             <View style={s.panel}>
               <View style={[s.row, { alignItems: 'flex-start' }]}>
                 <View style={{ flex: 1 }}>
@@ -278,6 +285,9 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
 
         {tab === 'rivales' ? (
           <>
+            <Tip id="rivales" title="Mira qué números tienen">
+              Aquí ves las plantillas rivales. Un delantero tuyo con el 6 vale poco si todos tienen portero con el 6. Y si un rival tiene una estrella sin blindar, puedes llevártela pagando su cláusula.
+            </Tip>
             <Text style={[s.p, { marginBottom: 10 }]}>Paga la cláusula de un rival y te lo llevas sin que pueda negarse. El dinero va a su club.</Text>
             {rivals.map((r) => (
               <View key={r.id} style={{ marginBottom: 14 }}>

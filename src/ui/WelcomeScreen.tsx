@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { AuthForm } from './AccountScreen';
 import { Logo } from './art';
-import { Btn, s } from './components';
+import { Btn, LegalLinks, s } from './components';
 import { C } from './theme';
 
 /** Primera pantalla: entrar con tu cuenta o jugar como invitado. */
@@ -39,6 +39,7 @@ export function WelcomeScreen({ onGuest, startWithLogin }: { onGuest: () => void
           </Text>
         </>
       )}
+      <LegalLinks />
     </ScrollView>
   );
 }

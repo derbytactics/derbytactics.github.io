@@ -17,7 +17,7 @@ import {
 } from '../account/api';
 import { useAccount } from '../account/useAccount';
 import { Trophy, USER_AVATARS, UserAvatar } from './art';
-import { Btn, Overline, s } from './components';
+import { Btn, LegalLinks, Overline, s } from './components';
 import { C } from './theme';
 
 type Tab = 'perfil' | 'historial' | 'ranking';
@@ -142,7 +142,7 @@ export function AuthForm() {
       {mode === 'login' ? <Btn small kind="ghost" label="He olvidado mi contraseña" onPress={() => { setMode('forgot'); setMsg(null); }} style={{ marginTop: 10 }} /> : null}
       {mode === 'register' ? (
         <Text style={[s.p, { fontSize: 12, marginTop: 12 }]}>
-          Guardamos tu correo (solo para entrar y recuperar la contraseña), tu nombre de usuario y tus partidas. Puedes borrar la cuenta cuando quieras desde tu perfil.
+          Al crear la cuenta aceptas las condiciones de uso y la política de privacidad (enlaces abajo). Guardamos tu correo (solo para entrar y recuperar la contraseña), tu nombre de usuario y tus partidas. Puedes borrar la cuenta cuando quieras desde tu perfil.
         </Text>
       ) : null}
     </>
@@ -350,6 +350,7 @@ export function AccountScreen({ onClose, initialTab }: { onClose: () => void; in
           )}
         </>
       )}
+      <LegalLinks />
     </ScrollView>
   );
 }

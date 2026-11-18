@@ -1,15 +1,18 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform, View } from 'react-native';
 import { backendEnabled, getAccount, initAccount, refreshProfile } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
 import { Action, BOT_STYLES, GameState, apply, botAction, check, createGame, currentPlayer } from './src/engine';
 import { RoomState } from './src/net/room';
 import { GUEST_KEY, HOST_KEY, normalizeCode } from './src/net/session';
-import { load } from './src/net/storage';
+import { hydrateStorage, load, remove, save } from './src/net/storage';
 import { AccountScreen, formatDate } from './src/ui/AccountScreen';
+import { ErrorBoundary, installGlobalErrorHandlers } from './src/ui/ErrorBoundary';
 import { GameView } from './src/ui/GameView';
 import { HelpScreen } from './src/ui/HelpScreen';
+import { LegalScreen, LegalTab } from './src/ui/LegalScreen';
 import { OnlineGuest, OnlineHost } from './src/ui/Online';
 import { SetupScreen } from './src/ui/SetupScreen';
 import { WelcomeScreen } from './src/ui/WelcomeScreen';
@@ -21,6 +24,10 @@ type Mode =
   | { kind: 'local' }
   | { kind: 'host'; name: string; resume: RoomState | null }
   | { kind: 'guest'; code: string; name: string };
+
+/** Partida de un solo dispositivo guardada para poder continuarla. */
+const LOCAL_KEY = 'futcards.local.v3';
+installGlobalErrorHandlers();
 
 /** Código de sala que llega en el enlace de invitación (?sala=ABCDE). */
 function codeFromLink(): string {
@@ -39,9 +46,15 @@ export default function App() {
   const [accountOpen, setAccountOpen] = useState(false);
   /** Ha elegido jugar sin cuenta en esta visita. */
   const [guest, setGuest] = useState(false);
+  const [legal, setLegal] = useState<LegalTab | null>(null);
+  /** En la app nativa hay que cargar lo guardado antes de pintar nada. */
+  const [booted, setBooted] = useState(Platform.OS === 'web');
   const account = useAccount();
   useEffect(() => {
-    initAccount().then(() => getAccount().recovering && setAccountOpen(true));
+    hydrateStorage(Platform.OS === 'web' ? null : AsyncStorage)
+      .then(() => initAccount())
+      .then(() => getAccount().recovering && setAccountOpen(true))
+      .finally(() => setBooted(true));
   }, []);
   const gameRef = useRef(game);
   gameRef.current = game;
@@ -71,6 +84,13 @@ export default function App() {
     return () => clearTimeout(t);
   }, [game, me]);
 
+  // La partida local se guarda sola tras cada jugada y se borra al terminar la temporada.
+  useEffect(() => {
+    if (mode.kind !== 'local' || !game) return;
+    if (game.phase === 'finished') remove(LOCAL_KEY);
+    else save(LOCAL_KEY, game);
+  }, [game, mode.kind]);
+
   const toMenu = () => {
     setGame(null);
     setMode({ kind: 'menu' });
@@ -78,22 +98,31 @@ export default function App() {
   const onHelp = () => setHelp(true);
 
   let body: React.ReactNode;
-  if (backendEnabled() && !account.session && !guest && mode.kind === 'menu') {
+  if (!booted) {
+    body = null;
+  } else if (backendEnabled() && !account.session && !guest && mode.kind === 'menu') {
     body = <WelcomeScreen onGuest={() => setGuest(true)} startWithLogin={!!account.linkError} />;
   } else if (mode.kind === 'host') {
     body = <OnlineHost name={mode.name} resume={mode.resume} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'guest') {
     body = <OnlineGuest code={mode.code} name={mode.name} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'local' && game) {
-    body = <GameView game={game} seat={null} dispatch={dispatch} onHelp={onHelp} onExit={toMenu} exitText="La partida no se guarda: si sales, se pierde." />;
+    body = <GameView game={game} seat={null} dispatch={dispatch} onHelp={onHelp} onExit={toMenu} exitText="La partida queda guardada en este dispositivo: podrás continuarla desde el menú." />;
   } else {
     const savedHost = load<RoomState>(HOST_KEY);
     const savedGuest = load<{ code: string; name: string }>(GUEST_KEY);
+    const savedLocal = load<GameState>(LOCAL_KEY);
     body = (
       <SetupScreen
         onHelp={onHelp}
         onStart={(o) => {
           setGame(createGame(o));
+          setMode({ kind: 'local' });
+        }}
+        savedLocal={savedLocal && savedLocal.players ? `${savedLocal.players.filter((p) => !p.isBot).map((p) => p.name).join(', ') || 'IA'} · jornada ${savedLocal.jornada} de ${savedLocal.totalJornadas}` : null}
+        onContinueLocal={() => {
+          if (!savedLocal) return;
+          setGame(savedLocal);
           setMode({ kind: 'local' });
         }}
         onHost={(name) => setMode({ kind: 'host', name, resume: null })}
@@ -117,7 +146,8 @@ export default function App() {
   }
 
   return (
-    <NavContext.Provider value={{ onHelp, onAccount: () => setAccountOpen(true) }}>
+    <NavContext.Provider value={{ onHelp, onAccount: () => setAccountOpen(true), onLegal: setLegal }}>
+    <ErrorBoundary onReset={toMenu}>
     <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: TOP_INSET }}>
       <View style={{ flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' }}>
         {body}
@@ -132,9 +162,15 @@ export default function App() {
             <HelpScreen onClose={() => setHelp(false)} />
           </View>
         ) : null}
+        {legal ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
+            <LegalScreen initial={legal} onClose={() => setLegal(null)} />
+          </View>
+        ) : null}
       </View>
       <StatusBar style="light" />
     </View>
+    </ErrorBoundary>
     </NavContext.Provider>
   );
 }

@@ -55,6 +55,17 @@ create table if not exists public.host_ratings (
 );
 create index if not exists host_ratings_host_idx on public.host_ratings (host_id, created_at desc);
 
+-- Informes de error enviados por la app (sin datos personales más allá de la cuenta, si la hay).
+create table if not exists public.client_errors (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  user_id uuid,
+  message text not null,
+  stack text,
+  context text
+);
+alter table public.client_errors enable row level security;
+
 alter table public.profiles enable row level security;
 alter table public.games enable row level security;
 alter table public.game_players enable row level security;
@@ -344,6 +355,15 @@ begin
   delete from auth.users where id = auth.uid();
 end $$;
 
+-- Guarda un informe de error. Limitado a 300 por hora en total para que nadie llene la tabla.
+create or replace function public.log_client_error(p_message text, p_stack text default null, p_context text default null) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if (select count(*) from client_errors where created_at > now() - interval '1 hour') >= 300 then return; end if;
+  insert into client_errors (user_id, message, stack, context)
+  values (auth.uid(), left(coalesce(p_message, ''), 500), left(p_stack, 4000), left(p_context, 300));
+end $$;
+
 -- ---------------------------------------------------------------- Permisos
 
 revoke all on function public.apply_host_penalty(uuid), public.sweep_host(uuid), public.handle_new_user() from public, anon, authenticated;
@@ -353,4 +373,5 @@ revoke all on function public.my_profile(), public.set_avatar(text), public.set_
 grant execute on function public.my_profile(), public.set_avatar(text), public.set_username(text), public.start_game(text, text, int, jsonb), public.join_game(uuid, int),
   public.heartbeat(uuid), public.finish_game(uuid, jsonb), public.abandon_game(uuid), public.report_abandon(uuid),
   public.rate_host(uuid, int), public.my_history(int), public.delete_my_account() to authenticated;
-grant execute on function public.username_available(text), public.host_card(uuid), public.ranking(int), public.clean_username(text) to anon, authenticated;
+grant execute on function public.username_available(text), public.host_card(uuid), public.ranking(int), public.clean_username(text),
+  public.log_client_error(text, text, text) to anon, authenticated;

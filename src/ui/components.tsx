@@ -18,6 +18,7 @@ import {
 } from '../engine';
 import { useAccount } from '../account/useAccount';
 import { Avatar, Crest, UserAvatar } from './art';
+import { isMuted, setMuted, soundAvailable } from './sound';
 import { C, NATIVE_DRIVER, POS_COLOR, TIER_COLOR, clubColor } from './theme';
 
 export function Btn(props: {
@@ -163,12 +164,17 @@ export function Popup(props: { icon?: React.ReactNode; overline: string; title: 
 }
 
 /** Acciones de la barra de navegación; las pone App. */
-export const NavContext = React.createContext<{ onHelp: () => void; onAccount: () => void }>({ onHelp: () => {}, onAccount: () => {} });
+export const NavContext = React.createContext<{ onHelp: () => void; onAccount: () => void; onLegal: (tab: 'privacidad' | 'condiciones') => void }>({
+  onHelp: () => {},
+  onAccount: () => {},
+  onLegal: () => {},
+});
 
 /** Barra superior: avatar (abre tu cuenta), nombre del juego, jornada y ayuda. */
 export function NavBar({ subtitle }: { subtitle?: string }) {
   const nav = React.useContext(NavContext);
   const { avatar, profile } = useAccount();
+  const [muted, setMute] = React.useState(isMuted());
   return (
     <View style={s.navbar}>
       <Pressable accessibilityRole="button" accessibilityLabel="Tu cuenta y avatar" onPress={nav.onAccount} hitSlop={6}>
@@ -180,6 +186,20 @@ export function NavBar({ subtitle }: { subtitle?: string }) {
         </Text>
         <Text numberOfLines={1} style={{ color: C.dim, fontSize: 12, fontWeight: '600' }}>{subtitle ?? profile?.username ?? 'Invitado'}</Text>
       </View>
+      {soundAvailable() ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={muted ? 'Activar sonido' : 'Silenciar'}
+          onPress={() => {
+            setMuted(!muted);
+            setMute(!muted);
+          }}
+          hitSlop={6}
+          style={[s.navHelp, { marginRight: 8 }]}
+        >
+          <Text style={{ fontSize: 15 }}>{muted ? '🔇' : '🔊'}</Text>
+        </Pressable>
+      ) : null}
       <Pressable accessibilityRole="button" accessibilityLabel="Reglas del juego" onPress={nav.onHelp} hitSlop={6} style={s.navHelp}>
         <Text style={{ color: C.text, fontWeight: '900', fontSize: 16 }}>?</Text>
       </Pressable>
@@ -192,6 +212,22 @@ export function navJornada(state: GameState): string {
   if (state.phase === 'finished') return 'Final de temporada';
   const preseason = state.phase === 'market' && state.jornada === 1 && state.turnOrder.length > state.players.length;
   return preseason ? 'Pretemporada' : `Jornada ${state.jornada} de ${state.totalJornadas}`;
+}
+
+/** Enlaces a los textos legales, para el pie de las pantallas de entrada. */
+export function LegalLinks() {
+  const nav = React.useContext(NavContext);
+  return (
+    <View style={[s.row, { justifyContent: 'center', marginTop: 18 }]}>
+      <Pressable accessibilityRole="link" onPress={() => nav.onLegal('privacidad')} hitSlop={6}>
+        <Text style={{ color: C.faint, fontSize: 12, textDecorationLine: 'underline' }}>Privacidad</Text>
+      </Pressable>
+      <Text style={{ color: C.faint, fontSize: 12, marginHorizontal: 8 }}>·</Text>
+      <Pressable accessibilityRole="link" onPress={() => nav.onLegal('condiciones')} hitSlop={6}>
+        <Text style={{ color: C.faint, fontSize: 12, textDecorationLine: 'underline' }}>Condiciones de uso</Text>
+      </Pressable>
+    </View>
+  );
 }
 
 /** Si se define, las pantallas de partida muestran un botón para salir. */
