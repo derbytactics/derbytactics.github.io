@@ -9,64 +9,54 @@ FUT_OVERRIDES='{"roles":{"DEF":{"attack":0,"defense":2}}}' FUT_SIZES=4,8 npm run
 FUT_STYLES=equilibrado,ofensivo,defensivo,medios npm run simulate   # solo las tácticas jugables
 ```
 
-## El miedo principal: ¿gana siempre quien llena el equipo de delanteros?
+## ¿Hay alguna alineación que gane siempre?
 
-No. Es la peor táctica de las probadas. Ratio de campeonatos respecto a lo esperado por azar (1,00 = justo), 600 temporadas de 12 jornadas por tamaño de mesa, con las seis tácticas mezcladas:
+No. Con los delanteros limitados a 2 por club, las tácticas se diferencian por cómo reparten medios y defensas. Ratio de campeonatos respecto a lo esperado por azar (1,00 = justo), 500 temporadas de 12 jornadas por tamaño de mesa.
 
-| Clubes | Equilibrado 1-2-2-2 | Ofensivo 1-1-1-4 | Defensivo 1-3-2-1 | Medios 1-1-4-1 | Todo delanteros 0-0-1-6 | Sin portero 0-2-2-3 |
-|---|---|---|---|---|---|---|
-| 2 | 1,18 | 0,92 | 1,15 | 1,21 | 0,49 | 1,05 |
-| 4 | 1,51 | 0,91 | 1,31 | 1,40 | 0,18 | 0,69 |
-| 8 | 1,95 | 1,04 | 1,64 | 1,23 | 0,00 | 0,14 |
+Las cuatro tácticas con las que juega la IA, enfrentadas entre sí:
 
-Las cuatro primeras suben de 1,00 porque se reparten lo que pierden las dos extremas. Enfrentadas solo entre ellas (600 temporadas por mesa):
-
-| Clubes | Equilibrado | Ofensivo | Defensivo | Medios |
+| Clubes | Equilibrado 1-2-2-2 | Ofensivo 1-1-3-2 | Defensivo 1-3-1-2 | Cerrojo 1-4-1-1 |
 |---|---|---|---|---|
-| 2 | 1,15 | 0,87 | 1,05 | 0,93 |
-| 4 | 1,09 | 0,95 | 0,98 | 0,98 |
-| 6 | 1,23 | 0,97 | 1,01 | 0,79 |
-| 8 | 1,11 | 1,07 | 1,15 | 0,67 |
+| 2 | 1,03 | 0,92 | 1,07 | 0,98 |
+| 4 | 1,15 | 1,34 | 0,99 | 0,51 |
+| 6 | 1,35 | 1,22 | 1,05 | 0,38 |
+| 8 | 1,13 | 0,98 | 1,26 | 0,62 |
 
-Con esta muestra, diferencias de ±0,12 son ruido. En esas partidas se para en torno al 46% de las jugadas.
+Mezcladas con dos extremos (sin portero 0-2-3-2 y sin defensas 0-0-5-2):
+
+| Clubes | Equilibrado | Ofensivo | Defensivo | Cerrojo | Sin portero | Sin defensas |
+|---|---|---|---|---|---|---|
+| 2 | 1,13 | 0,84 | 1,21 | 0,90 | 1,11 | 0,81 |
+| 4 | 1,46 | 1,35 | 1,18 | 0,59 | 0,77 | 0,66 |
+| 8 | 1,86 | 1,34 | 1,50 | 1,08 | 0,14 | 0,07 |
+
+Con esta muestra, diferencias de ±0,13 son ruido. Entre las cuatro tácticas jugables se para en torno al 52% de las jugadas.
 
 ## Por qué no domina el ataque
 
 - **Suma cero:** cada gol a favor es un gol en contra de alguien. Un equipo sin defensa encaja todo lo que marca el resto.
-- **Solo caben 7:** cada delantero de más es un defensor de menos.
-- **Se corrige solo:** si todos atacan, los defensores quedan libres en el mercado y valen mucho; si todos defienden, hacen falta jugadas combinadas para marcar.
+- **Dos delanteros como mucho:** el resto del ataque son medios, que valen la mitad y los corta cualquier defensa.
+- **Solo caben 7:** cada atacante de más es un defensor de menos.
 
 ## Qué se decidió durante el afinado
 
 | Decisión | Motivo |
 |---|---|
-| Atacan delantero (2) y medio (1); defienden portero (2) y defensa (2) | En la primera versión el medio atacaba 1 y defendía 1, y era mejor que un defensa en todo. Ahora nadie hace las dos cosas. |
+| Atacan delantero (2) y medio (1); defienden portero (2) y defensa (1) | En la primera versión el medio atacaba 1 y defendía 1, y era mejor que un defensa en todo. Ahora nadie hace las dos cosas. |
+| Defensa con fuerza 1 pero 3-4 números, y barato (×0,38) | Con fuerza 2 era un segundo portero. Con fuerza 1 y pocos números, defender no compensaba. Con muchos números cubre campo: corta medios y completa al portero. |
+| Máximo 2 delanteros | Sin límite, los medios sobraban: siempre era mejor otro delantero. |
 | Sin contragolpe como regla | Un defensa no ataca. La contra es narrativa: si paras y además tienes atacantes con ese número, la crónica enlaza las dos cosas. |
-| Defensa con fuerza 2 | Sin contragolpe y con fuerza 1, la táctica defensiva ganaba la mitad de lo esperado y la ofensiva hasta 1,77 veces. |
-| Precio por posición: portero ×0,5, defensa ×0,75, medio ×0,45, delantero ×1 | Es lo que deja las cuatro tácticas jugables entre 0,67 y 1,23. |
-| Portero con 3-4 números | Solo cabe uno; tiene que cubrir mucho para ser útil. |
+| Precio por posición: portero ×0,45, defensa ×0,38, medio ×0,75, delantero ×1,05 | Es lo que deja las tres tácticas razonables entre 0,92 y 1,35. |
 | Caja inicial de 80M y taquilla 2/3/4/6/8 | Con 60M las plantillas acababan con menos de 6 de 7 futbolistas. |
 | Taquilla por jugada de gol, no por rival batido | Si no, con 8 clubes un gol llenaba el estadio siete veces. |
 | Una tirada por club y jornada | Cada persona tira sus dados. Con un 7, quien tira roba carta. |
-
-## Alternativas probadas para el defensa
-
-Ratio de campeonatos de las tácticas ofensiva y defensiva (500 temporadas por mesa, solo las cuatro tácticas jugables):
-
-| Variante | Ofensivo (2 / 4 / 8 clubes) | Defensivo (2 / 4 / 8 clubes) |
-|---|---|---|
-| Defensa con fuerza 2 (la actual) | 0,87 / 0,95 / 1,07 | 1,05 / 0,98 / 1,15 |
-| Defensa con fuerza 1 | 1,11 / 1,43 / 1,62 | 0,82 / 0,59 / 0,61 |
-| Defensa con fuerza 1 y cada parada vale medio gol en la clasificación de la jornada | 1,12 / 1,30 / 1,18 | 0,85 / 0,75 / 0,93 |
-| Defensa con fuerza 1 y cada parada vale un gol | 1,12 / 1,33 / 0,94 | 0,85 / 0,69 / 1,26 |
-
-Con el defensa a 1, llenar el equipo de delanteros vuelve a compensar. Premiar las paradas lo corrige solo a medias y de forma distinta según el número de clubes.
 
 ## Problemas conocidos
 
 - **Con pocos clubes pasan pocas cosas por jornada.** Con 2 hay solo 2 tiradas: de media, menos de una jugada de ataque y unos 0,6 goles por club y jornada, y muchas jornadas acaban 0-0. Con 4 hay unas 2 jugadas por club; con 8, unas 4.
 - **Con 8 clubes hay mucho más dinero que con 2:** más tiradas, más goles y más taquilla. La caja final media pasa de unos 30M con 2 clubes a más de 150M con 8.
-- **La táctica de medios 1-1-4-1 se queda corta con 6-8 clubes** (0,67-0,79): un medio suelto lo para casi cualquiera.
+- **El cerrojo 1-4-1-1 rinde poco con 4-8 clubes** (0,38-0,62): con un solo delantero y un solo medio apenas marca.
+- **Se para más de la mitad de las jugadas** entre tácticas razonables. Si resulta frustrante, se corrige encareciendo a los defensas.
 - **El portero casi nunca llega a 3 paradas en una jornada con pocos clubes**, porque hay pocas tiradas.
 - **Los bots no miran los números de los rivales** al fichar. Una persona que sí lo haga jugará mejor que ellos; el equilibrio real entre tácticas puede moverse cuando lo pruebe gente.
 - Todo esto mide bots con reglas sencillas. Sirve para descartar estrategias rotas, no sustituye a probarlo con personas.
