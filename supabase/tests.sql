@@ -140,6 +140,9 @@ reset role;
 
 -- Borrado de cuenta.
 select pg_temp.login('00000000-0000-0000-0000-00000000000d');
+select log_client_error('fallo de prueba');
+select pg_temp.ok(exists (select 1 from client_errors where user_id = '00000000-0000-0000-0000-00000000000d'), 'el informe de error guarda la cuenta');
 select delete_my_account();
+select pg_temp.ok(not exists (select 1 from client_errors where user_id = '00000000-0000-0000-0000-00000000000d'), 'borrar la cuenta elimina sus informes de error');
 select pg_temp.ok(not exists (select 1 from profiles where id = '00000000-0000-0000-0000-00000000000d'), 'borrar la cuenta elimina el perfil');
 \echo TODAS LAS PRUEBAS DE BASE DE DATOS PASAN

@@ -20,16 +20,62 @@ Estado de cada punto y qué queda por hacer. Lo marcado como **Tu parte** necesi
 
 ## Tu parte
 
-1. **Rellenar los textos legales.** En `src/legal/texts.ts`, `LEGAL.owner` (nombre o razón social) y `LEGAL.contact` (correo). Y que los revise alguien con conocimiento legal: son un punto de partida, no asesoramiento.
-2. **Volver a ejecutar `supabase/schema.sql`** en el editor SQL de tu proyecto. Añade el avatar y el registro de errores; no borra datos.
-3. **Correo de Supabase.** Configurar un servidor de correo propio (SMTP) en Authentication → Emails, o desactivar la confirmación por correo. El envío incluido en el plan gratuito está muy limitado.
-4. **Rama principal.** En GitHub, Settings → Branches (o en la página de ramas), renombrar la rama por defecto a `main`. La publicación ya está preparada para `main`.
-5. **Dominio.** Si quieres dominio propio: comprarlo, añadirlo en Settings → Pages y actualizar la *Site URL* y las *Redirect URLs* de Supabase.
-6. **Nombre.** Comprobar que «Futcards» no está registrado como marca por otro.
-7. **Tiendas de apps (si las quieres).** Cuentas de desarrollador de Apple y Google (de pago), revisar los identificadores `com.juanrafernandez.futcards` en `app.json`, y generar las compilaciones con EAS (`npx eas-cli@latest build`). Nada de esto se ha podido ejecutar todavía.
-8. **Probar en móviles reales**, sobre todo la app nativa, que no se ha ejecutado nunca.
-9. **Probar con gente** en mesas de 2, 4 y 8 antes de dar el equilibrio por bueno.
-10. **Avatares definitivos.** Hoy son doce retratos dibujados por código; si quieres otros, hay que aportar las imágenes.
+Ordenados por prioridad. Cada paso dice dónde se hace.
+
+### 1. Nombre (antes de nada)
+
+Ya existe una app llamada **FutCards** en la App Store, de otro desarrollador, y hay muchas apps «FUT Card…». Además «FUT» es la abreviatura de *FIFA Ultimate Team*, de Electronic Arts. Para la web entre amigos no es problema; **para publicar en tiendas conviene otro nombre**, porque Apple rechaza nombres que ya usa otra app y el parecido con «FUT» puede traer una reclamación.
+
+- Elige 2 o 3 candidatos y búscalos en la App Store, Google Play, [OEPM](https://consultas2.oepm.es/LocalizadorWeb/) y [EUIPO](https://euipo.europa.eu/eSearch/).
+- Cuando lo tengas, cambiar el nombre en el código es trabajo mío (título, textos, `app.json`, identificadores).
+
+### 2. Textos legales
+
+Dime el **nombre del titular** (persona o empresa) y el **correo de contacto** que quieres publicar y los pongo. Recomendación: un correo dedicado al juego, no el personal, porque será público. Después, que lo revise alguien con conocimiento legal.
+
+Con cada publicación se generan también estas páginas públicas, que piden las tiendas:
+
+- `…/Futcards/privacidad.html`
+- `…/Futcards/condiciones.html`
+- `…/Futcards/borrar-cuenta.html` (Google Play exige una URL para borrar la cuenta)
+
+### 3. Volver a ejecutar `supabase/schema.sql`
+
+Supabase → tu proyecto → **SQL Editor** → New query → pega el contenido entero de `supabase/schema.sql` → **Run**. No borra datos. Añade el avatar, el registro de errores y que borrar la cuenta borre también sus informes de error.
+
+### 4. Correo de Supabase
+
+El envío incluido solo permite unos pocos correos por hora. Dos opciones:
+
+- **Rápida:** Authentication → Sign In / Providers → Email → desactivar *Confirm email*. Las cuentas se crean al momento; el inconveniente es que no se comprueba que el correo sea suyo, y recuperar la contraseña sigue necesitando correo.
+- **Buena:** crear una cuenta gratuita en un servicio de envío (Resend, Brevo…), y en Authentication → Emails → SMTP Settings poner servidor, puerto, usuario y contraseña que te den. Necesita un dominio propio verificado para enviar desde él.
+
+### 5. Rama principal
+
+GitHub → repositorio → **Settings → General → Default branch** → icono de lápiz/flechas → renombrar a `main`. La publicación ya escucha `main`. Después, en **Settings → Environments → github-pages**, comprueba que `main` puede desplegar.
+
+### 6. Dominio (opcional)
+
+Comprar el dominio → GitHub **Settings → Pages → Custom domain** → seguir las instrucciones de DNS. Luego en Supabase → Authentication → URL Configuration, cambiar **Site URL** y añadir el dominio en **Redirect URLs**. Si cambia la raíz de la web, avísame para ajustar la ruta base.
+
+### 7. Tiendas de apps (opcional)
+
+- Cuenta de Apple Developer (99 $/año) y de Google Play Console (25 $ una vez).
+- Cuenta gratuita en expo.dev.
+- Desde tu Mac, en la carpeta del proyecto: `npx eas-cli@latest login`, después `npx eas-cli@latest build --platform all --profile preview` para una versión de prueba instalable.
+- Ya comprobado aquí: el código se compila para iOS y Android sin errores, e iOS declara que no usa cifrado propio (evita una pregunta en cada envío).
+
+### 8. Probar en móviles reales
+
+Instala la versión `preview` de EAS en un iPhone y un Android y juega una partida local y una en línea. Hasta entonces, la app nativa no se ha ejecutado nunca.
+
+### 9. Probar con gente
+
+Mesas de 2, 4 y 8. Lo que más me interesa saber: si las partidas de 2 se hacen largas, si alguien encuentra una alineación que gana siempre, y si sobra dinero al final con muchos jugadores.
+
+### 10. Avatares definitivos
+
+Hoy son doce retratos dibujados por código. Si quieres otros, pásame las imágenes (cuadradas, 512×512, PNG) y los integro.
 
 ## Pendiente de decisión: servidor propio para las partidas en línea
 

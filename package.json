@@ -27,7 +27,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "simulate": "tsx scripts/simulate.ts",
-    "test:db": "bash scripts/test-db.sh"
+    "test:db": "bash scripts/test-db.sh",
+    "legal:pages": "tsx scripts/legal-pages.ts"
   },
   "private": true
 }

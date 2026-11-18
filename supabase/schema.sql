@@ -352,6 +352,8 @@ create or replace function public.delete_my_account() returns void
 language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null then raise exception 'Inicia sesión.'; end if;
+  -- Los informes de error no tienen clave ajena: se borran a mano.
+  delete from client_errors where user_id = auth.uid();
   delete from auth.users where id = auth.uid();
 end $$;
 

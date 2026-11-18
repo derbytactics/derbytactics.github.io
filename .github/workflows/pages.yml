@@ -49,6 +49,8 @@ jobs:
           # Cuentas (opcional): variables del repositorio. Sin ellas, el juego funciona sin cuentas.
           EXPO_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+      # Privacidad, condiciones y borrado de cuenta como páginas públicas (las piden las tiendas).
+      - run: npm run legal:pages -- dist
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
