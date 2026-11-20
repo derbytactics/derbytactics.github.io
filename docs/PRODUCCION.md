@@ -18,6 +18,25 @@ Estado de cada punto y qué queda por hacer. Lo marcado como **Tu parte** necesi
 | Icono y configuración de apps | Iconos, pantalla de arranque y favicon generados a partir del logotipo; `app.json` y `eas.json` preparados. |
 | Móvil | Probado en navegador emulando un iPhone: sin desbordes y con una temporada completa jugada. |
 
+## Costes: cómo publicar sin gastar
+
+| Pieza | Coste | Notas |
+|---|---|---|
+| Web en GitHub Pages | Gratis | Sin límite práctico para este juego. |
+| Instalar en el móvil desde la web (PWA) | Gratis | Icono en la pantalla de inicio y pantalla completa, sin tiendas. Instrucciones en la ayuda del juego. |
+| Cuentas en Supabase (plan gratuito) | Gratis | Hasta 50.000 usuarios activos al mes y 500 MB de base de datos, de sobra. **El proyecto se pausa tras 7 días sin uso**: se reactiva a mano desde el panel. |
+| Partidas en línea (servidores públicos de mensajería) | Gratis | Sin garantía de disponibilidad. |
+| Servidor propio con funciones de Supabase | Gratis dentro del plan gratuito | Solo hace falta si se abre a desconocidos con ranking. |
+| Correo de confirmación | Gratis | Desactivando la confirmación por correo. Un SMTP gratuito (Brevo, Resend) necesita dominio propio. |
+| Dominio propio | ~10 €/año | Opcional. Sin él, la dirección es `juanrafernandez.github.io/DerbyTactics`. |
+| Marca en la OEPM (España) | ~150 € la primera clase, cada año revisan la tasa | Opcional. Usar un nombre no registrado es legal; registrarlo solo protege frente a que otro lo registre. |
+| Marca en la EUIPO (UE) | ~850 € | Opcional. |
+| App Store | 99 $/año | Opcional: la PWA cubre iPhone gratis. |
+| Google Play | 25 $ una vez | Opcional: la PWA cubre Android gratis. |
+| Compilar con EAS | Gratis (plan gratuito, con cola) | Solo si se va a tiendas. |
+
+**Recomendación sin presupuesto:** web + PWA + Supabase gratis. Coste cero. Si el juego engancha, el primer gasto con sentido es Google Play (25 $), y después la marca.
+
 ## Tu parte
 
 Ordenados por prioridad. Cada paso dice dónde se hace.
@@ -33,13 +52,13 @@ Queda de tu parte:
 
 ### 2. Textos legales
 
-Dime el **nombre del titular** (persona o empresa) y el **correo de contacto** que quieres publicar y los pongo. Recomendación: un correo dedicado al juego, no el personal, porque será público. Después, que lo revise alguien con conocimiento legal.
+Hecho: titular y correo puestos (el correo es provisional). Falta que los revise alguien con conocimiento legal; son un punto de partida, no asesoramiento.
 
 Con cada publicación se generan también estas páginas públicas, que piden las tiendas:
 
-- `…/Futcards/privacidad.html`
-- `…/Futcards/condiciones.html`
-- `…/Futcards/borrar-cuenta.html` (Google Play exige una URL para borrar la cuenta)
+- `…/DerbyTactics/privacidad.html`
+- `…/DerbyTactics/condiciones.html`
+- `…/DerbyTactics/borrar-cuenta.html` (Google Play exige una URL para borrar la cuenta)
 
 ### 3. Volver a ejecutar `supabase/schema.sql`
 

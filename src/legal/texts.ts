@@ -4,9 +4,9 @@
  */
 export const LEGAL = {
   /** Nombre y apellidos o razón social del responsable. Vacío = pendiente. */
-  owner: '',
+  owner: 'Juan Ramón Fernández Calvo',
   /** Correo de contacto para ejercer derechos. Vacío = pendiente. */
-  contact: '',
+  contact: 'juanra.fernandez@gmail.com',
   updated: '18 de noviembre de 2026',
 };
 

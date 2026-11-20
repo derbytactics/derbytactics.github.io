@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Platform, ScrollView, Text, View } from 'react-native';
 import { CONFIG } from '../engine';
 import { Avatar, Die, StadiumArt, Trophy } from './art';
 import { Btn, LegalLinks, NumberToken, Overline, s } from './components';
@@ -74,6 +74,14 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
         text={`Tras la última jornada, cada ${CONFIG.moneyPerPoint}M en caja suman 1 punto extra. El club con más puntos es campeón.`}
         art={<Trophy size={64} />}
       />
+      {Platform.OS === 'web' ? (
+        <View style={{ marginBottom: 14 }}>
+          <Text style={[s.p, { fontWeight: '800', color: C.text }]}>Instálalo en tu móvil</Text>
+          <Text style={s.p}>
+            Sin tienda y gratis: en iPhone, abre el juego en Safari, pulsa Compartir y «Añadir a pantalla de inicio». En Android, en Chrome, menú ⋮ y «Instalar aplicación» o «Añadir a pantalla de inicio». Se abrirá a pantalla completa, como una app.
+          </Text>
+        </View>
+      ) : null}
       <Btn label="Entendido" onPress={onClose} />
       <Btn small kind="ghost" label="Volver a ver los consejos de primera vez" onPress={() => { resetTips(); onClose(); }} style={{ marginTop: 10 }} />
       <LegalLinks />

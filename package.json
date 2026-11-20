@@ -28,7 +28,8 @@
     "typecheck": "tsc --noEmit",
     "simulate": "tsx scripts/simulate.ts",
     "test:db": "bash scripts/test-db.sh",
-    "legal:pages": "tsx scripts/legal-pages.ts"
+    "legal:pages": "tsx scripts/legal-pages.ts",
+    "pwa": "tsx scripts/pwa.ts"
   },
   "private": true
 }
