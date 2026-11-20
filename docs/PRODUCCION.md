@@ -73,6 +73,10 @@ Con cada publicación se generan también estas páginas públicas, que piden la
 - `…/DerbyTactics/condiciones.html`
 - `…/DerbyTactics/borrar-cuenta.html` (Google Play exige una URL para borrar la cuenta)
 
+### 2b. Entrar con Google y Apple
+
+El código está hecho: los botones aparecen al activarlos en Supabase. Pasos en [`docs/CUENTAS.md`](CUENTAS.md#entrar-con-google-y-con-apple). Vuelve a ejecutar `supabase/schema.sql` antes (añade la petición de nombre de usuario). Recuerda renovar la clave de Apple cada 6 meses.
+
 ### 3. Volver a ejecutar `supabase/schema.sql`
 
 Supabase → tu proyecto → **SQL Editor** → New query → pega el contenido entero de `supabase/schema.sql` → **Run**. No borra datos. Añade el avatar, el registro de errores y que borrar la cuenta borre también sus informes de error.

@@ -33,6 +33,40 @@ Los nombres de los menús de Supabase pueden cambiar; estos pasos no se han podi
 
 Para desarrollo local, exporta `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY` antes de `npm run web`.
 
+## Entrar con Google y con Apple
+
+Los botones aparecen solos en el juego en cuanto activas cada proveedor en Supabase. Hasta entonces solo se ve el acceso con correo. De momento funcionan en la web y en la versión instalada desde el navegador; en la app nativa, Apple se añadirá con su acceso nativo cuando se compile para la App Store.
+
+Quien entra por primera vez con Google o Apple elige un nombre de usuario: el nombre real no se copia al perfil.
+
+Necesitas la dirección de vuelta de tu proyecto: `https://<id-del-proyecto>.supabase.co/auth/v1/callback`. Aparece en Supabase → **Authentication → Sign In / Providers**, al abrir Google o Apple.
+
+### Google (gratis)
+
+1. En [Google Cloud](https://console.cloud.google.com/), crea un proyecto (por ejemplo «DerbyTactics»).
+2. En **Google Auth Platform** (Branding / Audience): nombre de la app, correo de soporte, y en *Audience* elige **External** y publícala (**Publish app**). Mientras esté en «Testing», solo podrán entrar los correos que añadas como usuarios de prueba.
+3. En **Data Access** añade el permiso `openid` (los de correo y perfil ya vienen).
+4. En **Clients → Create client**, elige **Web application**:
+   - *Authorized JavaScript origins*: `https://derbytactics.github.io`
+   - *Authorized redirect URIs*: la dirección de vuelta de Supabase (arriba).
+5. Copia el **Client ID** y el **Client Secret** en Supabase → **Authentication → Sign In / Providers → Google**, y actívalo.
+
+### Apple (con tu cuenta de desarrollador)
+
+En [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list):
+
+1. **App ID** `com.derbytactics.app` con la capacidad **Sign in with Apple** marcada. Deja vacío el campo de notificaciones de servidor a servidor.
+2. **Services ID**, por ejemplo `com.derbytactics.web`, asociado a ese App ID. Actívale **Sign in with Apple → Configure**:
+   - *Domains*: `<id-del-proyecto>.supabase.co`
+   - *Return URLs*: la dirección de vuelta de Supabase.
+3. **Keys → +**, con **Sign in with Apple** marcado y asociada al App ID. Descarga el archivo `AuthKey_XXXXXXXXXX.p8` y guárdalo bien: solo se puede descargar una vez. Apunta el *Key ID* y tu *Team ID* (arriba a la derecha).
+4. Genera la clave secreta con la herramienta de la [guía de Supabase para Apple](https://supabase.com/docs/guides/auth/social-sign-in/auth-apple), en Chrome o Firefox (en Safari no funciona). La clave no sale del navegador.
+5. En Supabase → **Authentication → Sign In / Providers → Apple**: en *Client IDs* pon el **Services ID** en primer lugar; en *Secret Key*, la clave generada. Actívalo.
+
+**Importante: la clave secreta de Apple caduca a los 6 meses.** Pon un recordatorio para generar otra con el mismo `.p8` y pegarla en Supabase. Si caduca, nadie podrá entrar con Apple hasta que la renueves (el resto del juego sigue funcionando).
+
+Apple puede dar un correo anónimo de reenvío (`…@privaterelay.appleid.com`) si el usuario elige ocultar el suyo. Es normal.
+
 ## Actualizar el esquema
 
 Cuando cambie `supabase/schema.sql` (por ejemplo, al añadirse el avatar al perfil), vuelve a pegarlo entero en el editor SQL y ejecútalo: no borra datos. Hasta entonces el juego funciona, pero lo nuevo no se guarda en la cuenta.

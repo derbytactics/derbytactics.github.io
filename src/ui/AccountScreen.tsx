@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import {
   HistoryRow,
+  Provider,
+  chooseUsername,
+  signInWith,
   RankingRow,
   clearLinkError,
   deleteAccount,
@@ -41,6 +45,88 @@ function Field(props: { label: string; value: string; onChange: (t: string) => v
         />
       </View>
     </View>
+  );
+}
+
+function GoogleMark({ size = 18 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      <Path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.7 17.8 9.5 24 9.5z" />
+      <Path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 7-10.3 7-17.7z" />
+      <Path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z" />
+      <Path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.2 1.5-5 2.3-8.2 2.3-6.2 0-11.5-4.2-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z" />
+    </Svg>
+  );
+}
+
+function AppleMark({ size = 18 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path fill="#FFFFFF" d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.8 1.2 1.8 2.6 3.1 2.6 1.3-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.6-1-2.6-4.3zM13.9 4.9c.7-.8 1.2-2 1-3.1-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4z" />
+    </Svg>
+  );
+}
+
+/** Botones de Google y Apple, solo si están activados en el servidor. */
+export function ProviderButtons({ providers }: { providers: Provider[] }) {
+  if (!providers.length) return null;
+  const style = (dark: boolean) => ({
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 10,
+    height: 48,
+    borderRadius: 12,
+    marginBottom: 10,
+    backgroundColor: dark ? '#000000' : '#FFFFFF',
+    borderWidth: 1,
+    borderColor: dark ? '#FFFFFF' : '#DADCE0',
+  });
+  return (
+    <View style={{ marginBottom: 6 }}>
+      {providers.includes('apple') ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Continuar con Apple" onPress={() => signInWith('apple')} style={style(true)}>
+          <AppleMark />
+          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>Continuar con Apple</Text>
+        </Pressable>
+      ) : null}
+      {providers.includes('google') ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Continuar con Google" onPress={() => signInWith('google')} style={style(false)}>
+          <GoogleMark />
+          <Text style={{ color: '#1F1F1F', fontSize: 16, fontWeight: '700' }}>Continuar con Google</Text>
+        </Pressable>
+      ) : null}
+      <Text style={{ color: C.dim, fontSize: 13, fontWeight: '600', textAlign: 'center', marginVertical: 8 }}>o con tu correo</Text>
+    </View>
+  );
+}
+
+/** La primera vez que se entra con Google o Apple: elegir nombre de usuario (no se usa el nombre real). */
+export function UsernamePrompt() {
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await chooseUsername(name.trim());
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setBusy(false);
+  };
+  return (
+    <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 32 }}>
+      <Text style={s.h1}>Elige tu nombre de usuario</Text>
+      <Text style={[s.p, { marginBottom: 16 }]}>
+        Es el que verán los demás en las salas y en el ranking. No usamos tu nombre real.
+      </Text>
+      <Field label="Nombre de usuario" value={name} onChange={setName} max={16} />
+      {error ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{error}</Text> : null}
+      <Btn kind={busy || name.trim().length < 3 ? 'muted' : 'primary'} label={busy ? 'Un momento…' : 'Guardar'} onPress={() => !busy && name.trim().length >= 3 && save()} />
+      <Btn small kind="ghost" label="Cerrar sesión" onPress={() => signOut()} style={{ marginTop: 10 }} />
+    </ScrollView>
   );
 }
 
@@ -84,7 +170,7 @@ export function AuthForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const { linkError } = useAccount();
+  const { linkError, providers } = useAccount();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   /** Se ofrece reenviar el correo cuando la cuenta está creada pero sin confirmar. */
@@ -122,6 +208,7 @@ export function AuthForm() {
 
   return (
     <>
+      {mode !== 'forgot' ? <ProviderButtons providers={providers} /> : null}
       <View style={[s.row, { gap: 8, marginBottom: 16 }]}>
         <Btn small kind={mode === 'login' ? 'primary' : 'ghost'} label="Entrar" onPress={() => { setMode('login'); setMsg(null); }} style={{ flex: 1 }} />
         <Btn small kind={mode === 'register' ? 'primary' : 'ghost'} label="Crear cuenta" onPress={() => { setMode('register'); setMsg(null); }} style={{ flex: 1 }} />

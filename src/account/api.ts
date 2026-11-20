@@ -39,7 +39,12 @@ export interface Profile {
   avatar?: string | null;
   /** Club guardado en la cuenta (nombre y escudo), si ya tiene. */
   club?: { name: string; crest: unknown } | null;
+  /** Entró con Google o Apple y todavía no ha elegido nombre de usuario. */
+  needs_username?: boolean;
 }
+
+/** Proveedores externos con los que se puede entrar. */
+export type Provider = 'google' | 'apple';
 export interface HostCard {
   username: string;
   host_games: number;
@@ -120,9 +125,11 @@ interface AccountState {
   linkError: string | null;
   /** Avatar elegido (se guarda en el dispositivo y, con cuenta, también en el perfil). */
   avatar: string;
+  /** Proveedores externos activados en Supabase (solo en el navegador). */
+  providers: Provider[];
 }
 const AVATAR_KEY = 'futcards.avatar';
-let state: AccountState = { session: load<Session>(SESSION_KEY), profile: null, recovering: false, linkError: null, avatar: load<string>(AVATAR_KEY) ?? 'a1' };
+let state: AccountState = { session: load<Session>(SESSION_KEY), profile: null, recovering: false, linkError: null, avatar: load<string>(AVATAR_KEY) ?? 'a1', providers: [] };
 const listeners = new Set<() => void>();
 function set(patch: Partial<AccountState>) {
   state = { ...state, ...patch };
@@ -211,6 +218,35 @@ export async function signIn(email: string, password: string): Promise<void> {
   await refreshProfile();
 }
 
+/**
+ * Entra con Google o Apple: el navegador va a su pantalla y vuelve a esta misma dirección
+ * (con la sala, si la hay) con la sesión en el fragmento, que recoge `initAccount`.
+ */
+export function signInWith(provider: Provider): void {
+  const b = backend();
+  const loc = (globalThis as { location?: Location }).location;
+  if (!b || !loc) return;
+  const back = loc.origin + loc.pathname + loc.search;
+  loc.assign(`${b.url}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(back)}`);
+}
+
+/** Elige el nombre de usuario (la primera vez tras entrar con Google o Apple, o para cambiarlo). */
+export async function chooseUsername(name: string): Promise<void> {
+  if (!(await rpc<boolean>('username_available', { p_username: name }, false))) {
+    throw new Error('Ese nombre no está disponible: usa de 3 a 16 letras, números o espacios.');
+  }
+  await rpc('set_username', { p_username: name });
+  await refreshProfile();
+}
+
+async function loadProviders(): Promise<void> {
+  if (!(globalThis as { location?: Location }).location) return; // App nativa: de momento, solo correo.
+  try {
+    const st = await call<{ external?: Record<string, boolean> }>('/auth/v1/settings', { method: 'GET' });
+    set({ providers: (['google', 'apple'] as Provider[]).filter((p) => st.external?.[p]) });
+  } catch {}
+}
+
 export async function signOut(): Promise<void> {
   const t = state.session?.access_token;
   set({ session: null, profile: null, recovering: false });
@@ -252,7 +288,19 @@ export async function initAccount(): Promise<void> {
   set({ session: load<Session>(SESSION_KEY), avatar: load<string>(AVATAR_KEY) ?? state.avatar });
   if (!backendEnabled()) return;
   const loc = (globalThis as { location?: Location }).location;
+  void loadProviders();
   const hash = new URLSearchParams((loc?.hash ?? '').replace(/^#/, ''));
+  // Google o Apple devuelven los errores en la consulta (?error=…); se limpian sin perder la sala.
+  const query = new URLSearchParams(loc?.search ?? '');
+  if (query.get('error')) {
+    const cancelled = /access_denied|cancel/i.test(`${query.get('error')} ${query.get('error_description')}`);
+    set({ linkError: cancelled ? 'Has cancelado el acceso. Puedes intentarlo de nuevo cuando quieras.' : `No se ha podido entrar: ${query.get('error_description') ?? query.get('error')}` });
+    for (const k of ['error', 'error_code', 'error_description']) query.delete(k);
+    try {
+      const q = query.toString();
+      (globalThis as { history?: History }).history?.replaceState(null, '', loc!.pathname + (q ? `?${q}` : ''));
+    } catch {}
+  }
   if (hash.get('error') || hash.get('error_code')) {
     const expired = /expired|invalid/i.test(`${hash.get('error_code')} ${hash.get('error_description')}`);
     set({

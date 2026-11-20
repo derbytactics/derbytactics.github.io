@@ -18,6 +18,8 @@ alter table public.profiles add column if not exists avatar text;
 -- El club del usuario (uno por persona): nombre y escudo.
 alter table public.profiles add column if not exists club_name text;
 alter table public.profiles add column if not exists club_crest jsonb;
+-- Quien entra con Google o Apple no ha elegido nombre de usuario: se le pide la primera vez.
+alter table public.profiles add column if not exists needs_username boolean not null default false;
 create unique index if not exists profiles_username_key on public.profiles (lower(username));
 
 create table if not exists public.games (
@@ -99,13 +101,15 @@ declare
   candidate text;
   n int := 0;
 begin
-  if length(base) < 3 then base := 'Club'; end if;
+  -- Con Google o Apple no llega nombre de usuario (el nombre real no se copia): uno provisional.
+  if length(base) < 3 then base := 'Jugador'; end if;
   candidate := base;
   while exists (select 1 from profiles where lower(username) = lower(candidate)) loop
     n := n + 1;
     candidate := left(base, 12) || n::text;
   end loop;
-  insert into profiles (id, username) values (new.id, candidate);
+  insert into profiles (id, username, needs_username)
+  values (new.id, candidate, length(clean_username(new.raw_user_meta_data ->> 'username')) < 3);
   return new;
 end $$;
 
@@ -188,6 +192,7 @@ begin
       'id', p.id, 'username', p.username, 'games', p.games, 'wins', p.wins,
       'host_games', p.host_games, 'host_abandons', p.host_abandons,
       'avatar', p.avatar,
+      'needs_username', p.needs_username,
       'club', case when p.club_name is not null then json_build_object('name', p.club_name, 'crest', p.club_crest) end,
       'host_banned_until', case when p.host_banned_until > now() then p.host_banned_until end,
       'stars', (select round(avg(stars), 1) from host_ratings where host_id = p.id),
@@ -208,7 +213,7 @@ language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null then raise exception 'Inicia sesión.'; end if;
   if not username_available(p_username) then raise exception 'Ese nombre no está disponible.'; end if;
-  update profiles set username = btrim(p_username) where id = auth.uid();
+  update profiles set username = btrim(p_username), needs_username = false where id = auth.uid();
   return btrim(p_username);
 end $$;
 

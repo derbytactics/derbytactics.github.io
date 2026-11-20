@@ -7,7 +7,7 @@ export const LEGAL = {
   owner: 'Juan Ramón Fernández Calvo',
   /** Correo de contacto para ejercer derechos. Vacío = pendiente. */
   contact: 'juanra.fernandez@gmail.com',
-  updated: '18 de noviembre de 2026',
+  updated: '20 de noviembre de 2026',
 };
 
 export const legalReady = () => LEGAL.owner.trim() !== '' && LEGAL.contact.trim() !== '';
@@ -26,6 +26,7 @@ export const privacy = (): LegalSection[] => [
     body: [
       'Si juegas como invitado no se te pide ningún dato personal. En tu dispositivo se guardan el avatar elegido, un identificador aleatorio del dispositivo para recuperar tu asiento en una sala, el nombre y el escudo de tu club, el historial de tus temporadas terminadas y, si la hay, la partida en curso.',
       'Si creas una cuenta se guardan además tu correo electrónico, tu contraseña (cifrada, nunca en claro), tu nombre de usuario, tu avatar, el nombre y el escudo de tu club, el historial de tus temporadas terminadas (resultado y clasificación), las partidas en línea que juegas con su resultado, tus victorias, y las valoraciones que das y recibes como anfitrión.',
+      'Si entras con Google o con Apple no hay contraseña: ese servicio confirma quién eres y nos envía tu correo. Google envía también tu nombre y tu foto, y el sistema de cuentas los conserva junto a tu acceso, pero el juego no los muestra ni los usa: eliges un nombre de usuario propio. Apple puede darnos un correo anónimo de reenvío en lugar del tuyo, si así lo eliges.',
       'Si la aplicación falla, puede enviarse un informe técnico con el mensaje de error, sin datos personales más allá de tu identificador de cuenta si has iniciado sesión.',
     ],
   },
@@ -33,7 +34,7 @@ export const privacy = (): LegalSection[] => [
   {
     title: 'Quién más interviene',
     body: [
-      'Las cuentas y las partidas guardadas se alojan en Supabase. La web se sirve desde GitHub Pages.',
+      'Las cuentas y las partidas guardadas se alojan en Supabase. La web se sirve desde GitHub Pages. Si eliges entrar con Google o con Apple, ese servicio interviene en el acceso según su propia política de privacidad.',
       'Durante una partida en línea, el estado de la sala (nombres de club, plantillas y cartas) viaja por servidores públicos de mensajería. No incluye tu correo ni tu contraseña, pero no debe considerarse privado.',
     ],
   },

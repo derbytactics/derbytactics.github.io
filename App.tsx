@@ -8,7 +8,7 @@ import { Action, BOT_STYLES, CrestDesign, GameState, apply, botAction, check, cr
 import { RoomState } from './src/net/room';
 import { GUEST_KEY, HOST_KEY, normalizeCode } from './src/net/session';
 import { hydrateStorage, load, remove, save } from './src/net/storage';
-import { AccountScreen, formatDate } from './src/ui/AccountScreen';
+import { AccountScreen, UsernamePrompt, formatDate } from './src/ui/AccountScreen';
 import { reloadClub, syncClub, useClubSyncing, useMyClub } from './src/account/club';
 import { ClubScreen } from './src/ui/ClubScreen';
 import { ErrorBoundary, installGlobalErrorHandlers } from './src/ui/ErrorBoundary';
@@ -196,6 +196,11 @@ export default function App() {
         {legal ? (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
             <LegalScreen initial={legal} onClose={() => setLegal(null)} />
+          </View>
+        ) : null}
+        {account.profile?.needs_username ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
+            <UsernamePrompt />
           </View>
         ) : null}
         {menuOpen ? (

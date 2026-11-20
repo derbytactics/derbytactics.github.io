@@ -21,7 +21,19 @@ insert into auth.users (id, email, raw_user_meta_data) values
 
 select pg_temp.ok((select count(*) from profiles) = 4, 'cada alta crea su perfil');
 select pg_temp.ok((select username from profiles where id = '00000000-0000-0000-0000-00000000000c') = 'ana1', 'nombre repetido recibe sufijo');
-select pg_temp.ok((select username from profiles where id = '00000000-0000-0000-0000-00000000000d') = 'Club', 'nombre no válido pasa a ser Club');
+select pg_temp.ok((select username from profiles where id = '00000000-0000-0000-0000-00000000000d') = 'Jugador', 'nombre no válido pasa a ser Jugador');
+select pg_temp.ok((select needs_username from profiles where id = '00000000-0000-0000-0000-00000000000d'), 'sin nombre válido se le pedirá uno');
+select pg_temp.ok(not (select needs_username from profiles where id = '00000000-0000-0000-0000-00000000000a'), 'quien eligió nombre al registrarse no lo repite');
+
+-- Alta con Google o Apple: llega el nombre real, pero no se copia.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-00000000000e', 'g@test', '{"full_name":"Nombre Real","avatar_url":"https://x/y.png"}');
+select pg_temp.ok((select username from profiles where id = '00000000-0000-0000-0000-00000000000e') = 'Jugador1', 'con Google el nombre es provisional');
+select pg_temp.login('00000000-0000-0000-0000-00000000000e');
+select pg_temp.ok((my_profile() ->> 'needs_username')::boolean, 'el perfil avisa de que falta el nombre');
+select set_username('Goleador');
+select pg_temp.ok(not (my_profile() ->> 'needs_username')::boolean and (my_profile() ->> 'username') = 'Goleador', 'al elegir nombre deja de pedirse');
+select pg_temp.login(null);
 select pg_temp.ok(not username_available('ANA') and username_available('Pepe') and not username_available('ab'), 'disponibilidad de nombre');
 
 -- Sin sesión no se puede crear partida.
