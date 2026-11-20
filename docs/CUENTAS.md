@@ -11,6 +11,7 @@ Las cuentas son opcionales: si el juego se compila sin los datos del servidor, f
   - Media inferior a 2,5 estrellas en sus 5 últimas valoraciones, con al menos 3: 24 horas.
 - **Qué cuenta como abandono:** que el anfitrión salga con la partida a medias, que pase 30 minutos sin dar señales, o que un invitado avise tras 10 minutos sin señales.
 - Recuperación de contraseña por correo y borrado de cuenta desde el perfil.
+- **Club e historial de temporadas:** el club (nombre y escudo) y las temporadas terminadas, en línea o en un dispositivo, se guardan en la cuenta (`set_my_club`, `save_seasons`, `my_seasons`). Al entrar se juntan con lo del dispositivo: se sube lo que falte y, si la cuenta ya tenía club, se usa ese salvo que se haya cambiado en este dispositivo con la misma cuenta. Lo guardado por otra cuenta en el mismo dispositivo no se mezcla.
 - **Avatar** a elegir entre un conjunto de retratos; con cuenta se guarda en el perfil y, como invitado, en el dispositivo.
 - Al abrir el juego se elige entre **entrar con tu cuenta** o **jugar como invitado**.
 

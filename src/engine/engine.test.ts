@@ -3,7 +3,12 @@ import {
   Action,
   BOT_STYLES,
   CONFIG,
+  ETHNICITIES,
   FOOTBALLERS,
+  cardName,
+  makeRand,
+  randomClubName,
+  sanitizeCrest,
   GameState,
   SPECIAL_CARDS,
   apply,
@@ -354,5 +359,82 @@ describe('partidas completas de bots', () => {
       return s.players.map((p) => [p.points, p.goals, p.against, p.money]);
     };
     expect(run()).toEqual(run());
+  });
+});
+
+describe('identidades', () => {
+  const opts = (seed: number) => ({ players: [{ name: 'Mi Club', isBot: false }, { name: 'Rival', isBot: true }], seed });
+
+  it('los nombres de los futbolistas cambian en cada partida, sin repetirse dentro de una', () => {
+    const a = createGame(opts(1));
+    const b = createGame(opts(2));
+    const names = FOOTBALLERS.map((f) => cardName(a, f.id));
+    expect(new Set(names).size).toBe(FOOTBALLERS.length);
+    expect(FOOTBALLERS.filter((f) => cardName(a, f.id) === cardName(b, f.id)).length).toBeLessThan(10);
+    // Misma semilla, mismos nombres.
+    expect(createGame(opts(1)).roster).toEqual(a.roster);
+  });
+
+  it('salen futbolistas de todas las procedencias, en proporciones parecidas a las de las grandes ligas', () => {
+    const all = Array.from({ length: 60 }, (_, i) => Object.values(createGame(opts(100 + i)).roster!)).flat();
+    const share = (...e: string[]) => all.filter((x) => e.includes(x.eth)).length / all.length;
+    for (const e of ETHNICITIES) expect(share(e)).toBeGreaterThan(0);
+    expect(share('europeo', 'mediterraneo')).toBeGreaterThan(0.42);
+    expect(share('africano')).toBeGreaterThan(0.22);
+    expect(share('africano')).toBeLessThan(0.38);
+    expect(share('asiaEste', 'asiaSur')).toBeLessThan(0.05);
+  });
+
+  it('las identidades no cambian la secuencia aleatoria de las reglas', () => {
+    const g = createGame(opts(7));
+    const { roster, gameId, ...rest } = g;
+    expect(roster).toBeDefined();
+    expect(gameId).toBeDefined();
+    expect(rest.seed).toBe(createGame(opts(7)).seed);
+  });
+
+  it('cada club lleva su escudo; los que no traen uno reciben uno al azar', () => {
+    const crest = { shape: 2, pattern: 1, emblem: 3, primary: '#C8102E', secondary: '#F4F1E8' };
+    const g = createGame({ players: [{ name: 'Mi Club', isBot: false, crest }, { name: 'Rival', isBot: true }], seed: 4 });
+    expect(g.players[0].crest).toEqual(crest);
+    expect(sanitizeCrest(g.players[1].crest)).toEqual(g.players[1].crest);
+  });
+
+  it('descarta escudos mal formados', () => {
+    expect(sanitizeCrest({ shape: 1, pattern: 1, emblem: 1, primary: 'red', secondary: '#000000' })).toBeUndefined();
+    expect(sanitizeCrest({ shape: 99, pattern: -1, emblem: 1.5, primary: '#FFFFFF', secondary: '#000000' })).toEqual({ shape: 0, pattern: 0, emblem: 0, primary: '#FFFFFF', secondary: '#000000' });
+    expect(sanitizeCrest(null)).toBeUndefined();
+  });
+
+  it('los nombres de club al azar no repiten los ya usados', () => {
+    const r = makeRand(9);
+    const taken: string[] = [];
+    for (let i = 0; i < 8; i++) taken.push(randomClubName(r, taken));
+    expect(new Set(taken).size).toBe(8);
+    expect(taken.every((n) => n.length <= 20)).toBe(true);
+  });
+});
+
+describe('liga femenina', () => {
+  const opts = { players: [{ name: 'Mi Club', isBot: false }, { name: 'Rival', isBot: true }], seed: 5 };
+  it('las futbolistas tienen nombres de mujer y la partida lo recuerda', () => {
+    const g = createGame({ ...opts, league: 'femenina' });
+    expect(g.league).toBe('femenina');
+    const ids = Object.values(g.roster!);
+    expect(ids.every((x) => x.fem)).toBe(true);
+    expect(ids.some((x) => /^(Alexia|Aitana|Irene|Jenni|Laia|Mariona|Olga|Patri|Salma|Esther|Lucía|Claudia|Teresa|Ainhoa|Nerea|Marta|Paula|Andrea|Leire|Carla) /.test(x.name))).toBe(true);
+    expect(ids.some((x) => /ski$|(ov|ev)$/.test(x.name))).toBe(false);
+    expect(createGame(opts).roster!.f1.fem).toBeUndefined();
+  });
+  it('las reglas no cambian: misma semilla, misma partida', () => {
+    const a = createGame({ ...opts, league: 'femenina' });
+    const b = createGame(opts);
+    expect(a.market).toEqual(b.market);
+    expect(a.turnOrder).toEqual(b.turnOrder);
+  });
+  it('los avisos usan el femenino', () => {
+    const g = createGame({ ...opts, league: 'femenina' });
+    expect(check(g, { type: 'sign', cardId: 'no-existe' })).toBe('Esa futbolista no está en el mercado.');
+    expect(check(createGame(opts), { type: 'sign', cardId: 'no-existe' })).toBe('Ese futbolista no está en el mercado.');
   });
 });

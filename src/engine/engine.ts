@@ -9,6 +9,7 @@ import {
   totalPips,
 } from './cards';
 import { CONFIG, SeasonLength, marketSize } from './config';
+import { CrestDesign, Identity, League, generateRoster, makeRand, randomCrest, sanitizeCrest, words } from './identity';
 import { nextRandom } from './rng';
 
 // ---------------------------------------------------------------- Tipos
@@ -49,6 +50,8 @@ export interface Player {
   lastSeen: number;
   /** Penaltis a favor conseguidos con cartas: jornada en la que se lanzan y rival que los encaja. */
   penalties?: { jornada: number; rival: number }[];
+  /** Escudo del club (las partidas antiguas no lo tienen). */
+  crest?: CrestDesign;
 }
 
 /** Una jugada de ataque: un club con atacantes en el número que ha salido. */
@@ -149,12 +152,19 @@ export interface GameState {
   log: LogEntry[];
   /** Contador de entradas de crónica escritas en toda la partida. */
   logSeq: number;
+  /** Identificador de la partida (para el historial). */
+  gameId?: string;
+  /** Nombre y rasgos de cada futbolista en esta partida: cambian en cada una. */
+  roster?: Record<string, Identity>;
+  /** Liga masculina (por defecto) o femenina. */
+  league?: League;
 }
 
 export interface NewGameOptions {
-  players: { name: string; isBot: boolean }[];
+  players: { name: string; isBot: boolean; crest?: CrestDesign }[];
   season?: SeasonLength;
   seed?: number;
+  league?: League;
 }
 
 export type Action =
@@ -195,6 +205,11 @@ function say(state: GameState, text: string, affects?: number[]) {
   state.log.push({ n: state.logSeq, jornada: state.jornada, text, ...(affects?.length ? { affects } : {}) });
   // La crónica viaja con el estado en las partidas en línea: se limita su tamaño.
   if (state.log.length > 150) state.log.splice(0, state.log.length - 150);
+}
+
+/** Nombre del futbolista en esta partida. */
+export function cardName(state: GameState, cardId: string): string {
+  return state.roster?.[cardId]?.name ?? footballer(cardId).name;
 }
 
 const freshTurn = (): TurnFlags => ({ signed: false, upgraded: false, boughtCard: false, cardsPlayed: 0, scout: false });
@@ -316,8 +331,14 @@ export function createGame(opts: NewGameOptions): GameState {
   if (n < CONFIG.minPlayers || n > CONFIG.maxPlayers) {
     throw new Error(`Futcards es para ${CONFIG.minPlayers}-${CONFIG.maxPlayers} jugadores.`);
   }
+  const seed = (opts.seed ?? Math.floor(Math.random() * 2 ** 31)) | 0;
+  // Identidades con un generador aparte: no cambian la secuencia aleatoria de las reglas.
+  const looks = makeRand(seed ^ 0x51ed270b);
   const state: GameState = {
-    seed: (opts.seed ?? Math.floor(Math.random() * 2 ** 31)) | 0,
+    seed,
+    gameId: `g${(seed >>> 0).toString(36)}${n}`,
+    roster: generateRoster(FOOTBALLERS.map((f) => f.id), seed, opts.league),
+    ...(opts.league === 'femenina' ? { league: 'femenina' as const } : {}),
     totalJornadas: CONFIG.seasonLengths[opts.season ?? 'estandar'],
     jornada: 1,
     phase: 'market',
@@ -336,6 +357,7 @@ export function createGame(opts: NewGameOptions): GameState {
       clubDayJornada: 0,
       subsidy: false,
       lastSeen: 0,
+      crest: sanitizeCrest(p.crest) ?? randomCrest(looks),
     })),
     turnOrder: [],
     turnIndex: 0,
@@ -372,15 +394,16 @@ export function check(state: GameState, action: Action): string | null {
   const me = currentPlayer(state);
   if (!me) return 'No es fase de mercado.';
   const J = state.jornada;
+  const w = words(state);
   switch (action.type) {
     case 'endTurn':
       return null;
     case 'sign': {
-      if (!state.market.includes(action.cardId)) return 'Ese futbolista no está en el mercado.';
+      if (!state.market.includes(action.cardId)) return `${w.That} futbolista no está en el mercado.`;
       if (state.turn.signed) return 'Solo un fichaje por turno.';
       if (me.squad.length >= CONFIG.squadSize) return 'Plantilla completa: vende antes a alguien.';
-      if (footballer(action.cardId).position === 'POR' && hasKeeper(me)) return 'Ya tienes portero: véndelo antes de fichar otro.';
-      if (footballer(action.cardId).position === 'DEL' && lineup(me).DEL >= CONFIG.maxForwards) return `Ya tienes ${CONFIG.maxForwards} delanteros: vende uno antes de fichar otro.`;
+      if (footballer(action.cardId).position === 'POR' && hasKeeper(me)) return `Ya tienes ${w.keeper}: vénde${w.it} antes de fichar otr${w.fem ? 'a' : 'o'}.`;
+      if (footballer(action.cardId).position === 'DEL' && lineup(me).DEL >= CONFIG.maxForwards) return `Ya tienes ${CONFIG.maxForwards} ${w.forwards}: vende ${w.one} antes de fichar otr${w.fem ? 'a' : 'o'}.`;
       if (me.money < signPrice(state, action.cardId)) return 'No tienes dinero suficiente.';
       return null;
     }
@@ -388,21 +411,21 @@ export function check(state: GameState, action: Action): string | null {
       const owner = state.players[action.ownerId];
       if (!owner || owner.id === me.id) return 'Elige un club rival.';
       const entry = findEntry(owner, action.cardId);
-      if (!entry) return 'Ese club no tiene a ese futbolista.';
+      if (!entry) return `Ese club no tiene a ${w.that} futbolista.`;
       if (state.turn.signed) return 'Solo un fichaje por turno.';
       if (me.squad.length >= CONFIG.squadSize) return 'Plantilla completa: vende antes a alguien.';
-      if (footballer(action.cardId).position === 'POR' && hasKeeper(me)) return 'Ya tienes portero: véndelo antes de fichar otro.';
-      if (footballer(action.cardId).position === 'DEL' && lineup(me).DEL >= CONFIG.maxForwards) return `Ya tienes ${CONFIG.maxForwards} delanteros: vende uno antes de fichar otro.`;
-      if (isProtected(entry, J)) return 'Ese futbolista está protegido y no se puede fichar ahora.';
+      if (footballer(action.cardId).position === 'POR' && hasKeeper(me)) return `Ya tienes ${w.keeper}: vénde${w.it} antes de fichar otr${w.fem ? 'a' : 'o'}.`;
+      if (footballer(action.cardId).position === 'DEL' && lineup(me).DEL >= CONFIG.maxForwards) return `Ya tienes ${CONFIG.maxForwards} ${w.forwards}: vende ${w.one} antes de fichar otr${w.fem ? 'a' : 'o'}.`;
+      if (isProtected(entry, J)) return `${w.That} futbolista está ${w.protectedW} y no se puede fichar ahora.`;
       if (me.money < clauseOf(entry)) return 'No te llega para pagar la cláusula.';
       return null;
     }
     case 'sell':
-      return findEntry(me, action.cardId) ? null : 'Ese futbolista no es tuyo.';
+      return findEntry(me, action.cardId) ? null : `${w.That} futbolista no es ${w.yours}.`;
     case 'shield': {
       const entry = findEntry(me, action.cardId);
-      if (!entry) return 'Ese futbolista no es tuyo.';
-      if (entry.shielded) return 'Ya está blindado.';
+      if (!entry) return `${w.That} futbolista no es ${w.yours}.`;
+      if (entry.shielded) return `Ya está ${w.shielded}.`;
       if (me.money < shieldCost(action.cardId)) return 'No tienes dinero suficiente.';
       return null;
     }
@@ -436,18 +459,18 @@ export function check(state: GameState, action: Action): string | null {
         if (!rival || rival.id === me.id) return 'Elige un club rival.';
         if (info.target === 'rivalFootballer') {
           const e = action.targetCardId ? findEntry(rival, action.targetCardId) : undefined;
-          if (!e) return 'Elige un futbolista de ese club.';
-          if (isOut(e, J)) return 'Ese futbolista ya está de baja.';
+          if (!e) return `Elige ${w.fem ? 'una' : 'un'} futbolista de ese club.`;
+          if (isOut(e, J)) return `${w.That} futbolista ya está de baja.`;
         }
         if (card.kind === 'puertaCerrada' && rival.closedDoorsUntil >= J) return 'Ese club ya juega a puerta cerrada.';
       }
       if (info.target === 'ownFootballer') {
         const e = action.targetCardId ? findEntry(me, action.targetCardId) : undefined;
-        if (!e) return 'Elige uno de tus futbolistas.';
-        if (card.kind === 'racha' && onStreak(e, J)) return 'Ese futbolista ya está en racha.';
+        if (!e) return `Elige ${w.one} de tus futbolistas.`;
+        if (card.kind === 'racha' && onStreak(e, J)) return `${w.That} futbolista ya está en racha.`;
         if (card.kind === 'olfato') {
-          if (activeNumbers(e, J).includes(card.value!)) return `Ese futbolista ya marca con el ${card.value}.`;
-          if (e.extra && e.extra.until >= J) return 'Ese futbolista ya tiene un número extra.';
+          if (activeNumbers(e, J).includes(card.value!)) return `${w.That} futbolista ya marca con el ${card.value}.`;
+          if (e.extra && e.extra.until >= J) return `${w.That} futbolista ya tiene un número extra.`;
         }
       }
       if (card.kind === 'subvencion' && me.subsidy) return 'Ya tienes una subvención pendiente.';
@@ -483,7 +506,7 @@ export function apply(prev: GameState, action: Action): GameState {
       const refill = state.footballDeck.shift();
       if (refill) state.market[i] = refill;
       else state.market.splice(i, 1);
-      say(state, `${me.name} ficha a ${footballer(action.cardId).name} por ${price}M.`);
+      say(state, `${me.name} ficha a ${cardName(state, action.cardId)} por ${price}M.`);
       break;
     }
     case 'clause': {
@@ -495,7 +518,7 @@ export function apply(prev: GameState, action: Action): GameState {
       owner.squad = owner.squad.filter((e) => e !== entry);
       state.turn.signed = true;
       me.squad.push({ ...entry, shielded: false, noClauseUntil: J + CONFIG.transferProtection });
-      say(state, `¡Bombazo! ${me.name} paga la cláusula de ${footballer(action.cardId).name} (${cost}M) a ${owner.name}.`, [owner.id]);
+      say(state, `¡Bombazo! ${me.name} paga la cláusula de ${cardName(state, action.cardId)} (${cost}M) a ${owner.name}.`, [owner.id]);
       break;
     }
     case 'sell': {
@@ -503,14 +526,14 @@ export function apply(prev: GameState, action: Action): GameState {
       me.squad = me.squad.filter((e) => e.cardId !== action.cardId);
       me.money += value;
       state.footballDeck.push(action.cardId);
-      say(state, `${me.name} traspasa a ${footballer(action.cardId).name} por ${value}M.`);
+      say(state, `${me.name} traspasa a ${cardName(state, action.cardId)} por ${value}M.`);
       break;
     }
     case 'shield': {
       const cost = shieldCost(action.cardId);
       me.money -= cost;
       findEntry(me, action.cardId)!.shielded = true;
-      say(state, `${me.name} blinda a ${footballer(action.cardId).name} (${cost}M).`);
+      say(state, `${me.name} blinda a ${cardName(state, action.cardId)} (${cost}M).`);
       break;
     }
     case 'upgradeStadium': {
@@ -608,20 +631,20 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
       break;
     case 'lesion':
       theirs!.outUntil = J + S.injuryRounds - 1;
-      say(state, `${footballer(theirs!.cardId).name} (${rival!.name}) se lesiona: ${S.injuryRounds} jornadas de baja.`, [rival!.id]);
+      say(state, `${cardName(state, theirs!.cardId)} (${rival!.name}) se lesiona: ${S.injuryRounds} jornadas de baja.`, [rival!.id]);
       break;
     case 'amarilla':
       if (isBooked(theirs!, J)) {
         theirs!.outUntil = Math.max(theirs!.outUntil, J);
-        say(state, `Segunda amarilla a ${footballer(theirs!.cardId).name} (${rival!.name}): expulsado esta jornada.`, [rival!.id]);
+        say(state, `Segunda amarilla a ${cardName(state, theirs!.cardId)} (${rival!.name}): ${words(state).sentOff} esta jornada.`, [rival!.id]);
       } else {
         theirs!.yellowUntil = J;
-        say(state, `Amarilla a ${footballer(theirs!.cardId).name} (${rival!.name}): juega esta jornada con menos fuerza.`, [rival!.id]);
+        say(state, `Amarilla a ${cardName(state, theirs!.cardId)} (${rival!.name}): juega esta jornada con menos fuerza.`, [rival!.id]);
       }
       break;
     case 'roja':
       theirs!.outUntil = J + S.redCardRounds - 1;
-      say(state, `Roja a ${footballer(theirs!.cardId).name} (${rival!.name}): expulsado esta jornada y la siguiente.`, [rival!.id]);
+      say(state, `Roja a ${cardName(state, theirs!.cardId)} (${rival!.name}): ${words(state).sentOff} esta jornada y la siguiente.`, [rival!.id]);
       break;
     case 'penalti':
       me.penalties = [...(me.penalties ?? []).filter((x) => x.jornada >= J), { jornada: J, rival: rival!.id }];
@@ -629,15 +652,15 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
       break;
     case 'racha':
       own!.streakUntil = J + S.streakRounds - 1;
-      say(state, `${footballer(own!.cardId).name} (${me.name}) está en racha: doble fuerza ${S.streakRounds} jornadas.`);
+      say(state, `${cardName(state, own!.cardId)} (${me.name}) está en racha: doble fuerza ${S.streakRounds} jornadas.`);
       break;
     case 'olfato':
       own!.extra = { number: card.value!, until: J + S.extraNumberRounds - 1 };
-      say(state, `${footballer(own!.cardId).name} (${me.name}) también actúa con el ${card.value} durante ${S.extraNumberRounds} jornadas.`);
+      say(state, `${cardName(state, own!.cardId)} (${me.name}) también actúa con el ${card.value} durante ${S.extraNumberRounds} jornadas.`);
       break;
     case 'cantera':
       own!.noClauseUntil = Math.max(own!.noClauseUntil, J + S.academyRounds);
-      say(state, `${footballer(own!.cardId).name} es de la cantera de ${me.name}: intransferible ${S.academyRounds} jornadas.`);
+      say(state, `${cardName(state, own!.cardId)} es de la cantera de ${me.name}: intransferible ${S.academyRounds} jornadas.`);
       break;
     case 'patrocinador':
       me.money += S.sponsor;

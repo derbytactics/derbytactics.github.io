@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
-import { CONFIG, NewGameOptions, SeasonLength } from '../engine';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { CONFIG, CrestDesign, League, NewGameOptions, SeasonLength, randomClubName, randomCrest } from '../engine';
 import { Crest, Logo } from './art';
-import { Btn, LegalLinks, NavBar, Overline, s } from './components';
+import { MyClub } from '../account/club';
+import { Btn, LeaguePicker, LegalLinks, NavBar, Overline, s } from './components';
 import { C, clubColor } from './theme';
 
-const DEFAULT_NAMES = ['Atlético Barrio', 'Real Chamartín', 'Sporting Ribera', 'Unión Levante', 'Deportivo Norte', 'Racing Meseta', 'CF Bahía', 'Rayo Sur'];
+type Rival = { name: string; isBot: boolean; crest: CrestDesign };
+const rnd = () => Math.random();
+/** Rivales al azar: nombres y escudos nuevos cada vez. */
+function randomRivals(mine: string): Rival[] {
+  const taken = [mine];
+  return Array.from({ length: CONFIG.maxPlayers - 1 }, () => {
+    const name = randomClubName(rnd, taken);
+    taken.push(name);
+    return { name, isBot: true, crest: randomCrest(rnd) };
+  });
+}
 const SEASONS: { key: SeasonLength; label: string; note: string }[] = [
   { key: 'corta', label: 'Corta', note: `${CONFIG.seasonLengths.corta} jornadas` },
   { key: 'estandar', label: 'Estándar', note: `${CONFIG.seasonLengths.estandar} jornadas` },
@@ -15,13 +26,15 @@ const SEASONS: { key: SeasonLength; label: string; note: string }[] = [
 export function SetupScreen(props: {
   onStart: (o: NewGameOptions) => void;
   onHelp: () => void;
-  onHost: (name: string) => void;
-  onJoin: (code: string, name: string) => void;
+  /** El club de esta persona: lo lleva a todas sus partidas. */
+  club: MyClub;
+  onEditClub: () => void;
+  onHost: () => void;
+  onJoin: (code: string) => void;
   /** Sala propia guardada en este dispositivo, si la hay. */
   resumeCode: string | null;
   onResume: () => void;
   initialCode: string;
-  initialName: string;
   /** Descripción de la partida local guardada, si la hay. */
   savedLocal: string | null;
   onContinueLocal: () => void;
@@ -32,15 +45,26 @@ export function SetupScreen(props: {
 }) {
   const { onStart, onHelp } = props;
   const [mode, setMode] = useState<'local' | 'online'>(props.initialCode ? 'online' : 'local');
-  const [myName, setMyName] = useState(props.initialName);
+  const { club } = props;
   const [code, setCode] = useState(props.initialCode);
   const [warn, setWarn] = useState<string | null>(null);
-  const named = (then: (name: string) => void) => (myName.trim() ? then(myName.trim()) : setWarn('Ponle nombre a tu club.'));
   const [count, setCount] = useState(4);
   const [season, setSeason] = useState<SeasonLength>('estandar');
-  const [players, setPlayers] = useState(DEFAULT_NAMES.map((name, i) => ({ name, isBot: i > 0 })));
-  const patch = (i: number, p: Partial<{ name: string; isBot: boolean }>) =>
-    setPlayers((all) => all.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  const [league, setLeague] = useState<League>('masculina');
+  const [rivals, setRivals] = useState(() => randomRivals(club.name));
+  const patch = (i: number, p: Partial<Rival>) => setRivals((all) => all.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  const reroll = (i: number) =>
+    patch(i, { name: randomClubName(rnd, [club.name, ...rivals.filter((_, j) => j !== i).map((r) => r.name)]), crest: randomCrest(rnd) });
+  const myClubCard = (
+    <View style={[s.panel, s.row, { borderColor: C.accent }]}>
+      <Crest name={club.name} color={club.crest.primary} design={club.crest} size={46} />
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Overline>TU CLUB</Overline>
+        <Text numberOfLines={1} style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>{club.name}</Text>
+      </View>
+      <Btn small kind="ghost" label="Cambiar" onPress={props.onEditClub} />
+    </View>
+  );
 
   return (
     <View style={{ flex: 1 }}>
@@ -63,21 +87,10 @@ export function SetupScreen(props: {
       {mode === 'online' ? (
         <>
           <Text style={[s.p, { marginBottom: 14 }]}>Cada persona juega desde su móvil. Una crea la sala y pasa el código a las demás.</Text>
-          <Overline>TU CLUB</Overline>
-          <View style={[s.panel, { paddingVertical: 6, marginTop: 6 }]}>
-            <TextInput
-              value={myName}
-              onChangeText={(t) => { setMyName(t); setWarn(null); }}
-              maxLength={20}
-              accessibilityLabel="Nombre de tu club"
-              placeholder="Nombre de tu club"
-              placeholderTextColor={C.faint}
-              style={{ color: C.text, fontSize: 18, fontWeight: '700', paddingVertical: 8 }}
-            />
-          </View>
+          {myClubCard}
           {warn ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{warn}</Text> : null}
 
-          <Btn label="Crear una sala" onPress={() => named((n) => props.hostGate().then((why) => (why ? setWarn(why) : props.onHost(n))))} />
+          <Btn label="Crear una sala" onPress={() => props.hostGate().then((why) => (why ? setWarn(why) : props.onHost()))} />
           {props.accountsOn ? <Text style={[s.p, { fontSize: 12, marginTop: 6 }]}>Para crear salas necesitas una cuenta. Para unirte, no.</Text> : null}
           {props.resumeCode ? <Btn kind="ghost" label={`Reanudar mi sala ${props.resumeCode}`} onPress={props.onResume} style={{ marginTop: 8 }} /> : null}
 
@@ -104,7 +117,7 @@ export function SetupScreen(props: {
           <Btn
             kind={code.length === 5 ? 'primary' : 'muted'}
             label="Unirme a la sala"
-            onPress={() => (code.length === 5 ? named((n) => props.onJoin(code, n)) : setWarn('El código tiene 5 letras.'))}
+            onPress={() => (code.length === 5 ? props.onJoin(code) : setWarn('El código tiene 5 letras.'))}
           />
         </>
       ) : (
@@ -126,23 +139,34 @@ export function SetupScreen(props: {
             <Btn label="+" small kind="ghost" onPress={() => setCount((c) => Math.min(CONFIG.maxPlayers, c + 1))} style={{ width: 44, marginLeft: 8 }} />
           </View>
 
-          {players.slice(0, count).map((p, i) => (
+          {myClubCard}
+          <Overline>RIVALES</Overline>
+          <View style={{ height: 6 }} />
+          {rivals.slice(0, count - 1).map((p, i) => (
             <View key={i} style={[s.panel, s.row, { paddingVertical: 8, marginBottom: 8 }]}>
-              <Crest name={p.name || `Club ${i + 1}`} color={clubColor(i)} size={34} />
+              <Crest name={p.name || `Club ${i + 2}`} color={clubColor(i + 1)} design={p.crest} size={34} />
               <TextInput
                 value={p.name}
                 onChangeText={(name) => patch(i, { name })}
                 maxLength={20}
-                accessibilityLabel={`Nombre del club ${i + 1}`}
-                style={{ flex: 1, color: C.text, fontSize: 16, fontWeight: '700', paddingVertical: 6, marginHorizontal: 10 }}
+                accessibilityLabel={`Nombre del club rival ${i + 1}`}
+                style={{ flex: 1, minWidth: 0, color: C.text, fontSize: 16, fontWeight: '700', paddingVertical: 6, marginHorizontal: 10 }}
                 placeholderTextColor={C.faint}
-                placeholder={`Club ${i + 1}`}
+                placeholder={`Club ${i + 2}`}
               />
+              <Pressable accessibilityRole="button" accessibilityLabel="Otro nombre y escudo al azar" onPress={() => reroll(i)} hitSlop={6} style={{ marginRight: 8 }}>
+                <Text style={{ fontSize: 20 }}>🎲</Text>
+              </Pressable>
               <Btn small kind={p.isBot ? 'ghost' : 'primary'} label={p.isBot ? 'IA' : 'Persona'} onPress={() => patch(i, { isBot: !p.isBot })} style={{ width: 84 }} />
             </View>
           ))}
+          {rivals.slice(0, count - 1).some((r) => !r.isBot) ? (
+            <Text style={[s.p, { fontSize: 12, marginBottom: 8 }]}>Los clubes de «Persona» se juegan pasándose el dispositivo. El historial se guarda para tu club.</Text>
+          ) : null}
 
-          <View style={{ marginTop: 10, marginBottom: 22 }}>
+          <View style={{ height: 10 }} />
+          <LeaguePicker value={league} onPick={setLeague} />
+          <View style={{ marginBottom: 22 }}>
             <Overline>DURACIÓN DE LA TEMPORADA</Overline>
             <View style={[s.row, { gap: 8, marginTop: 8 }]}>
               {SEASONS.map((x) => (
@@ -154,7 +178,10 @@ export function SetupScreen(props: {
             </View>
           </View>
 
-          <Btn label="Empezar la pretemporada" onPress={() => onStart({ players: players.slice(0, count), season })} />
+          <Btn
+            label="Empezar la pretemporada"
+            onPress={() => onStart({ players: [{ name: club.name, isBot: false, crest: club.crest }, ...rivals.slice(0, count - 1).map((r, i) => ({ ...r, name: r.name.trim() || `Club ${i + 2}` }))], season, league })}
+          />
         </>
       )}
       <LegalLinks />

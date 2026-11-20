@@ -240,9 +240,10 @@ function HistoryTab() {
   }, []);
   if (error) return <Text style={{ color: C.danger }}>{error}</Text>;
   if (!rows) return <Text style={s.p}>Cargando…</Text>;
-  if (rows.length === 0) return <Text style={s.p}>Aún no has jugado ninguna partida en línea con tu cuenta.</Text>;
+  if (rows.length === 0) return <Text style={s.p}>Aún no has jugado ninguna partida en línea con tu cuenta. Tus temporadas, también las de un dispositivo, están en el menú → Historial de partidas.</Text>;
   return (
     <>
+      <Text style={[s.p, { fontSize: 12, marginBottom: 10 }]}>Salas en línea en las que has jugado, con su anfitrión. Todas tus temporadas, también las de un dispositivo, están en el menú → Historial de partidas.</Text>
       {rows.map((g) => (
         <View key={g.id} style={s.panel}>
           <View style={s.row}>
@@ -328,17 +329,17 @@ export function AccountScreen({ onClose, initialTab }: { onClose: () => void; in
           <AvatarPicker />
           <View style={[s.row, { gap: 8, marginBottom: 14 }]}>
             <Btn small kind={tab === 'perfil' ? 'primary' : 'ghost'} label={session ? 'Perfil' : 'Entrar'} onPress={() => setTab('perfil')} style={{ flex: 1 }} />
-            <Btn small kind={tab === 'historial' ? 'primary' : 'ghost'} label="Historial" onPress={() => setTab('historial')} style={{ flex: 1 }} />
+            <Btn small kind={tab === 'historial' ? 'primary' : 'ghost'} label="Salas" onPress={() => setTab('historial')} style={{ flex: 1 }} />
             <Btn small kind={tab === 'ranking' ? 'primary' : 'ghost'} label="Ranking" onPress={() => setTab('ranking')} style={{ flex: 1 }} />
           </View>
           {tab === 'ranking' ? (
             <RankingTab />
           ) : !session ? (
             <>
-              {tab === 'historial' ? <Text style={[s.p, { marginBottom: 12 }]}>Entra con tu cuenta para ver tus partidas.</Text> : (
+              {tab === 'historial' ? <Text style={[s.p, { marginBottom: 12 }]}>Entra con tu cuenta para ver tus salas en línea.</Text> : (
                 <View style={{ alignItems: 'center', marginBottom: 10 }}>
                   <Trophy size={64} />
-                  <Text style={[s.p, { textAlign: 'center', marginTop: 6 }]}>Con una cuenta puedes crear salas, guardar tu historial y aparecer en el ranking. Para unirte a la sala de un amigo no hace falta.</Text>
+                  <Text style={[s.p, { textAlign: 'center', marginTop: 6 }]}>Con una cuenta puedes crear salas, guardar tu club y tu historial para recuperarlos en otro dispositivo, y aparecer en el ranking. Para unirte a la sala de un amigo no hace falta.</Text>
                 </View>
               )}
               <AuthForm />

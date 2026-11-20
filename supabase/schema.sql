@@ -15,6 +15,9 @@ create table if not exists public.profiles (
   host_banned_until timestamptz
 );
 alter table public.profiles add column if not exists avatar text;
+-- El club del usuario (uno por persona): nombre y escudo.
+alter table public.profiles add column if not exists club_name text;
+alter table public.profiles add column if not exists club_crest jsonb;
 create unique index if not exists profiles_username_key on public.profiles (lower(username));
 
 create table if not exists public.games (
@@ -55,6 +58,16 @@ create table if not exists public.host_ratings (
 );
 create index if not exists host_ratings_host_idx on public.host_ratings (host_id, created_at desc);
 
+-- Temporadas terminadas del club del usuario (en línea o en un solo dispositivo), tal como las guarda la app.
+create table if not exists public.season_history (
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  id text not null,
+  finished_at timestamptz not null,
+  entry jsonb not null,
+  primary key (user_id, id)
+);
+create index if not exists season_history_user_idx on public.season_history (user_id, finished_at desc);
+
 -- Informes de error enviados por la app (sin datos personales más allá de la cuenta, si la hay).
 create table if not exists public.client_errors (
   id bigint generated always as identity primary key,
@@ -70,6 +83,7 @@ alter table public.profiles enable row level security;
 alter table public.games enable row level security;
 alter table public.game_players enable row level security;
 alter table public.host_ratings enable row level security;
+alter table public.season_history enable row level security;
 
 -- ---------------------------------------------------------------- Alta de usuario
 
@@ -174,6 +188,7 @@ begin
       'id', p.id, 'username', p.username, 'games', p.games, 'wins', p.wins,
       'host_games', p.host_games, 'host_abandons', p.host_abandons,
       'avatar', p.avatar,
+      'club', case when p.club_name is not null then json_build_object('name', p.club_name, 'crest', p.club_crest) end,
       'host_banned_until', case when p.host_banned_until > now() then p.host_banned_until end,
       'stars', (select round(avg(stars), 1) from host_ratings where host_id = p.id),
       'votes', (select count(*) from host_ratings where host_id = p.id))
@@ -196,6 +211,61 @@ begin
   update profiles set username = btrim(p_username) where id = auth.uid();
   return btrim(p_username);
 end $$;
+
+-- ---------------------------------------------------------------- Club e historial de temporadas
+
+-- Escudo bien formado: forma, dibujo y emblema en rango y dos colores #RRGGBB.
+create or replace function public.valid_crest(c jsonb) returns boolean
+language sql immutable as $$
+  select coalesce(jsonb_typeof(c) = 'object'
+     and (c ->> 'shape') ~ '^[0-9]$' and (c ->> 'shape')::int < 6
+     and (c ->> 'pattern') ~ '^[0-9]$' and (c ->> 'pattern')::int < 9
+     and (c ->> 'emblem') ~ '^[0-9]{1,2}$' and (c ->> 'emblem')::int < 12
+     and (c ->> 'primary') ~ '^#[0-9A-Fa-f]{6}$'
+     and (c ->> 'secondary') ~ '^#[0-9A-Fa-f]{6}$', false)
+$$;
+
+create or replace function public.set_my_club(p_name text, p_crest jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  n text := btrim(coalesce(p_name, ''));
+begin
+  if auth.uid() is null then raise exception 'Inicia sesión.'; end if;
+  if length(n) < 3 or length(n) > 20 then raise exception 'El nombre del club debe tener entre 3 y 20 caracteres.'; end if;
+  if not valid_crest(p_crest) then raise exception 'Escudo no válido.'; end if;
+  update profiles
+     set club_name = n,
+         club_crest = jsonb_build_object('shape', (p_crest ->> 'shape')::int, 'pattern', (p_crest ->> 'pattern')::int,
+                                         'emblem', (p_crest ->> 'emblem')::int, 'primary', p_crest ->> 'primary', 'secondary', p_crest ->> 'secondary')
+   where id = auth.uid();
+end $$;
+
+-- Guarda temporadas terminadas: [{id, date, ...}]. Las repetidas se ignoran; se conservan las 100 últimas.
+create or replace function public.save_seasons(p_entries jsonb) returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  me uuid := auth.uid();
+  added int;
+begin
+  if me is null then raise exception 'Inicia sesión.'; end if;
+  if jsonb_typeof(p_entries) <> 'array' or jsonb_array_length(p_entries) > 100 then raise exception 'Historial no válido.'; end if;
+  insert into season_history (user_id, id, finished_at, entry)
+    select me, e ->> 'id', (e ->> 'date')::timestamptz, e
+      from jsonb_array_elements(p_entries) e
+     where jsonb_typeof(e) = 'object' and length(e ->> 'id') between 1 and 64 and length(e::text) <= 8000
+  on conflict (user_id, id) do nothing;
+  get diagnostics added = row_count;
+  delete from season_history
+   where user_id = me
+     and id not in (select id from season_history where user_id = me order by finished_at desc limit 100);
+  return added;
+end $$;
+
+create or replace function public.my_seasons() returns json
+language sql stable security definer set search_path = public as $$
+  select coalesce(json_agg(entry order by finished_at desc), '[]'::json)
+    from season_history where user_id = auth.uid()
+$$;
 
 -- ---------------------------------------------------------------- Partidas
 
@@ -368,7 +438,9 @@ end $$;
 
 -- ---------------------------------------------------------------- Permisos
 
-revoke all on function public.apply_host_penalty(uuid), public.sweep_host(uuid), public.handle_new_user() from public, anon, authenticated;
+revoke all on function public.apply_host_penalty(uuid), public.sweep_host(uuid), public.handle_new_user(), public.valid_crest(jsonb) from public, anon, authenticated;
+revoke all on function public.set_my_club(text, jsonb), public.save_seasons(jsonb), public.my_seasons() from public, anon;
+grant execute on function public.set_my_club(text, jsonb), public.save_seasons(jsonb), public.my_seasons() to authenticated;
 revoke all on function public.my_profile(), public.set_avatar(text), public.set_username(text), public.start_game(text, text, int, jsonb), public.join_game(uuid, int),
   public.heartbeat(uuid), public.finish_game(uuid, jsonb), public.abandon_game(uuid), public.report_abandon(uuid),
   public.rate_host(uuid, int), public.my_history(int), public.delete_my_account() from public, anon;

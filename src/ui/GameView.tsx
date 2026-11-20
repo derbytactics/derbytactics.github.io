@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Action, GameState, currentPlayer, currentRoller } from '../engine';
 import { Crest } from './art';
-import { Btn, Chronicle, ExitContext, NavBar, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
+import { recordGame } from '../account/club';
+import { Btn, Chronicle, ExitContext, NavBar, RosterContext, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
 import { EndScreen } from './EndScreen';
 import { GameScreen } from './GameScreen';
 import { MatchScreen } from './MatchScreen';
@@ -37,7 +38,14 @@ export function GameView(props: {
   endExtra?: React.ReactNode;
 }) {
   const [leaving, setLeaving] = useState(false);
+  const finished = props.game.phase === 'finished';
+  // Al acabar la temporada, se apunta en el historial del club de este dispositivo.
+  useEffect(() => {
+    if (finished) recordGame(props.game, props.seat ?? 0, !!props.online);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished]);
   return (
+    <RosterContext.Provider value={props.game.roster}>
     <ExitContext.Provider value={() => setLeaving(true)}>
       <View style={{ flex: 1 }}>
         <NavBar subtitle={navJornada(props.game)} />
@@ -51,6 +59,7 @@ export function GameView(props: {
         ) : null}
       </View>
     </ExitContext.Provider>
+    </RosterContext.Provider>
   );
 }
 
@@ -101,7 +110,7 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
         <PhaseStepper step={0} label={jornadaLabel(game)} />
         <View style={{ padding: 16 }}>
           <View style={[s.row, { marginBottom: 14 }]}>
-            <Crest name={cur.name} color={clubColor(cur.id)} size={46} />
+            <Crest name={cur.name} color={clubColor(cur.id)} design={cur.crest} size={46} />
             <View style={{ marginLeft: 10, flex: 1 }}>
               <Overline>{cur.isBot ? 'TURNO DE LA IA' : 'ESPERANDO A'}</Overline>
               <Text numberOfLines={1} style={s.h1}>{cur.name}</Text>
@@ -121,7 +130,7 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
     // Varias personas comparten dispositivo: las cartas en mano son secretas.
     return (
       <View style={{ padding: 24, flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Crest name={cur.name} color={clubColor(cur.id)} size={96} />
+        <Crest name={cur.name} color={clubColor(cur.id)} design={cur.crest} size={96} />
         <Text style={[s.p, { marginTop: 16 }]}>Pasa el dispositivo a</Text>
         <Text style={[s.h1, { textAlign: 'center', marginTop: 4, marginBottom: 20 }]}>{cur.name}</Text>
         <Btn label="Soy yo, empezar mi turno" onPress={() => setHandoff(turnKey)} style={{ alignSelf: 'stretch' }} />

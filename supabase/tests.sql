@@ -117,6 +117,34 @@ create temp table t6 as select start_game('GGGGG', 'corta', 2, '[{"seat":0,"name
 update games set last_seen = now() - interval '31 minutes' where id = (select gid from t6);
 select pg_temp.ok((my_profile() ->> 'host_abandons')::int = 1, 'una partida sin señales 30 min cuenta como abandonada');
 
+-- Club e historial de temporadas.
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select pg_temp.ok((my_profile() -> 'club') is null or json_typeof(my_profile() -> 'club') = 'null', 'sin club al principio');
+select set_my_club('  Atlético Ribera ', '{"shape":2,"pattern":1,"emblem":11,"primary":"#C8102E","secondary":"#F4F1E8","extra":"x"}');
+select pg_temp.ok((my_profile() -> 'club' ->> 'name') = 'Atlético Ribera' and (my_profile() -> 'club' -> 'crest' ->> 'emblem')::int = 11
+  and (my_profile() -> 'club' -> 'crest' -> 'extra') is null, 'el club se guarda en el perfil, limpio');
+do $$ begin
+  perform set_my_club('FC', '{"shape":0,"pattern":0,"emblem":0,"primary":"#000000","secondary":"#FFFFFF"}');
+  raise exception 'FALLA: aceptó un nombre de club demasiado corto';
+exception when others then
+  if sqlerrm like 'FALLA%' then raise; end if;
+  raise notice 'ok · nombre de club demasiado corto rechazado';
+end $$;
+do $$ begin
+  perform set_my_club('Real Faro', '{"shape":9,"pattern":0,"emblem":0,"primary":"red","secondary":"#FFFFFF"}');
+  raise exception 'FALLA: aceptó un escudo mal formado';
+exception when others then
+  if sqlerrm like 'FALLA%' then raise; end if;
+  raise notice 'ok · escudo mal formado rechazado';
+end $$;
+select pg_temp.ok(save_seasons('[{"id":"g1","date":"2026-01-01T10:00:00Z","position":1},{"id":"g2","date":"2026-02-01T10:00:00Z","position":3}]') = 2, 'se guardan temporadas');
+select pg_temp.ok(save_seasons('[{"id":"g2","date":"2026-02-01T10:00:00Z","position":3}]') = 0, 'las repetidas no se duplican');
+select pg_temp.ok(json_array_length(my_seasons()) = 2 and (my_seasons() -> 0 ->> 'id') = 'g2', 'el historial sale de la más reciente a la más antigua');
+select save_seasons((select jsonb_agg(jsonb_build_object('id', 'm' || n, 'date', now() - n * interval '1 day')) from generate_series(1, 100) n));
+select pg_temp.ok(json_array_length(my_seasons()) = 100 and not exists (select 1 from season_history where id = 'g1'), 'se conservan las 100 más recientes');
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.ok(json_array_length(my_seasons()) = 0, 'cada usuario solo ve su historial');
+
 -- Informes de error.
 select pg_temp.login(null);
 select log_client_error('fallo de prueba', 'pila', 'contexto');
@@ -145,4 +173,7 @@ select pg_temp.ok(exists (select 1 from client_errors where user_id = '00000000-
 select delete_my_account();
 select pg_temp.ok(not exists (select 1 from client_errors where user_id = '00000000-0000-0000-0000-00000000000d'), 'borrar la cuenta elimina sus informes de error');
 select pg_temp.ok(not exists (select 1 from profiles where id = '00000000-0000-0000-0000-00000000000d'), 'borrar la cuenta elimina el perfil');
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select delete_my_account();
+select pg_temp.ok(not exists (select 1 from season_history where user_id = '00000000-0000-0000-0000-00000000000a'), 'borrar la cuenta elimina su historial de temporadas');
 \echo TODAS LAS PRUEBAS DE BASE DE DATOS PASAN

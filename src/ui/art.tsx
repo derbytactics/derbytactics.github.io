@@ -1,101 +1,15 @@
 /** Ilustraciones vectoriales del juego. Todo se dibuja por código: no hay imágenes que cargar. */
 import React from 'react';
-import { Platform, View } from 'react-native';
-import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
+import { View } from 'react-native';
+import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
+import { Face, Portrait, faceFromSeed } from './portrait';
 import { C } from './theme';
 
-const SANS = Platform.OS === 'web' ? 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif' : undefined;
+export { Crest, defaultCrest } from './crest';
 
-function hash(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
-  return h >>> 0;
-}
-
-const SKIN = ['#F6D3B3', '#EBBE94', '#D9A273', '#B97C4F', '#8A5A38', '#5E3B24'];
-const HAIR = ['#1E1A17', '#3B2A1E', '#6B4423', '#A8742F', '#D9B45A', '#B6452C', '#8D8D8D'];
-
-/** Retrato de futbolista generado a partir de su id: tono de piel, peinado y dorsal estables. */
-export interface Look {
-  skin: number;
-  hair: number;
-  style: number;
-  beard?: boolean;
-}
-
-export function Avatar({ seed, size = 60, jersey = '#7C8F84', ring = C.line, look }: { seed: string; size?: number; jersey?: string; ring?: string; look?: Look }) {
-  const h = hash(seed);
-  const skin = SKIN[(look?.skin ?? h) % SKIN.length];
-  const hair = HAIR[(look?.hair ?? h >>> 3) % HAIR.length];
-  const style = (look?.style ?? h >>> 7) % 6;
-  const beard = look ? !!look.beard : (h >>> 11) % 5 === 0;
-  const id = `g${seed}`;
-  return (
-    <Svg width={size} height={size} viewBox="0 0 64 64">
-      <Defs>
-        <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#1D4A33" />
-          <Stop offset="1" stopColor="#0C2417" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="32" cy="32" r="31" fill={`url(#${id})`} stroke={ring} strokeWidth="2" />
-      {/* Camiseta */}
-      <Path d="M8 64 C8 50 18 45 26 44 L38 44 C46 45 56 50 56 64 Z" fill={jersey} />
-      <Path d="M26 44 L32 51 L38 44 L35 43 L32 46 L29 43 Z" fill="#FFFFFF" opacity="0.9" />
-      <Path d="M8 64 C8 56 11 52 15 49 L18 64 Z M56 64 C56 56 53 52 49 49 L46 64 Z" fill="#000000" opacity="0.18" />
-      {/* Cuello y cabeza */}
-      <Rect x="27.5" y="36" width="9" height="9" rx="3" fill={skin} />
-      <Path d="M27.5 41 Q32 45 36.5 41 L36.5 39 L27.5 39 Z" fill="#000000" opacity="0.15" />
-      <Ellipse cx="32" cy="27" rx="10.5" ry="12.5" fill={skin} />
-      <Ellipse cx="21.3" cy="28.5" rx="1.8" ry="2.8" fill={skin} />
-      <Ellipse cx="42.7" cy="28.5" rx="1.8" ry="2.8" fill={skin} />
-      {/* Peinados */}
-      {style === 0 ? <Path d="M21.5 25 C20.5 13 43.5 13 42.5 25 C40 19 24 19 21.5 25 Z" fill={hair} /> : null}
-      {style === 1 ? <Path d="M21 27 C19 10 45 10 43 27 C42 21 38 18 32 19 C27 18 22 21 21 27 Z" fill={hair} /> : null}
-      {style === 2 ? <Path d="M21.5 24 C21 14 30 11 36 13 C41 12 44 18 42.5 24 C40 18 35 17 30 19 C26 19 23 21 21.5 24 Z" fill={hair} /> : null}
-      {style === 3 ? (
-        <G fill={hair}>
-          <Circle cx="24" cy="18" r="5" />
-          <Circle cx="30" cy="14.5" r="5.5" />
-          <Circle cx="37" cy="15.5" r="5.5" />
-          <Circle cx="41" cy="20" r="4.5" />
-          <Circle cx="22" cy="23" r="3.5" />
-        </G>
-      ) : null}
-      {style === 4 ? <Path d="M22 22 C24 15 40 15 42 22 C38 19.5 26 19.5 22 22 Z" fill={hair} opacity="0.55" /> : null}
-      {style === 5 ? <Path d="M21 26 C19 12 45 12 43 26 L43.5 34 C42 30 41.5 24 39 21 C34 22 27 21 24.5 20 C22.5 24 22 30 20.5 34 Z" fill={hair} /> : null}
-      {beard ? <Path d="M22.5 30 C23 41 41 41 41.5 30 C39 35 35 36.5 32 36.5 C29 36.5 25 35 22.5 30 Z" fill={hair} opacity="0.8" /> : null}
-      {/* Cara */}
-      <Circle cx="27.8" cy="27" r="1.25" fill="#1B1B1B" />
-      <Circle cx="36.2" cy="27" r="1.25" fill="#1B1B1B" />
-      <Path d="M28.5 32.5 Q32 35 35.5 32.5" stroke="#1B1B1B" strokeWidth="1.1" fill="none" strokeLinecap="round" />
-    </Svg>
-  );
-}
-
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter((w) => w.length > 2 || /^[A-ZÁÉÍÓÚ]{2}$/.test(w))
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase() || name.slice(0, 2).toUpperCase();
-
-/** Escudo del club con sus iniciales. */
-export function Crest({ name, color, size = 32 }: { name: string; color: string; size?: number }) {
-  return (
-    <View style={{ width: size, height: size, flexShrink: 0 }}>
-    <Svg width={size} height={size} viewBox="0 0 40 40">
-      <Path d="M20 2 L35 6.5 V19 C35 28.5 28.5 34.5 20 38 C11.5 34.5 5 28.5 5 19 V6.5 Z" fill={color} stroke="#FFFFFF" strokeOpacity="0.85" strokeWidth="1.6" />
-      <Path d="M20 2 L35 6.5 V19 C35 28.5 28.5 34.5 20 38 Z" fill="#000000" opacity="0.16" />
-      <Path d="M5 12 H35 V15 H5 Z" fill="#FFFFFF" opacity="0.22" />
-      <SvgText x="20" y="27" fontSize="12.5" fontWeight="800" fill="#FFFFFF" textAnchor="middle" fontFamily={SANS}>
-        {initials(name)}
-      </SvgText>
-    </Svg>
-    </View>
-  );
+/** Retrato de futbolista. Con `who` usa su identidad de la partida; sin ella, rasgos estables según `seed`. */
+export function Avatar({ seed, size = 60, jersey = '#7C8F84', ring = C.line, who }: { seed: string; size?: number; jersey?: string; ring?: string; who?: Face }) {
+  return <Portrait who={who ?? faceFromSeed(seed)} size={size} jersey={jersey} ring={ring} />;
 }
 
 const PIPS: Record<number, [number, number][]> = {
@@ -135,26 +49,38 @@ export function Ball({ size = 18, dim = false }: { size?: number; dim?: boolean 
 }
 
 /** Avatares de usuario para elegir. Para usar imágenes propias, basta con cambiar este componente. */
-export const USER_AVATARS: { id: string; look: Look; jersey: string }[] = [
-  { id: 'a1', look: { skin: 1, hair: 1, style: 1 }, jersey: '#E5484D' },
-  { id: 'a2', look: { skin: 4, hair: 0, style: 3 }, jersey: '#3E8BFF' },
-  { id: 'a3', look: { skin: 0, hair: 4, style: 5 }, jersey: '#F5C542' },
-  { id: 'a4', look: { skin: 2, hair: 2, style: 2, beard: true }, jersey: '#35C98A' },
-  { id: 'a5', look: { skin: 5, hair: 0, style: 0 }, jersey: '#A07CF5' },
-  { id: 'a6', look: { skin: 0, hair: 5, style: 1, beard: true }, jersey: '#FF8A3D' },
-  { id: 'a7', look: { skin: 3, hair: 0, style: 5 }, jersey: '#2CC7D8' },
-  { id: 'a8', look: { skin: 1, hair: 6, style: 4 }, jersey: '#F06CA8' },
-  { id: 'a9', look: { skin: 2, hair: 3, style: 3 }, jersey: '#FBF6E4' },
-  { id: 'a10', look: { skin: 4, hair: 0, style: 2, beard: true }, jersey: '#F5C542' },
-  { id: 'a11', look: { skin: 0, hair: 2, style: 0 }, jersey: '#3E8BFF' },
-  { id: 'a12', look: { skin: 3, hair: 1, style: 1 }, jersey: '#E5484D' },
+export const USER_AVATARS: { id: string; who: Face; jersey: string }[] = [
+  { id: 'a1', who: { eth: 'mediterraneo', face: 11 }, jersey: '#E5484D' },
+  { id: 'a2', who: { eth: 'africano', face: 7 }, jersey: '#3E8BFF' },
+  { id: 'a3', who: { eth: 'europeo', face: 23 }, jersey: '#F5C542' },
+  { id: 'a4', who: { eth: 'asiaEste', face: 5 }, jersey: '#35C98A' },
+  { id: 'a5', who: { eth: 'magrebi', face: 31 }, jersey: '#A07CF5' },
+  { id: 'a6', who: { eth: 'asiaSur', face: 17 }, jersey: '#FF8A3D' },
+  { id: 'a7', who: { eth: 'mestizo', face: 41 }, jersey: '#2CC7D8' },
+  { id: 'a8', who: { eth: 'africano', face: 58 }, jersey: '#F06CA8' },
+  { id: 'a9', who: { eth: 'europeo', face: 64 }, jersey: '#FBF6E4' },
+  { id: 'a10', who: { eth: 'asiaEste', face: 77 }, jersey: '#F5C542' },
+  { id: 'a11', who: { eth: 'mediterraneo', face: 89 }, jersey: '#3E8BFF' },
+  { id: 'a12', who: { eth: 'mestizo', face: 93 }, jersey: '#E5484D' },
+  { id: 'a13', who: { eth: 'magrebi', face: 101 }, jersey: '#35C98A' },
+  { id: 'a14', who: { eth: 'africano', face: 113 }, jersey: '#A07CF5' },
+  { id: 'a15', who: { eth: 'asiaSur', face: 127 }, jersey: '#2CC7D8' },
+  { id: 'a16', who: { eth: 'europeo', face: 139 }, jersey: '#FF8A3D' },
+  { id: 'a17', who: { eth: 'mediterraneo', face: 151, fem: true }, jersey: '#E5484D' },
+  { id: 'a18', who: { eth: 'africano', face: 163, fem: true }, jersey: '#F5C542' },
+  { id: 'a19', who: { eth: 'europeo', face: 173, fem: true }, jersey: '#3E8BFF' },
+  { id: 'a20', who: { eth: 'mestizo', face: 181, fem: true }, jersey: '#35C98A' },
+  { id: 'a21', who: { eth: 'asiaEste', face: 191, fem: true }, jersey: '#A07CF5' },
+  { id: 'a22', who: { eth: 'magrebi', face: 197, fem: true }, jersey: '#2CC7D8' },
+  { id: 'a23', who: { eth: 'africano', face: 211, fem: true }, jersey: '#F06CA8' },
+  { id: 'a24', who: { eth: 'europeo', face: 223, fem: true }, jersey: '#FF8A3D' },
 ];
 
 export function UserAvatar({ id, size = 40, ring = C.accent }: { id: string; size?: number; ring?: string }) {
   const a = USER_AVATARS.find((x) => x.id === id) ?? USER_AVATARS[0];
   return (
     <View style={{ width: size, height: size, flexShrink: 0 }}>
-      <Avatar seed={`user-${a.id}`} size={size} jersey={a.jersey} ring={ring} look={a.look} />
+      <Avatar seed={`user-${a.id}`} size={size} jersey={a.jersey} ring={ring} who={a.who} />
     </View>
   );
 }

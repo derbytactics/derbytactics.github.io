@@ -17,6 +17,7 @@ import {
   specialCard,
   ticketPerGoal,
   upgradeCost,
+  words,
 } from '../engine';
 import { Crest, StadiumArt } from './art';
 import { Btn, Chronicle, FootballerCard, NumberToken, Overline, PhaseStepper, Popup, StandingsTable, Tag, jornadaLabel, s } from './components';
@@ -162,7 +163,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
 
       <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
         <View style={s.row}>
-          <Crest name={me.name} color={color} size={46} />
+          <Crest name={me.name} color={color} design={me.crest} size={46} />
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Overline>TE TOCA</Overline>
             <Text numberOfLines={1} style={s.h1}>{me.name}</Text>
@@ -225,7 +226,9 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
               Tienes 80M para montar un equipo de 7. Un buen comienzo: un portero con números que salgan mucho (6 y 8), uno o dos delanteros y medios que compartan número con ellos. Solo puedes hacer un fichaje por turno.
             </Tip>
             <Text style={[s.p, { marginBottom: 10 }]}>
-              Los delanteros y medios atacan cuando sale su número; porteros y defensas lo paran si tienen ese mismo número. Caben 7 futbolistas y un solo portero.
+              {words(state).fem
+                ? 'Las delanteras y medias atacan cuando sale su número; porteras y defensas lo paran si tienen ese mismo número. Caben 7 futbolistas y una sola portera.'
+                : 'Los delanteros y medios atacan cuando sale su número; porteros y defensas lo paran si tienen ese mismo número. Caben 7 futbolistas y un solo portero.'}
             </Text>
             {state.market.map((id) => (
               <FootballerCard key={id} cardId={id}>
@@ -267,7 +270,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
                 {(['POR', 'DEF', 'MED', 'DEL'] as const).map((pos) => (
                   <Tag key={pos} text={`${lineup(me)[pos]} ${pos}`} color={lineup(me)[pos] ? POS_COLOR[pos] : undefined} />
                 ))}
-                {lineup(me).POR === 0 ? <Tag text="⚠ Sin portero" color={C.danger} /> : null}
+                {lineup(me).POR === 0 ? <Tag text={`⚠ Sin ${words(state).keeper}`} color={C.danger} /> : null}
               </View>
               <NumberLine player={me} jornada={J} state={state} />
             </View>
@@ -292,7 +295,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
             {rivals.map((r) => (
               <View key={r.id} style={{ marginBottom: 14 }}>
                 <View style={[s.row, { marginBottom: 8 }]}>
-                  <Crest name={r.name} color={clubColor(r.id)} size={30} />
+                  <Crest name={r.name} color={clubColor(r.id)} design={r.crest} size={30} />
                   <View style={{ marginLeft: 8, flex: 1 }}>
                     <Text style={[s.h2, { marginBottom: 0 }]}>{r.name}</Text>
                     <Text style={{ color: C.dim, fontSize: 12 }}>
@@ -330,7 +333,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
                 {pendingTarget === 'rival'
                   ? rivals.map((r) => (
                       <Pressable key={r.id} onPress={() => act({ type: 'playCard', handIndex: pending!, targetPlayerId: r.id })} style={[s.row, { borderWidth: 1, borderColor: C.line, borderRadius: 10, padding: 10, marginBottom: 8 }]}>
-                        <Crest name={r.name} color={clubColor(r.id)} size={28} />
+                        <Crest name={r.name} color={clubColor(r.id)} design={r.crest} size={28} />
                         <Text style={{ color: C.text, fontWeight: '700', marginLeft: 8, flex: 1 }}>{r.name}</Text>
                         <Text style={{ color: C.dim }}>{r.points} pts · {r.money}M</Text>
                       </Pressable>
@@ -375,7 +378,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
 
       <View style={{ padding: 16, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.line }}>
         <Text style={{ color: canStillSign ? C.accent : C.faint, fontSize: 12, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
-          {canStillSign ? 'Aún puedes fichar a un futbolista este turno' : 'Cuando acabes, pasa el turno'}
+          {canStillSign ? `Aún puedes fichar a ${words(state).fem ? 'una' : 'un'} futbolista este turno` : 'Cuando acabes, pasa el turno'}
         </Text>
         <Btn label="Terminar turno →" onPress={() => act({ type: 'endTurn' })} />
       </View>
