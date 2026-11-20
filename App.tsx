@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { backendEnabled, getAccount, initAccount, refreshProfile } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
 import { Action, BOT_STYLES, CrestDesign, GameState, apply, botAction, check, createGame, currentPlayer } from './src/engine';
@@ -9,7 +9,7 @@ import { RoomState } from './src/net/room';
 import { GUEST_KEY, HOST_KEY, normalizeCode } from './src/net/session';
 import { hydrateStorage, load, remove, save } from './src/net/storage';
 import { AccountScreen, formatDate } from './src/ui/AccountScreen';
-import { reloadClub, useMyClub } from './src/ui/club';
+import { reloadClub, syncClub, useClubSyncing, useMyClub } from './src/account/club';
 import { ClubScreen } from './src/ui/ClubScreen';
 import { ErrorBoundary, installGlobalErrorHandlers } from './src/ui/ErrorBoundary';
 import { GameView } from './src/ui/GameView';
@@ -55,9 +55,15 @@ export default function App() {
   const [clubOpen, setClubOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const club = useMyClub();
+  const clubSyncing = useClubSyncing();
   /** En la app nativa hay que cargar lo guardado antes de pintar nada. */
   const [booted, setBooted] = useState(Platform.OS === 'web');
   const account = useAccount();
+  const userId = account.session?.user.id;
+  // Con cuenta, el club y el historial se sincronizan al entrar.
+  useEffect(() => {
+    if (booted && userId) syncClub();
+  }, [booted, userId]);
   useEffect(() => {
     hydrateStorage(Platform.OS === 'web' ? null : AsyncStorage)
       .then(() => reloadClub())
@@ -117,6 +123,8 @@ export default function App() {
     body = <OnlineGuest code={mode.code} name={mode.name} crest={mode.crest} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'local' && game) {
     body = <GameView game={game} seat={null} dispatch={dispatch} onHelp={onHelp} onExit={toMenu} exitText="La partida queda guardada en este dispositivo: podrás continuarla desde el menú." />;
+  } else if (!club && clubSyncing) {
+    body = <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: C.dim, fontWeight: '700' }}>Cargando tu club…</Text></View>;
   } else if (!club) {
     // Cada persona tiene un club: se crea antes de jugar la primera vez.
     body = <ClubScreen first initial={null} onClose={() => {}} />;

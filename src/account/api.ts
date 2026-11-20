@@ -37,6 +37,8 @@ export interface Profile {
   stars: number | null;
   votes: number;
   avatar?: string | null;
+  /** Club guardado en la cuenta (nombre y escudo), si ya tiene. */
+  club?: { name: string; crest: unknown } | null;
 }
 export interface HostCard {
   username: string;

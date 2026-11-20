@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { backendEnabled } from '../account/api';
 import { useAccount } from '../account/useAccount';
 import { Crest, UserAvatar } from './art';
-import { useHistory, useMyClub } from './club';
+import { useHistory, useMyClub } from '../account/club';
 import { s } from './components';
 import { C } from './theme';
 

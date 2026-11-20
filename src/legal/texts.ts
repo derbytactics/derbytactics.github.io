@@ -24,8 +24,8 @@ export const privacy = (): LegalSection[] => [
   {
     title: 'Qué datos se guardan',
     body: [
-      'Si juegas como invitado no se te pide ningún dato personal. En tu dispositivo se guardan el avatar elegido, un identificador aleatorio del dispositivo para recuperar tu asiento en una sala, el nombre de club que escribiste y, si la hay, la partida en curso.',
-      'Si creas una cuenta se guardan además tu correo electrónico, tu contraseña (cifrada, nunca en claro), tu nombre de usuario, tu avatar, las partidas en línea que juegas con su resultado, tus victorias, y las valoraciones que das y recibes como anfitrión.',
+      'Si juegas como invitado no se te pide ningún dato personal. En tu dispositivo se guardan el avatar elegido, un identificador aleatorio del dispositivo para recuperar tu asiento en una sala, el nombre y el escudo de tu club, el historial de tus temporadas terminadas y, si la hay, la partida en curso.',
+      'Si creas una cuenta se guardan además tu correo electrónico, tu contraseña (cifrada, nunca en claro), tu nombre de usuario, tu avatar, el nombre y el escudo de tu club, el historial de tus temporadas terminadas (resultado y clasificación), las partidas en línea que juegas con su resultado, tus victorias, y las valoraciones que das y recibes como anfitrión.',
       'Si la aplicación falla, puede enviarse un informe técnico con el mensaje de error, sin datos personales más allá de tu identificador de cuenta si has iniciado sesión.',
     ],
   },
@@ -37,7 +37,7 @@ export const privacy = (): LegalSection[] => [
       'Durante una partida en línea, el estado de la sala (nombres de club, plantillas y cartas) viaja por servidores públicos de mensajería. No incluye tu correo ni tu contraseña, pero no debe considerarse privado.',
     ],
   },
-  { title: 'Cuánto tiempo se conservan', body: ['Mientras mantengas tu cuenta. Puedes borrarla en cualquier momento desde «Mi cuenta → Borrar mi cuenta»: se eliminan tu perfil, tu historial y tus valoraciones.'] },
+  { title: 'Cuánto tiempo se conservan', body: ['Mientras mantengas tu cuenta. Puedes borrarla en cualquier momento desde «Mi cuenta → Borrar mi cuenta»: se eliminan tu perfil, tu club, tu historial y tus valoraciones.'] },
   {
     title: 'Tus derechos',
     body: [`Puedes pedir acceso, rectificación, supresión, limitación, oposición y portabilidad de tus datos escribiendo a ${contact()}. También puedes reclamar ante la Agencia Española de Protección de Datos (aepd.es).`],

@@ -67,57 +67,62 @@ interface NamePool {
   looks: [Ethnicity, number][];
 }
 
+/**
+ * Canteras de nombres. Los pesos imitan la mezcla de las grandes ligas europeas:
+ * mayoría europea y mediterránea, en torno a un 30 % de jugadores negros, algo menos de un 10 %
+ * latinoamericanos mestizos, un 5 % de origen magrebí y muy pocos asiáticos (2-3 %).
+ */
 const POOLS: NamePool[] = [
   {
-    weight: 22,
+    weight: 20,
     firsts: ['Álvaro', 'Sergio', 'Pablo', 'Iker', 'Hugo', 'Dani', 'Marc', 'Pau', 'Javi', 'Rubén', 'Unai', 'Aitor', 'Raúl', 'Adrián', 'Nacho', 'Borja', 'Íñigo', 'Gorka', 'Mario', 'Carlos', 'Izan', 'Gael', 'Yeray', 'Kiko', 'Chema', 'Isma'],
     lasts: ['García', 'Moreno', 'Navarro', 'Ortega', 'Castaño', 'Etxeberria', 'Ribera', 'Vidal', 'Lozano', 'Cabello', 'Llorente', 'Zubiri', 'Pons', 'Herrero', 'Sarabia', 'Gallardo', 'Arrieta', 'Montoya', 'Soler', 'Quintana', 'Cienfuegos', 'Bermejo', 'Manzanares', 'Lasarte', 'Trujillo', 'Roldán'],
-    looks: [['mediterraneo', 6], ['europeo', 3], ['mestizo', 1], ['africano', 1], ['magrebi', 1]],
+    looks: [['mediterraneo', 6], ['europeo', 3], ['africano', 1.5], ['mestizo', 0.5], ['magrebi', 0.5]],
   },
   {
-    weight: 12,
+    weight: 9,
     firsts: ['Thiago', 'Mateo', 'Santiago', 'Joaquín', 'Facundo', 'Emiliano', 'Julián', 'Nahuel', 'Matías', 'Franco', 'Lautaro', 'Valentín', 'Sebastián', 'Agustín', 'Brayan', 'Jhon', 'Kevin', 'Wilmar'],
     lasts: ['Paredes', 'Benítez', 'Acosta', 'Rojas', 'Medina', 'Sosa', 'Ferreyra', 'Cáceres', 'Villalba', 'Correa', 'Quiroga', 'Ledesma', 'Núñez', 'Giménez', 'Mosquera', 'Valencia', 'Arboleda', 'Cuadrado'],
     looks: [['mestizo', 5], ['mediterraneo', 3], ['africano', 2], ['europeo', 1]],
   },
   {
-    weight: 9,
+    weight: 7,
     firsts: ['Gabriel', 'Vinícius', 'Rodrigo', 'Lucas', 'Matheus', 'Caio', 'Rafael', 'Gustavo', 'João', 'Bruno', 'Wesley', 'Ronaldo', 'Davi', 'Luan'],
     lasts: ['Silva', 'Souza', 'Oliveira', 'Santos', 'Costa', 'Pereira', 'Almeida', 'Ribeiro', 'Carvalho', 'Moura', 'Barbosa', 'Teixeira', 'Nascimento', 'Gomes'],
-    looks: [['mestizo', 4], ['africano', 3], ['europeo', 2], ['mediterraneo', 1]],
+    looks: [['mestizo', 4], ['africano', 4], ['europeo', 1.5], ['mediterraneo', 0.5]],
   },
   {
-    weight: 11,
+    weight: 12,
     firsts: ['Samuel', 'Moussa', 'Ibrahima', 'Kwame', 'Chidi', 'Emeka', 'Seydou', 'Amadou', 'Yaw', 'Kofi', 'Ousmane', 'Babajide', 'Tunde', 'Lamine', 'Cheikh', 'Pape', 'Wilfried', 'Serge'],
     lasts: ['Okoro', 'Diallo', 'Mensah', 'Traoré', 'Adeyemi', 'Ndiaye', 'Kouassi', 'Okafor', 'Boateng', 'Sarr', 'Koné', 'Camara', 'Eze', 'Diop', 'Asante', 'Bamba', 'Touré', 'Mbeki'],
     looks: [['africano', 1]],
   },
   {
-    weight: 8,
+    weight: 4,
     firsts: ['Youssef', 'Hakim', 'Achraf', 'Ilias', 'Bilal', 'Amine', 'Karim', 'Nabil', 'Rachid', 'Sofiane', 'Mehdi', 'Ayoub', 'Omar', 'Zakaria', 'Moha', 'Anass'],
     lasts: ['Benali', 'El Amrani', 'Rahmani', 'Haddad', 'Bennani', 'Ziani', 'Mansouri', 'Belkacem', 'Saidi', 'Tahiri', 'Lahlou', 'Cherif', 'Idrissi', 'Ouali', 'Boudiaf', 'Kaddouri'],
-    looks: [['magrebi', 5], ['mediterraneo', 1], ['africano', 1]],
+    looks: [['magrebi', 6], ['africano', 1]],
   },
   {
-    weight: 3,
+    weight: 1,
     firsts: ['Kenta', 'Takumi', 'Daichi', 'Ren', 'Haruto', 'Sota', 'Yuto', 'Kaoru', 'Ritsu', 'Hiroki'],
     lasts: ['Tanaka', 'Sato', 'Nakamura', 'Kobayashi', 'Watanabe', 'Ito', 'Yamamoto', 'Kubo', 'Endo', 'Mori'],
     looks: [['asiaEste', 1]],
   },
   {
-    weight: 3,
+    weight: 0.8,
     firsts: ['Min-jun', 'Ji-ho', 'Seung-woo', 'Hyun', 'Dong-hyun', 'Jae-sung', 'Tae-yang', 'Sang-ho'],
     lasts: ['Kim', 'Park', 'Lee', 'Choi', 'Jung', 'Kang', 'Hwang', 'Son'],
     looks: [['asiaEste', 1]],
   },
   {
-    weight: 2,
+    weight: 0.2,
     firsts: ['Wei', 'Hao', 'Jun', 'Lei', 'Bo', 'Zhen', 'Yang', 'Tao'],
     lasts: ['Chen', 'Wang', 'Zhang', 'Liu', 'Huang', 'Zhao', 'Wu', 'Lin'],
     looks: [['asiaEste', 1]],
   },
   {
-    weight: 4,
+    weight: 0.6,
     firsts: ['Arjun', 'Rohan', 'Vikram', 'Aarav', 'Imran', 'Faisal', 'Sunil', 'Karan', 'Ravi', 'Hamza', 'Zayn', 'Dev'],
     lasts: ['Sharma', 'Singh', 'Patel', 'Khan', 'Iqbal', 'Rao', 'Chowdhury', 'Mehta', 'Malik', 'Gill', 'Nair', 'Ahmed'],
     looks: [['asiaSur', 1]],
@@ -126,13 +131,13 @@ const POOLS: NamePool[] = [
     weight: 4,
     firsts: ['Lars', 'Erik', 'Magnus', 'Mikkel', 'Oskar', 'Rasmus', 'Viktor', 'Emil', 'Henrik', 'Sindre'],
     lasts: ['Hansen', 'Larsen', 'Lindqvist', 'Berg', 'Nilsson', 'Andersen', 'Solberg', 'Holm', 'Dahl', 'Eriksen'],
-    looks: [['europeo', 8], ['africano', 1]],
+    looks: [['europeo', 8], ['africano', 2]],
   },
   {
-    weight: 4,
+    weight: 6,
     firsts: ['Jonas', 'Niklas', 'Lukas', 'Timo', 'Jannik', 'Leon', 'Florian', 'Kai', 'Moritz', 'Felix'],
     lasts: ['Müller', 'Schneider', 'Becker', 'Vogel', 'Krämer', 'Hoffmann', 'Wagner', 'Fischer', 'Brandt', 'Weber'],
-    looks: [['europeo', 6], ['africano', 1], ['magrebi', 1]],
+    looks: [['europeo', 6], ['africano', 2], ['magrebi', 0.5]],
   },
   {
     weight: 6,
@@ -141,22 +146,22 @@ const POOLS: NamePool[] = [
     looks: [['europeo', 1]],
   },
   {
-    weight: 5,
+    weight: 8,
     firsts: ['Jack', 'Harry', 'Callum', 'Liam', 'Ryan', 'Connor', 'Owen', 'Jamie', 'Tyler', 'Mason', 'Kieran', 'Reece'],
     lasts: ['Walker', 'Hughes', 'Bennett', 'Clarke', 'Murphy', 'Doyle', 'Fletcher', 'Reid', 'Morgan', 'Kelly', 'Barnes', 'Shaw'],
-    looks: [['europeo', 6], ['africano', 3], ['asiaSur', 1]],
-  },
-  {
-    weight: 5,
-    firsts: ['Lorenzo', 'Matteo', 'Federico', 'Alessandro', 'Davide', 'Nicolò', 'Riccardo', 'Andrea', 'Simone', 'Gianluca'],
-    lasts: ['Rossi', 'Bianchi', 'Romano', 'Conti', 'Esposito', 'Ricci', 'Marino', 'Greco', 'Gallo', 'Moretti'],
-    looks: [['mediterraneo', 6], ['europeo', 2], ['africano', 1]],
+    looks: [['europeo', 6], ['africano', 3], ['asiaSur', 0.3]],
   },
   {
     weight: 6,
+    firsts: ['Lorenzo', 'Matteo', 'Federico', 'Alessandro', 'Davide', 'Nicolò', 'Riccardo', 'Andrea', 'Simone', 'Gianluca'],
+    lasts: ['Rossi', 'Bianchi', 'Romano', 'Conti', 'Esposito', 'Ricci', 'Marino', 'Greco', 'Gallo', 'Moretti'],
+    looks: [['mediterraneo', 5], ['europeo', 2], ['africano', 1]],
+  },
+  {
+    weight: 9,
     firsts: ['Théo', 'Mathis', 'Clément', 'Adrien', 'Maxime', 'Baptiste', 'Kylian', 'Ousmane', 'Youssouf', 'Enzo', 'Nolan', 'Rayan'],
     lasts: ['Martin', 'Bernard', 'Dubois', 'Lefèvre', 'Moreau', 'Laurent', 'Girard', 'Fontaine', 'Rousseau', 'Chevalier', 'Kanté', 'Mendy'],
-    looks: [['europeo', 4], ['africano', 4], ['magrebi', 2]],
+    looks: [['africano', 4], ['europeo', 4], ['magrebi', 1.5]],
   },
 ];
 

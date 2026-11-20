@@ -19,7 +19,7 @@ import {
 } from '../engine';
 import { useAccount } from '../account/useAccount';
 import { Avatar, Crest } from './art';
-import { useMyClub } from './club';
+import { useMyClub } from '../account/club';
 import { isMuted, setMuted, soundAvailable } from './sound';
 import { C, NATIVE_DRIVER, POS_COLOR, TIER_COLOR, clubColor } from './theme';
 

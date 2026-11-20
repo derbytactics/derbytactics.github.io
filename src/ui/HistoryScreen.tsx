@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Crest, Trophy } from './art';
-import { HistoryEntry, useHistory } from './club';
+import { HistoryEntry, useHistory } from '../account/club';
 import { Btn, Overline, s } from './components';
 import { C, clubColor } from './theme';
 

@@ -375,10 +375,14 @@ describe('identidades', () => {
     expect(createGame(opts(1)).roster).toEqual(a.roster);
   });
 
-  it('hay futbolistas de todas las procedencias', () => {
-    const g = createGame({ ...opts(3), players: opts(3).players });
-    const seen = new Set(Object.values(g.roster!).map((x) => x.eth));
-    for (const e of ETHNICITIES) expect(seen.has(e)).toBe(true);
+  it('salen futbolistas de todas las procedencias, en proporciones parecidas a las de las grandes ligas', () => {
+    const all = Array.from({ length: 60 }, (_, i) => Object.values(createGame(opts(100 + i)).roster!)).flat();
+    const share = (...e: string[]) => all.filter((x) => e.includes(x.eth)).length / all.length;
+    for (const e of ETHNICITIES) expect(share(e)).toBeGreaterThan(0);
+    expect(share('europeo', 'mediterraneo')).toBeGreaterThan(0.42);
+    expect(share('africano')).toBeGreaterThan(0.22);
+    expect(share('africano')).toBeLessThan(0.38);
+    expect(share('asiaEste', 'asiaSur')).toBeLessThan(0.05);
   });
 
   it('las identidades no cambian la secuencia aleatoria de las reglas', () => {

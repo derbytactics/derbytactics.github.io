@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { CREST_COLORS, CREST_EMBLEMS, CREST_PATTERNS, CREST_SHAPES, CrestDesign, randomClubName, randomCrest } from '../engine';
 import { Crest } from './art';
-import { MyClub, setMyClub } from './club';
+import { MyClub, setMyClub } from '../account/club';
 import { EMBLEM_NAMES, PATTERN_NAMES, SHAPE_NAMES } from './crest';
 import { Btn, Overline, s } from './components';
 import { C } from './theme';
