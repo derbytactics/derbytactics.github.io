@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "Futcards",
-    "slug": "futcards",
+    "name": "DerbyTactics",
+    "slug": "derbytactics",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.juanrafernandez.futcards",
+      "bundleIdentifier": "com.juanrafernandez.derbytactics",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -21,12 +21,12 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.juanrafernandez.futcards"
+      "package": "com.juanrafernandez.derbytactics"
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "name": "Futcards",
-      "shortName": "Futcards",
+      "name": "DerbyTactics",
+      "shortName": "DerbyTactics",
       "themeColor": "#07160F",
       "backgroundColor": "#07160F",
       "lang": "es"

@@ -329,7 +329,7 @@ export function lineup(player: Player): Record<'POR' | 'DEF' | 'MED' | 'DEL', nu
 export function createGame(opts: NewGameOptions): GameState {
   const n = opts.players.length;
   if (n < CONFIG.minPlayers || n > CONFIG.maxPlayers) {
-    throw new Error(`Futcards es para ${CONFIG.minPlayers}-${CONFIG.maxPlayers} jugadores.`);
+    throw new Error(`DerbyTactics es para ${CONFIG.minPlayers}-${CONFIG.maxPlayers} jugadores.`);
   }
   const seed = (opts.seed ?? Math.floor(Math.random() * 2 ** 31)) | 0;
   // Identidades con un generador aparte: no cambian la secuencia aleatoria de las reglas.

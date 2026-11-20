@@ -202,7 +202,7 @@ export function NavBar({ subtitle }: { subtitle?: string }) {
       </Pressable>
       <View style={{ flex: 1, marginLeft: 10 }}>
         <Text style={{ color: C.text, fontSize: 17, fontWeight: '900', letterSpacing: -0.3 }}>
-          FUT<Text style={{ color: C.accent }}>CARDS</Text>
+          DERBY<Text style={{ color: C.accent }}>TACTICS</Text>
         </Text>
         <Text numberOfLines={1} style={{ color: C.dim, fontSize: 12, fontWeight: '600' }}>{subtitle ?? club?.name ?? profile?.username ?? 'Invitado'}</Text>
       </View>

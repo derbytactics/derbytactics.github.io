@@ -22,12 +22,14 @@ Estado de cada punto y qué queda por hacer. Lo marcado como **Tu parte** necesi
 
 Ordenados por prioridad. Cada paso dice dónde se hace.
 
-### 1. Nombre (antes de nada)
+### 1. Nombre
 
-Ya existe una app llamada **FutCards** en la App Store, de otro desarrollador, y hay muchas apps «FUT Card…». Además «FUT» es la abreviatura de *FIFA Ultimate Team*, de Electronic Arts. Para la web entre amigos no es problema; **para publicar en tiendas conviene otro nombre**, porque Apple rechaza nombres que ya usa otra app y el parecido con «FUT» puede traer una reclamación.
+Decidido: **DerbyTactics** (FutCards ya lo usa otra app y «FUT» recuerda a *FIFA Ultimate Team*). Ya cambiado en el juego, en `app.json` (`com.juanrafernandez.derbytactics`) y en los textos legales.
 
-- Elige 2 o 3 candidatos y búscalos en la App Store, Google Play, [OEPM](https://consultas2.oepm.es/LocalizadorWeb/) y [EUIPO](https://euipo.europa.eu/eSearch/).
-- Cuando lo tengas, cambiar el nombre en el código es trabajo mío (título, textos, `app.json`, identificadores).
+Queda de tu parte:
+
+- Confirmar que está libre en [OEPM](https://consultas2.oepm.es/LocalizadorWeb/) y [EUIPO](https://euipo.europa.eu/eSearch/) (clases 9 y 41: software y juegos), en la App Store y en Google Play. Si vas en serio, registrarlo antes de publicar.
+- Opcional: renombrar el repositorio a `DerbyTactics` en GitHub (**Settings → General → Repository name**). La web pasaría a `https://juanrafernandez.github.io/DerbyTactics/` sin tocar código; GitHub redirige el repositorio, pero **no la web**, así que avisa a tus amigos y actualiza en Supabase la *Site URL* y las *Redirect URLs*.
 
 ### 2. Textos legales
 

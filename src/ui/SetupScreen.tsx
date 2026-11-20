@@ -73,7 +73,7 @@ export function SetupScreen(props: {
       <View style={{ alignItems: 'center', marginTop: 8, marginBottom: 18 }}>
         <Logo size={128} />
         <Text style={{ color: C.text, fontSize: 40, fontWeight: '900', letterSpacing: -1 }}>
-          FUT<Text style={{ color: C.accent }}>CARDS</Text>
+          DERBY<Text style={{ color: C.accent }}>TACTICS</Text>
         </Text>
         <Text style={[s.p, { textAlign: 'center', marginTop: 4 }]}>Ficha, amplía tu estadio y gana la liga a golpe de dado.</Text>
         <Btn small kind="ghost" label="¿Cómo se juega?" onPress={onHelp} style={{ marginTop: 12 }} />

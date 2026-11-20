@@ -1,4 +1,4 @@
-# Reglas de Futcards
+# Reglas de DerbyTactics
 
 ## Argumento
 

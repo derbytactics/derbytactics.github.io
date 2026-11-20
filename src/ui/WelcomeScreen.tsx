@@ -17,7 +17,7 @@ export function WelcomeScreen({ onGuest, startWithLogin }: { onGuest: () => void
       <View style={{ alignItems: 'center', marginBottom: 24 }}>
         <Logo size={login ? 96 : 150} />
         <Text style={{ color: C.text, fontSize: 44, fontWeight: '900', letterSpacing: -1 }}>
-          FUT<Text style={{ color: C.accent }}>CARDS</Text>
+          DERBY<Text style={{ color: C.accent }}>TACTICS</Text>
         </Text>
         <Text style={[s.p, { textAlign: 'center', marginTop: 4 }]}>Ficha, amplía tu estadio y gana la liga a golpe de dado.</Text>
       </View>

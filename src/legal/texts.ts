@@ -46,7 +46,7 @@ export const privacy = (): LegalSection[] => [
 ];
 
 export const terms = (): LegalSection[] => [
-  { title: 'Qué es Futcards', body: [`Futcards es un juego de cartas de fútbol ofrecido por ${owner()}. Los futbolistas y clubes que aparecen son ficticios; cualquier parecido con personas o entidades reales es casual.`] },
+  { title: 'Qué es DerbyTactics', body: [`DerbyTactics es un juego de cartas de fútbol ofrecido por ${owner()}. Los futbolistas y clubes que aparecen son ficticios; cualquier parecido con personas o entidades reales es casual.`] },
   { title: 'Tu cuenta', body: ['Eres responsable de mantener tu contraseña en secreto y de lo que se haga con tu cuenta. Elige un nombre de usuario y un nombre de club que no sean ofensivos ni suplanten a nadie.'] },
   {
     title: 'Juego limpio',

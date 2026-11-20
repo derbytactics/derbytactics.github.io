@@ -1,4 +1,4 @@
--- Futcards · cuentas, historial, ranking y reputación de anfitriones.
+-- DerbyTactics · cuentas, historial, ranking y reputación de anfitriones.
 -- Pégalo entero en el editor SQL de Supabase y ejecútalo. Se puede volver a ejecutar sin perder datos.
 --
 -- Las tablas no admiten acceso directo (RLS sin políticas): todo pasa por las funciones de abajo,

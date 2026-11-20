@@ -23,8 +23,9 @@ npx expo install --fix      # fix incompatible package versions
 
 Run lint and typecheck before declaring any task done.
 
-## Este proyecto (Futcards)
+## Este proyecto (DerbyTactics)
 
+- El juego se llamó Futcards. Las claves de almacenamiento (`futcards.*`), los temas MQTT (`futcards/2/…`) y los ganchos de prueba (`__FUTCARDS_*__`) conservan ese nombre a propósito: cambiarlos borraría partidas y sesiones guardadas y separaría versiones en línea. El nombre visible es DerbyTactics.
 - `src/engine/` es el motor de reglas en TypeScript puro (sin React ni Expo): determinista, con semilla y estado serializable. Toda regla nueva va ahí, con test en `engine.test.ts`.
 - `src/engine/config.ts` concentra los valores de equilibrio. Tras tocarlos, ejecuta `npm run simulate` y actualiza `docs/BALANCE.md`.
 - `src/net/` es el multijugador en línea: `room.ts` es el protocolo puro (el anfitrión es la autoridad; test en `room.test.ts`), `mqtt.ts` el transporte y `session.ts` la conexión. Los invitados nunca aplican acciones: las envían y esperan el estado del anfitrión.

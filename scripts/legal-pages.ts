@@ -18,7 +18,7 @@ const page = (title: string, sections: LegalSection[]) => `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(title)} · Futcards</title>
+<title>${esc(title)} · DerbyTactics</title>
 <style>
   body { margin: 0; background: #07160F; color: #E8F1EA; font: 16px/1.6 system-ui, sans-serif; }
   main { max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; }
@@ -33,7 +33,7 @@ const page = (title: string, sections: LegalSection[]) => `<!doctype html>
 </head>
 <body><main>
 <h1>${esc(title)}</h1>
-<p class="meta">Futcards · Última actualización: ${esc(LEGAL.updated)}</p>
+<p class="meta">DerbyTactics · Última actualización: ${esc(LEGAL.updated)}</p>
 ${legalReady() ? '' : '<p class="draft">Borrador: faltan los datos del titular y del contacto.</p>'}
 ${sections.map((s) => `<h2>${esc(s.title)}</h2>\n${s.body.map((p) => `<p>${esc(p)}</p>`).join('\n')}`).join('\n')}
 <nav><a href="privacidad.html">Privacidad</a> · <a href="condiciones.html">Condiciones</a> · <a href="borrar-cuenta.html">Borrar tu cuenta</a> · <a href="./">Jugar</a></nav>

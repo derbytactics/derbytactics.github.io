@@ -1,4 +1,4 @@
-# ⚽ Futcards
+# ⚽ DerbyTactics
 
 Juego de cartas de fútbol para **2 a 8 jugadores**, multiplataforma (iOS, Android y web) con Expo + React Native + TypeScript.
 
