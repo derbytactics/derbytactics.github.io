@@ -37,13 +37,26 @@ Estado de cada punto y qué queda por hacer. Lo marcado como **Tu parte** necesi
 
 **Recomendación sin presupuesto:** web + PWA + Supabase gratis. Coste cero. Si el juego engancha, el primer gasto con sentido es Google Play (25 $), y después la marca.
 
+## Dirección sin tu nombre de usuario (gratis)
+
+Hoy la web es `juanrafernandez.github.io/DerbyTactics`. Para quitar el usuario sin pagar:
+
+1. En GitHub, **+ → New organization → Free**, con el nombre `derbytactics` (o el que esté libre).
+2. En el repositorio, **Settings → General → Danger Zone → Transfer**, y pásalo a la organización.
+3. En la organización, renombra el repositorio a `derbytactics.github.io`. La web queda en `https://derbytactics.github.io/`, sin ruta. La publicación ya lo detecta sola.
+4. En el repositorio, **Settings → Pages → Source: GitHub Actions**, y en **Settings → Secrets and variables → Actions → Variables** vuelve a crear `SUPABASE_URL` y `SUPABASE_ANON_KEY` si no se han conservado.
+5. **Actions → Publicar web en GitHub Pages → Run workflow**.
+6. En Supabase, cambia la *Site URL* y las *Redirect URLs* a la dirección nueva.
+
+Tu nombre seguirá apareciendo como titular en los textos legales: la ley exige identificar al responsable de los datos. Solo desaparecería si el titular fuese una empresa o asociación.
+
 ## Tu parte
 
 Ordenados por prioridad. Cada paso dice dónde se hace.
 
 ### 1. Nombre
 
-Decidido: **DerbyTactics** (FutCards ya lo usa otra app y «FUT» recuerda a *FIFA Ultimate Team*). Ya cambiado en el juego, en `app.json` (`com.juanrafernandez.derbytactics`) y en los textos legales.
+Decidido: **DerbyTactics** (FutCards ya lo usa otra app y «FUT» recuerda a *FIFA Ultimate Team*). Ya cambiado en el juego, en `app.json` (`com.derbytactics.app`) y en los textos legales.
 
 Queda de tu parte:
 

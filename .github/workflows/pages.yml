@@ -45,7 +45,8 @@ jobs:
           fi
       - run: npx expo export --platform web
         env:
-          EXPO_BASE_URL: /${{ github.event.repository.name }}
+          # Un repositorio «<cuenta>.github.io» se publica en la raíz; cualquier otro, en /<repositorio>.
+          EXPO_BASE_URL: ${{ !endsWith(github.event.repository.name, '.github.io') && format('/{0}', github.event.repository.name) || '' }}
           # Cuentas (opcional): variables del repositorio. Sin ellas, el juego funciona sin cuentas.
           EXPO_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
