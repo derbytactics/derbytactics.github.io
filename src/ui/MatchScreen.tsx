@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, Text, View } from 'react-native';
-import { GameState, MatchResult, RollReport, currentRoller, penaltiesOf, standings, ticketPerGoal } from '../engine';
+import { GameState, MatchResult, RollReport, currentRoller, penaltiesOf, standings, ticketPerGoal, words } from '../engine';
 import { Avatar, Crest, Die } from './art';
 import { NumberLine, SpecialCardFace } from './GameScreen';
 import { Btn, FootballerCard, Overline, PhaseStepper, Pop, RosterContext, StandingsTable, s } from './components';
@@ -78,10 +78,10 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
           {r.closedDoors
             ? 'taquilla 0M (puerta cerrada)'
             : `taquilla ${r.ticket}M (${r.scoringPlays} ${r.scoringPlays === 1 ? 'jugada de gol' : 'jugadas de gol'} × ${ticketPerGoal(p.stadium)}M${r.clubDay ? ' × 2 Día del club' : ''})`}
-          {r.saves ? ` · ${r.saves} ${r.saves === 1 ? 'parada' : 'paradas'} del portero: ${r.saveBonus}M` : ''}
+          {r.saves ? ` · ${r.saves} ${r.saves === 1 ? 'parada' : 'paradas'} ${words(state).fem ? 'de la portera' : 'del portero'}: ${r.saveBonus}M` : ''}
         </Text>
         {r.keeperCard ? (
-          <Text style={{ color: C.good, fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Tu portero gana una carta especial por sus paradas</Text>
+          <Text style={{ color: C.good, fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Tu {words(state).keeper} gana una carta especial por sus paradas</Text>
         ) : null}
         <Text style={{ color: C.text, fontSize: 13, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
           Llevas {p.points} puntos · vas {ordinal(leaguePos)} en la liga · {p.money}M en caja

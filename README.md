@@ -17,6 +17,7 @@ Eres el presidente de un club recién ascendido. Con 80M en caja tienes que mont
 - Mercado de fichajes, cláusulas, blindajes, ampliación de estadio, 43 cartas especiales, recuento de goles y reparto por posición cada jornada.
 - **Tu club:** cada persona funda un único club (nombre y escudo a medida: forma, dibujo, emblema y colores) que se guarda en el dispositivo y la acompaña a todas sus partidas. Desde el menú lateral se cambia el nombre o el escudo y se consulta el historial de temporadas terminadas.
 - Futbolistas con nombres y caras nuevos en cada partida, de todas las procedencias (`src/engine/identity.ts`). Los rivales de la IA también reciben nombre y escudo al azar.
+- **Liga masculina o femenina** a elegir en cada partida (también en las salas en línea): cambian los nombres, las caras y los textos; las reglas son las mismas. Hay avatares de usuario de hombre y de mujer.
 - Ilustraciones vectoriales generadas por código (retratos con volumen, escudos, dados, estadio) y guía de pasos en pantalla.
 - Motor de reglas independiente de la interfaz (`src/engine`), determinista y con tests.
 - Simulador de partidas entre bots para medir el equilibrio (`npm run simulate`).

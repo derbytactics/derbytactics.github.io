@@ -414,3 +414,27 @@ describe('identidades', () => {
     expect(taken.every((n) => n.length <= 20)).toBe(true);
   });
 });
+
+describe('liga femenina', () => {
+  const opts = { players: [{ name: 'Mi Club', isBot: false }, { name: 'Rival', isBot: true }], seed: 5 };
+  it('las futbolistas tienen nombres de mujer y la partida lo recuerda', () => {
+    const g = createGame({ ...opts, league: 'femenina' });
+    expect(g.league).toBe('femenina');
+    const ids = Object.values(g.roster!);
+    expect(ids.every((x) => x.fem)).toBe(true);
+    expect(ids.some((x) => /^(Alexia|Aitana|Irene|Jenni|Laia|Mariona|Olga|Patri|Salma|Esther|Lucía|Claudia|Teresa|Ainhoa|Nerea|Marta|Paula|Andrea|Leire|Carla) /.test(x.name))).toBe(true);
+    expect(ids.some((x) => /ski$|(ov|ev)$/.test(x.name))).toBe(false);
+    expect(createGame(opts).roster!.f1.fem).toBeUndefined();
+  });
+  it('las reglas no cambian: misma semilla, misma partida', () => {
+    const a = createGame({ ...opts, league: 'femenina' });
+    const b = createGame(opts);
+    expect(a.market).toEqual(b.market);
+    expect(a.turnOrder).toEqual(b.turnOrder);
+  });
+  it('los avisos usan el femenino', () => {
+    const g = createGame({ ...opts, league: 'femenina' });
+    expect(check(g, { type: 'sign', cardId: 'no-existe' })).toBe('Esa futbolista no está en el mercado.');
+    expect(check(createGame(opts), { type: 'sign', cardId: 'no-existe' })).toBe('Ese futbolista no está en el mercado.');
+  });
+});

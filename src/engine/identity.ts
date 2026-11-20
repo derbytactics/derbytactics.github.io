@@ -14,7 +14,12 @@ export interface Identity {
   eth: Ethnicity;
   /** Entero que fija los rasgos de la cara (peinado, ojos, barba…). */
   face: number;
+  /** Futbolista de la liga femenina. */
+  fem?: boolean;
 }
+
+/** Liga de la partida: cambia los nombres, las caras y algunos textos. */
+export type League = 'masculina' | 'femenina';
 
 export interface CrestDesign {
   /** Silueta del escudo (0..CREST_SHAPES-1). */
@@ -62,6 +67,8 @@ function weighted<T>(r: Rand, items: readonly [T, number][]): T {
 interface NamePool {
   weight: number;
   firsts: string[];
+  /** Nombres para la liga femenina. */
+  womenFirsts: string[];
   lasts: string[];
   /** Con qué probabilidad sale cada aspecto en esta cantera. */
   looks: [Ethnicity, number][];
@@ -76,114 +83,166 @@ const POOLS: NamePool[] = [
   {
     weight: 20,
     firsts: ['Álvaro', 'Sergio', 'Pablo', 'Iker', 'Hugo', 'Dani', 'Marc', 'Pau', 'Javi', 'Rubén', 'Unai', 'Aitor', 'Raúl', 'Adrián', 'Nacho', 'Borja', 'Íñigo', 'Gorka', 'Mario', 'Carlos', 'Izan', 'Gael', 'Yeray', 'Kiko', 'Chema', 'Isma'],
+    womenFirsts: ['Alexia', 'Aitana', 'Irene', 'Jenni', 'Laia', 'Mariona', 'Olga', 'Patri', 'Salma', 'Esther', 'Lucía', 'Claudia', 'Teresa', 'Ainhoa', 'Nerea', 'Marta', 'Paula', 'Andrea', 'Leire', 'Carla'],
     lasts: ['García', 'Moreno', 'Navarro', 'Ortega', 'Castaño', 'Etxeberria', 'Ribera', 'Vidal', 'Lozano', 'Cabello', 'Llorente', 'Zubiri', 'Pons', 'Herrero', 'Sarabia', 'Gallardo', 'Arrieta', 'Montoya', 'Soler', 'Quintana', 'Cienfuegos', 'Bermejo', 'Manzanares', 'Lasarte', 'Trujillo', 'Roldán'],
     looks: [['mediterraneo', 6], ['europeo', 3], ['africano', 1.5], ['mestizo', 0.5], ['magrebi', 0.5]],
   },
   {
     weight: 9,
     firsts: ['Thiago', 'Mateo', 'Santiago', 'Joaquín', 'Facundo', 'Emiliano', 'Julián', 'Nahuel', 'Matías', 'Franco', 'Lautaro', 'Valentín', 'Sebastián', 'Agustín', 'Brayan', 'Jhon', 'Kevin', 'Wilmar'],
+    womenFirsts: ['Valentina', 'Camila', 'Florencia', 'Agustina', 'Micaela', 'Lorena', 'Daniela', 'Catalina', 'Yamila', 'Linda', 'Mayra', 'Karla', 'Ximena', 'Paloma'],
     lasts: ['Paredes', 'Benítez', 'Acosta', 'Rojas', 'Medina', 'Sosa', 'Ferreyra', 'Cáceres', 'Villalba', 'Correa', 'Quiroga', 'Ledesma', 'Núñez', 'Giménez', 'Mosquera', 'Valencia', 'Arboleda', 'Cuadrado'],
     looks: [['mestizo', 5], ['mediterraneo', 3], ['africano', 2], ['europeo', 1]],
   },
   {
     weight: 7,
     firsts: ['Gabriel', 'Vinícius', 'Rodrigo', 'Lucas', 'Matheus', 'Caio', 'Rafael', 'Gustavo', 'João', 'Bruno', 'Wesley', 'Ronaldo', 'Davi', 'Luan'],
+    womenFirsts: ['Ana', 'Beatriz', 'Gabriela', 'Larissa', 'Luana', 'Débora', 'Kerolin', 'Tamires', 'Raquel', 'Bia', 'Júlia', 'Letícia'],
     lasts: ['Silva', 'Souza', 'Oliveira', 'Santos', 'Costa', 'Pereira', 'Almeida', 'Ribeiro', 'Carvalho', 'Moura', 'Barbosa', 'Teixeira', 'Nascimento', 'Gomes'],
     looks: [['mestizo', 4], ['africano', 4], ['europeo', 1.5], ['mediterraneo', 0.5]],
   },
   {
     weight: 12,
     firsts: ['Samuel', 'Moussa', 'Ibrahima', 'Kwame', 'Chidi', 'Emeka', 'Seydou', 'Amadou', 'Yaw', 'Kofi', 'Ousmane', 'Babajide', 'Tunde', 'Lamine', 'Cheikh', 'Pape', 'Wilfried', 'Serge'],
+    womenFirsts: ['Asisat', 'Rasheedat', 'Chiamaka', 'Ajara', 'Grace', 'Barbra', 'Thembi', 'Ifeoma', 'Aminata', 'Fatou', 'Nadège', 'Halimatu', 'Rita', 'Oluwatosin'],
     lasts: ['Okoro', 'Diallo', 'Mensah', 'Traoré', 'Adeyemi', 'Ndiaye', 'Kouassi', 'Okafor', 'Boateng', 'Sarr', 'Koné', 'Camara', 'Eze', 'Diop', 'Asante', 'Bamba', 'Touré', 'Mbeki'],
     looks: [['africano', 1]],
   },
   {
     weight: 4,
     firsts: ['Youssef', 'Hakim', 'Achraf', 'Ilias', 'Bilal', 'Amine', 'Karim', 'Nabil', 'Rachid', 'Sofiane', 'Mehdi', 'Ayoub', 'Omar', 'Zakaria', 'Moha', 'Anass'],
+    womenFirsts: ['Sakina', 'Ghizlane', 'Fatima', 'Nouhaila', 'Yasmin', 'Imane', 'Salma', 'Kenza', 'Inès', 'Leila', 'Samira', 'Sanaa'],
     lasts: ['Benali', 'El Amrani', 'Rahmani', 'Haddad', 'Bennani', 'Ziani', 'Mansouri', 'Belkacem', 'Saidi', 'Tahiri', 'Lahlou', 'Cherif', 'Idrissi', 'Ouali', 'Boudiaf', 'Kaddouri'],
     looks: [['magrebi', 6], ['africano', 1]],
   },
   {
     weight: 1,
     firsts: ['Kenta', 'Takumi', 'Daichi', 'Ren', 'Haruto', 'Sota', 'Yuto', 'Kaoru', 'Ritsu', 'Hiroki'],
+    womenFirsts: ['Yui', 'Hina', 'Mana', 'Saki', 'Riko', 'Aoba', 'Yuka', 'Nanami'],
     lasts: ['Tanaka', 'Sato', 'Nakamura', 'Kobayashi', 'Watanabe', 'Ito', 'Yamamoto', 'Kubo', 'Endo', 'Mori'],
     looks: [['asiaEste', 1]],
   },
   {
     weight: 0.8,
     firsts: ['Min-jun', 'Ji-ho', 'Seung-woo', 'Hyun', 'Dong-hyun', 'Jae-sung', 'Tae-yang', 'Sang-ho'],
+    womenFirsts: ['Ji-so', 'Min-ji', 'Seo-yeon', 'Ha-eun', 'Yu-jin', 'Da-eun'],
     lasts: ['Kim', 'Park', 'Lee', 'Choi', 'Jung', 'Kang', 'Hwang', 'Son'],
     looks: [['asiaEste', 1]],
   },
   {
     weight: 0.2,
     firsts: ['Wei', 'Hao', 'Jun', 'Lei', 'Bo', 'Zhen', 'Yang', 'Tao'],
+    womenFirsts: ['Shuang', 'Li', 'Xin', 'Yan', 'Mei', 'Ying'],
     lasts: ['Chen', 'Wang', 'Zhang', 'Liu', 'Huang', 'Zhao', 'Wu', 'Lin'],
     looks: [['asiaEste', 1]],
   },
   {
     weight: 0.6,
     firsts: ['Arjun', 'Rohan', 'Vikram', 'Aarav', 'Imran', 'Faisal', 'Sunil', 'Karan', 'Ravi', 'Hamza', 'Zayn', 'Dev'],
+    womenFirsts: ['Priya', 'Ananya', 'Aditi', 'Sana', 'Ayesha', 'Kavya', 'Nisha', 'Meera'],
     lasts: ['Sharma', 'Singh', 'Patel', 'Khan', 'Iqbal', 'Rao', 'Chowdhury', 'Mehta', 'Malik', 'Gill', 'Nair', 'Ahmed'],
     looks: [['asiaSur', 1]],
   },
   {
     weight: 4,
     firsts: ['Lars', 'Erik', 'Magnus', 'Mikkel', 'Oskar', 'Rasmus', 'Viktor', 'Emil', 'Henrik', 'Sindre'],
+    womenFirsts: ['Ada', 'Caroline', 'Fridolina', 'Hanna', 'Ingrid', 'Sofie', 'Stina', 'Maja', 'Tuva', 'Frida'],
     lasts: ['Hansen', 'Larsen', 'Lindqvist', 'Berg', 'Nilsson', 'Andersen', 'Solberg', 'Holm', 'Dahl', 'Eriksen'],
     looks: [['europeo', 8], ['africano', 2]],
   },
   {
     weight: 6,
     firsts: ['Jonas', 'Niklas', 'Lukas', 'Timo', 'Jannik', 'Leon', 'Florian', 'Kai', 'Moritz', 'Felix'],
+    womenFirsts: ['Lena', 'Lea', 'Klara', 'Sara', 'Jule', 'Giulia', 'Kathrin', 'Svenja', 'Merle', 'Alexandra'],
     lasts: ['Müller', 'Schneider', 'Becker', 'Vogel', 'Krämer', 'Hoffmann', 'Wagner', 'Fischer', 'Brandt', 'Weber'],
     looks: [['europeo', 6], ['africano', 2], ['magrebi', 0.5]],
   },
   {
     weight: 6,
     firsts: ['Luka', 'Ivan', 'Dmitri', 'Marko', 'Petar', 'Andrei', 'Filip', 'Nikola', 'Bogdan', 'Mateusz', 'Kamil', 'Dušan'],
+    womenFirsts: ['Ana', 'Ivana', 'Katarina', 'Ewa', 'Natalia', 'Milena', 'Jelena', 'Daria', 'Petra', 'Nikolina'],
     lasts: ['Petrović', 'Kovač', 'Novak', 'Horvat', 'Ivanov', 'Popescu', 'Kowalski', 'Nowak', 'Jovanović', 'Marić', 'Babić', 'Dragan'],
     looks: [['europeo', 1]],
   },
   {
     weight: 8,
     firsts: ['Jack', 'Harry', 'Callum', 'Liam', 'Ryan', 'Connor', 'Owen', 'Jamie', 'Tyler', 'Mason', 'Kieran', 'Reece'],
+    womenFirsts: ['Lucy', 'Beth', 'Ella', 'Georgia', 'Lauren', 'Chloe', 'Alessia', 'Keira', 'Millie', 'Jess', 'Hannah', 'Grace'],
     lasts: ['Walker', 'Hughes', 'Bennett', 'Clarke', 'Murphy', 'Doyle', 'Fletcher', 'Reid', 'Morgan', 'Kelly', 'Barnes', 'Shaw'],
     looks: [['europeo', 6], ['africano', 3], ['asiaSur', 0.3]],
   },
   {
     weight: 6,
     firsts: ['Lorenzo', 'Matteo', 'Federico', 'Alessandro', 'Davide', 'Nicolò', 'Riccardo', 'Andrea', 'Simone', 'Gianluca'],
+    womenFirsts: ['Barbara', 'Cristiana', 'Sara', 'Valentina', 'Martina', 'Giulia', 'Arianna', 'Elisa', 'Chiara', 'Manuela'],
     lasts: ['Rossi', 'Bianchi', 'Romano', 'Conti', 'Esposito', 'Ricci', 'Marino', 'Greco', 'Gallo', 'Moretti'],
     looks: [['mediterraneo', 5], ['europeo', 2], ['africano', 1]],
   },
   {
     weight: 9,
     firsts: ['Théo', 'Mathis', 'Clément', 'Adrien', 'Maxime', 'Baptiste', 'Kylian', 'Ousmane', 'Youssouf', 'Enzo', 'Nolan', 'Rayan'],
+    womenFirsts: ['Amandine', 'Eugénie', 'Kadidiatou', 'Wendie', 'Marie', 'Delphine', 'Grace', 'Selma', 'Clara', 'Maëlle', 'Inès', 'Sandie'],
     lasts: ['Martin', 'Bernard', 'Dubois', 'Lefèvre', 'Moreau', 'Laurent', 'Girard', 'Fontaine', 'Rousseau', 'Chevalier', 'Kanté', 'Mendy'],
     looks: [['africano', 4], ['europeo', 4], ['magrebi', 1.5]],
   },
 ];
 
+/** Apellido en femenino donde la lengua lo distingue (Kowalski → Kowalska, Ivanov → Ivanova). */
+function womanSurname(last: string): string {
+  if (/ski$/.test(last)) return last.replace(/ski$/, 'ska');
+  if (/(ov|ev)$/.test(last)) return `${last}a`;
+  return last;
+}
+
 /** Una identidad al azar (nombre único respecto a `taken`). */
-export function randomIdentity(r: Rand, taken: Set<string>): Identity {
+export function randomIdentity(r: Rand, taken: Set<string>, fem = false): Identity {
   for (let tries = 0; tries < 50; tries++) {
     const pool = weighted(r, POOLS.map((p) => [p, p.weight] as [NamePool, number]));
-    const name = `${pick(r, pool.firsts)} ${pick(r, pool.lasts)}`;
+    const last = pick(r, pool.lasts);
+    const name = fem ? `${pick(r, pool.womenFirsts)} ${womanSurname(last)}` : `${pick(r, pool.firsts)} ${last}`;
     if (taken.has(name) && tries < 49) continue;
     taken.add(name);
-    return { name, eth: weighted(r, pool.looks), face: Math.floor(r() * 2 ** 31) };
+    return { name, eth: weighted(r, pool.looks), face: Math.floor(r() * 2 ** 31), ...(fem ? { fem: true } : {}) };
   }
   throw new Error('inalcanzable');
 }
 
 /** Nombres y rasgos de todos los futbolistas para una partida. */
-export function generateRoster(ids: readonly string[], seed: number): Record<string, Identity> {
+export function generateRoster(ids: readonly string[], seed: number, league: League = 'masculina'): Record<string, Identity> {
   const r = makeRand(seed ^ 0x2f6b9e13);
   const taken = new Set<string>();
   const out: Record<string, Identity> = {};
-  for (const id of ids) out[id] = randomIdentity(r, taken);
+  for (const id of ids) out[id] = randomIdentity(r, taken, league === 'femenina');
   return out;
+}
+
+/** Palabras que cambian con la liga. */
+export function words(state: { league?: League }) {
+  const f = state.league === 'femenina';
+  return {
+    fem: f,
+    keeper: f ? 'portera' : 'portero',
+    keepers: f ? 'porteras' : 'porteros',
+    forward: f ? 'delantera' : 'delantero',
+    forwards: f ? 'delanteras' : 'delanteros',
+    mids: f ? 'medias' : 'medios',
+    backs: f ? 'defensas' : 'defensas',
+    /** «ese»/«esa» futbolista */
+    that: f ? 'esa' : 'ese',
+    That: f ? 'Esa' : 'Ese',
+    /** «uno»/«una» */
+    one: f ? 'una' : 'uno',
+    /** pronombre de objeto: véndelo / véndela */
+    it: f ? 'la' : 'lo',
+    the: f ? 'la' : 'el',
+    The: f ? 'La' : 'El',
+    sentOff: f ? 'expulsada' : 'expulsado',
+    booked: f ? 'amonestada' : 'amonestado',
+    protectedW: f ? 'protegida' : 'protegido',
+    shielded: f ? 'blindada' : 'blindado',
+    yours: f ? 'tuya' : 'tuyo',
+    injured: f ? 'lesionada' : 'lesionado',
+  };
 }
 
 // ---------------------------------------------------------------- Clubes

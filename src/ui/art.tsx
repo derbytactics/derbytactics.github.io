@@ -66,6 +66,14 @@ export const USER_AVATARS: { id: string; who: Face; jersey: string }[] = [
   { id: 'a14', who: { eth: 'africano', face: 113 }, jersey: '#A07CF5' },
   { id: 'a15', who: { eth: 'asiaSur', face: 127 }, jersey: '#2CC7D8' },
   { id: 'a16', who: { eth: 'europeo', face: 139 }, jersey: '#FF8A3D' },
+  { id: 'a17', who: { eth: 'mediterraneo', face: 151, fem: true }, jersey: '#E5484D' },
+  { id: 'a18', who: { eth: 'africano', face: 163, fem: true }, jersey: '#F5C542' },
+  { id: 'a19', who: { eth: 'europeo', face: 173, fem: true }, jersey: '#3E8BFF' },
+  { id: 'a20', who: { eth: 'mestizo', face: 181, fem: true }, jersey: '#35C98A' },
+  { id: 'a21', who: { eth: 'asiaEste', face: 191, fem: true }, jersey: '#A07CF5' },
+  { id: 'a22', who: { eth: 'magrebi', face: 197, fem: true }, jersey: '#2CC7D8' },
+  { id: 'a23', who: { eth: 'africano', face: 211, fem: true }, jersey: '#F06CA8' },
+  { id: 'a24', who: { eth: 'europeo', face: 223, fem: true }, jersey: '#FF8A3D' },
 ];
 
 export function UserAvatar({ id, size = 40, ring = C.accent }: { id: string; size?: number; ring?: string }) {

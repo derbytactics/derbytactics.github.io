@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { CONFIG, CrestDesign, NewGameOptions, SeasonLength, randomClubName, randomCrest } from '../engine';
+import { CONFIG, CrestDesign, League, NewGameOptions, SeasonLength, randomClubName, randomCrest } from '../engine';
 import { Crest, Logo } from './art';
 import { MyClub } from '../account/club';
-import { Btn, LegalLinks, NavBar, Overline, s } from './components';
+import { Btn, LeaguePicker, LegalLinks, NavBar, Overline, s } from './components';
 import { C, clubColor } from './theme';
 
 type Rival = { name: string; isBot: boolean; crest: CrestDesign };
@@ -50,6 +50,7 @@ export function SetupScreen(props: {
   const [warn, setWarn] = useState<string | null>(null);
   const [count, setCount] = useState(4);
   const [season, setSeason] = useState<SeasonLength>('estandar');
+  const [league, setLeague] = useState<League>('masculina');
   const [rivals, setRivals] = useState(() => randomRivals(club.name));
   const patch = (i: number, p: Partial<Rival>) => setRivals((all) => all.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const reroll = (i: number) =>
@@ -163,7 +164,9 @@ export function SetupScreen(props: {
             <Text style={[s.p, { fontSize: 12, marginBottom: 8 }]}>Los clubes de «Persona» se juegan pasándose el dispositivo. El historial se guarda para tu club.</Text>
           ) : null}
 
-          <View style={{ marginTop: 10, marginBottom: 22 }}>
+          <View style={{ height: 10 }} />
+          <LeaguePicker value={league} onPick={setLeague} />
+          <View style={{ marginBottom: 22 }}>
             <Overline>DURACIÓN DE LA TEMPORADA</Overline>
             <View style={[s.row, { gap: 8, marginTop: 8 }]}>
               {SEASONS.map((x) => (
@@ -177,7 +180,7 @@ export function SetupScreen(props: {
 
           <Btn
             label="Empezar la pretemporada"
-            onPress={() => onStart({ players: [{ name: club.name, isBot: false, crest: club.crest }, ...rivals.slice(0, count - 1).map((r, i) => ({ ...r, name: r.name.trim() || `Club ${i + 2}` }))], season })}
+            onPress={() => onStart({ players: [{ name: club.name, isBot: false, crest: club.crest }, ...rivals.slice(0, count - 1).map((r, i) => ({ ...r, name: r.name.trim() || `Club ${i + 2}` }))], season, league })}
           />
         </>
       )}

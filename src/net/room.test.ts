@@ -102,3 +102,11 @@ describe('clubes y escudos en la sala', () => {
     expect(finalSeats(r)).toEqual(finalSeats(r));
   });
 });
+
+describe('liga de la sala', () => {
+  it('el anfitrión elige la liga y la partida la usa', () => {
+    const r = startGame(setLobby(newRoom('LIGAF', 'host', 'Anfitrión FC'), { league: 'femenina' }), 2);
+    expect(r.game!.league).toBe('femenina');
+    expect(Object.values(r.game!.roster!).every((x) => x.fem)).toBe(true);
+  });
+});

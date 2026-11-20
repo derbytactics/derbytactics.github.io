@@ -3,7 +3,7 @@
  * Los invitados mandan mensajes; el anfitrión los valida, aplica la acción
  * con el motor y difunde el estado completo de la sala.
  */
-import { Action, BOT_STYLES, CONFIG, CrestDesign, GameState, SeasonLength, apply, botAction, check, createGame, currentRoller, makeRand, randomClubName, sanitizeCrest } from '../engine';
+import { Action, BOT_STYLES, CONFIG, CrestDesign, GameState, League, SeasonLength, apply, botAction, check, createGame, currentRoller, makeRand, randomClubName, sanitizeCrest } from '../engine';
 
 export interface Seat {
   name: string;
@@ -20,6 +20,8 @@ export interface RoomState {
   seq: number;
   clubs: number;
   season: SeasonLength;
+  /** Liga femenina o masculina (por defecto). */
+  league?: League;
   seats: Seat[];
   game: GameState | null;
   /** Asientos que ya han visto el reparto de la jornada en curso. */
@@ -104,11 +106,11 @@ export function hostReduce(room: RoomState, msg: ClientMsg): RoomState {
 
 // ---------------------------------------------------------------- Acciones del anfitrión
 
-export function setLobby(room: RoomState, patch: { clubs?: number; season?: SeasonLength; hostName?: string }): RoomState {
+export function setLobby(room: RoomState, patch: { clubs?: number; season?: SeasonLength; hostName?: string; league?: League }): RoomState {
   if (room.game) return room;
   const clubs = Math.max(Math.max(CONFIG.minPlayers, room.seats.length), Math.min(CONFIG.maxPlayers, patch.clubs ?? room.clubs));
   const seats = patch.hostName === undefined ? room.seats : room.seats.map((s, i) => (i === 0 ? { ...s, name: cleanName(patch.hostName!, s.name) } : s));
-  return bump(room, { clubs, season: patch.season ?? room.season, seats });
+  return bump(room, { clubs, season: patch.season ?? room.season, seats, league: patch.league ?? room.league });
 }
 
 /** Asientos definitivos al empezar: los libres los ocupa la IA. */
@@ -124,7 +126,7 @@ export function finalSeats(room: RoomState): Seat[] {
 export function startGame(room: RoomState, seed?: number, gameId: string | null = null): RoomState {
   if (room.game) return room;
   const seats = finalSeats(room);
-  const game = createGame({ players: seats.map((s) => ({ name: s.name, isBot: !s.clientId, crest: s.crest })), season: room.season, seed });
+  const game = createGame({ players: seats.map((s) => ({ name: s.name, isBot: !s.clientId, crest: s.crest })), season: room.season, seed, league: room.league });
   return bump(room, { seats, game, ready: [], gameId });
 }
 

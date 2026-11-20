@@ -41,6 +41,8 @@ interface Spec {
   nose: [number, number];
   lips: [number, number];
   beard: number;
+  /** Peinados para las futbolistas. */
+  womenStyles: number[];
 }
 const SPEC: Record<Ethnicity, Spec> = {
   europeo: {
@@ -52,6 +54,7 @@ const SPEC: Record<Ethnicity, Spec> = {
     nose: [0.95, 1.1],
     lips: [0.75, 0.95],
     beard: 0.45,
+    womenStyles: [20, 20, 21, 22, 23, 26, 27],
   },
   mediterraneo: {
     skin: [2, 3, 3, 4],
@@ -62,6 +65,7 @@ const SPEC: Record<Ethnicity, Spec> = {
     nose: [1.0, 1.2],
     lips: [0.85, 1.05],
     beard: 0.55,
+    womenStyles: [20, 20, 21, 22, 27, 26],
   },
   africano: {
     skin: [6, 7, 7, 8, 9],
@@ -72,6 +76,7 @@ const SPEC: Record<Ethnicity, Spec> = {
     nose: [1.25, 1.45],
     lips: [1.15, 1.4],
     beard: 0.4,
+    womenStyles: [24, 24, 25, 25, 22, 23, 20, 21],
   },
   magrebi: {
     skin: [3, 4, 5],
@@ -82,6 +87,7 @@ const SPEC: Record<Ethnicity, Spec> = {
     nose: [1.05, 1.25],
     lips: [0.9, 1.1],
     beard: 0.6,
+    womenStyles: [20, 21, 27, 22, 26],
   },
   asiaEste: {
     skin: [1, 2, 2, 3],
@@ -92,6 +98,7 @@ const SPEC: Record<Ethnicity, Spec> = {
     nose: [0.95, 1.1],
     lips: [0.85, 1.0],
     beard: 0.08,
+    womenStyles: [20, 23, 26, 27],
   },
   asiaSur: {
     skin: [4, 5, 6],
@@ -102,6 +109,7 @@ const SPEC: Record<Ethnicity, Spec> = {
     nose: [1.05, 1.25],
     lips: [0.9, 1.1],
     beard: 0.5,
+    womenStyles: [20, 21, 27, 22],
   },
   mestizo: {
     skin: [3, 4, 5, 6],
@@ -112,12 +120,15 @@ const SPEC: Record<Ethnicity, Spec> = {
     nose: [1.1, 1.3],
     lips: [1.0, 1.2],
     beard: 0.45,
+    womenStyles: [20, 24, 25, 22, 21, 27],
   },
 };
 
 export interface Face {
   eth: Ethnicity;
   face: number;
+  /** Futbolista (o avatar) mujer. */
+  fem?: boolean;
 }
 
 interface Features {
@@ -136,13 +147,33 @@ interface Features {
   brow: number;
   browTilt: number;
   collar: number;
+  fem: boolean;
 }
 
-function features({ eth, face }: Face): Features {
+function features({ eth, face, fem = false }: Face): Features {
   const r = makeRand(face);
   const spec = SPEC[eth] ?? SPEC.europeo;
   const pick = <T,>(a: T[]) => a[Math.floor(r() * a.length) % a.length];
   const lerp = ([a, b]: [number, number]) => a + (b - a) * r();
+  if (fem) {
+    return {
+      skin: SKINS[pick(spec.skin)],
+      hair: pick(spec.hair),
+      style: pick(spec.womenStyles),
+      eyes: pick(spec.eyes),
+      eyeColor: pick(spec.eyeColor),
+      nose: lerp(spec.nose) * 0.88,
+      lips: lerp(spec.lips) + 0.12,
+      beard: 0,
+      W: 16.9 + r() * 1.2,
+      jaw: 12 + r() * 1.5,
+      chin: 4 + r() * 1,
+      brow: 0.62 + r() * 0.2,
+      browTilt: -0.3 - r() * 0.6,
+      collar: Math.floor(r() * 3),
+      fem: true,
+    };
+  }
   return {
     skin: SKINS[pick(spec.skin)],
     hair: pick(spec.hair),
@@ -158,6 +189,7 @@ function features({ eth, face }: Face): Features {
     brow: 1 + r() * 0.45,
     browTilt: (r() - 0.5) * 1.4,
     collar: Math.floor(r() * 3),
+    fem: false,
   };
 }
 
@@ -215,6 +247,55 @@ function HairBack({ f, fill }: { f: Features; fill: string }) {
     );
   }
   if (style === 9) return <Path d={`M${L - 2.5} 30 C${L - 5} 50 ${L - 3} 64 ${L + 3} 70 L${R - 3} 70 C${R + 3} 64 ${R + 5} 50 ${R + 2.5} 30 Z`} fill={lo} />;
+  if (style === 20) {
+    // Coleta: asoma por detrás, a la derecha.
+    return (
+      <G>
+        <Path d={`M${R - 3} 28 C${R + 7} 31 ${R + 8.5} 50 ${R + 4} 68 C${R + 1.5} 60 ${R + 1} 46 ${R - 4} 36 Z`} fill={fill} />
+        <Path d={`M${R + 1} 37 C${R + 4} 46 ${R + 4.5} 55 ${R + 3} 63`} stroke={lighten(hair, 0.2)} strokeWidth="0.8" fill="none" opacity="0.4" />
+      </G>
+    );
+  }
+  if (style === 27) {
+    return <Path d={`M${L + 3} 30 C${L - 6} 34 ${L - 7.5} 52 ${L - 3} 70 C${L - 0.5} 62 ${L} 47 ${L + 4} 37 Z`} fill={fill} />;
+  }
+  if (style === 21 || style === 24) {
+    const big = style === 24;
+    return (
+      <G>
+        <Circle cx="50" cy={big ? 11 : 9} r={big ? 8 : 6} fill={fill} />
+        {big
+          ? [-5, 0, 5, -2.5, 2.5].map((dx, i) => <Circle key={i} cx={50 + dx * 0.8} cy={i < 3 ? 8 : 13} r="2.1" fill={lo} opacity="0.35" />)
+          : <Path d="M45.5 9.5 Q50 4.5 54.5 9.5" stroke={lighten(hair, 0.22)} strokeWidth="0.8" fill="none" opacity="0.6" />}
+      </G>
+    );
+  }
+  if (style === 22) {
+    return (
+      <G>
+        {[-1, 1].map((k) => (
+          <G key={k}>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <Ellipse key={i} cx={50 + k * (W + 1.5 + i * 0.25)} cy={50 + i * 5.2} rx="2.8" ry="3.2" fill={i % 2 ? fill : lo} />
+            ))}
+          </G>
+        ))}
+      </G>
+    );
+  }
+  if (style === 25) {
+    const xs = [-1.12, -1, -0.86, -0.7, 0.7, 0.86, 1, 1.12];
+    return (
+      <G>
+        {xs.map((k, i) => (
+          <Path key={i} d={`M${50 + k * W} 30 C${50 + k * (W + 2)} 46 ${50 + k * (W + 3)} 60 ${50 + k * (W + 4)} 78`} stroke={i % 2 ? hair : lo} strokeWidth="2.6" strokeLinecap="round" fill="none" />
+        ))}
+      </G>
+    );
+  }
+  if (style === 26) {
+    return <Path d={`M${L - 3} 30 C${L - 5.5} 48 ${L - 4.5} 60 ${L - 1} 65 L${R + 1} 65 C${R + 4.5} 60 ${R + 5.5} 48 ${R + 3} 30 Z`} fill={lo} />;
+  }
   if (style === 10) {
     return (
       <G>
@@ -366,6 +447,59 @@ function HairFront({ f, fill }: { f: Features; fill: string }) {
           )}
         </G>
       );
+    case 20: // coleta, pelo recogido hacia atrás
+    case 21: // moño alto
+      return (
+        <G>
+          <Path d={cap(W, 3.5, 27, 44, 1.3)} fill={fill} />
+          {[-0.5, -0.1, 0.3].map((k, i) => (
+            <Path key={i} d={`M${50 + k * W} 26.5 Q${50 + k * W * 1.1} 20 ${50 + k * W * 0.7 + (style === 21 ? 0 : 3)} 14`} stroke={hi} strokeWidth="0.8" fill="none" opacity="0.4" strokeLinecap="round" />
+          ))}
+          {style === 20 ? <Path d={`M${R - 1} 30 l3 1.5`} stroke="#E5484D" strokeWidth="2" strokeLinecap="round" /> : null}
+        </G>
+      );
+    case 22: // dos trenzas pegadas
+    case 25: // trenzas africanas
+      return (
+        <G>
+          <Path d={cap(W, 3, 27.5, 45, 1.5)} fill={fill} />
+          <Path d="M50 14 L50 27" stroke={darken(skin, 0.15)} strokeWidth="0.8" opacity="0.8" />
+          {(style === 22 ? [-0.55, 0.55] : [-0.75, -0.45, -0.18, 0.18, 0.45, 0.75]).map((k, i) => (
+            <Path key={i} d={`M${50 + k * W} 27.5 Q${50 + k * W * 1.15} 20 ${50 + k * W * 1.05} 14`} stroke={style === 22 ? hi : lo} strokeWidth={style === 22 ? 1 : 0.9} fill="none" opacity={style === 22 ? 0.5 : 0.8} strokeDasharray={style === 22 ? '1.6 1.2' : undefined} />
+          ))}
+        </G>
+      );
+    case 23: // pixie con flequillo de lado
+      return (
+        <G>
+          <Path d={cap(W, 2.5, 28, 43, 1.5)} fill={fill} />
+          <Path d={`M${L - 1} 30 C${L} 14 ${50 + W * 0.5} 11 ${R + 1.5} 27 C${R - 3} 25 ${50 + W * 0.2} 28 ${50 - W * 0.2} 32 C${L + 4} 33 ${L + 1} 32 ${L - 1} 30 Z`} fill={fill} />
+          {shine(`M${50 - W * 0.4} 20 Q${50 + W * 0.2} 14 ${R - 2} 22`, 0.5)}
+        </G>
+      );
+    case 24: // afro puff: laterales recogidos
+      return (
+        <G>
+          <Path d={cap(W, 5, 26.5, 42, 0.8)} fill={fill} />
+          {shine(`M${50 - W * 0.45} 21 Q50 17 ${50 + W * 0.45} 21`, 0.3)}
+        </G>
+      );
+    case 26: // media melena con cinta
+      return (
+        <G>
+          <Path d={cap(W, 2.5, 28.5, 54, 2.8)} fill={fill} />
+          <Path d={`M${L - 1.5} 26 Q50 19 ${R + 1.5} 26 L${R + 1.2} 29 Q50 22.2 ${L - 1.2} 29 Z`} fill="#F4F1E8" />
+          {shine(`M${50 - W * 0.4} 18 Q50 14.5 ${50 + W * 0.5} 18`)}
+        </G>
+      );
+    case 27: // recogido bajo con raya y flequillo de lado
+      return (
+        <G>
+          <Path d={cap(W, 3, 28.5, 46, 1.6)} fill={fill} />
+          <Path d={`M${R + 1} 31 C${R} 14 ${50 - W * 0.4} 11 ${L - 1.2} 27 C${L + 4} 24 ${50 - W * 0.1} 28 ${50 + W * 0.25} 32 C${R - 4} 32.5 ${R - 1} 32 ${R + 1} 31 Z`} fill={fill} />
+          {shine(`M${50 + W * 0.4} 19 Q${50 - W * 0.2} 14 ${L + 2} 22`, 0.5)}
+        </G>
+      );
     case 12: // flequillo
     default: {
       const pts: string[] = [];
@@ -441,7 +575,8 @@ function Eye({ x, side, f, clip }: { x: number; side: 1 | -1; f: Features; clip:
         <Circle cx="0.45" cy="-0.75" r="0.38" fill="#FFFFFF" opacity="0.9" />
         <Path d="M-4.5 -3 H4.5 V-0.6 Q0 -1.7 -4.5 -0.6 Z" fill={shadow} opacity="0.4" />
       </G>
-      <Path d={lash} stroke="#1C130E" strokeWidth={mono ? 1 : 0.8} fill="none" strokeLinecap="round" />
+      <Path d={lash} stroke="#1C130E" strokeWidth={f.fem ? 1.15 : mono ? 1 : 0.8} fill="none" strokeLinecap="round" />
+      {f.fem ? <Path d={mono ? 'M3.9 -0.45 l1.2 -0.7' : 'M3.8 -0.35 l1.3 -0.9'} stroke="#1C130E" strokeWidth="0.8" strokeLinecap="round" /> : null}
       {!mono ? <Path d="M-3.4 -2 C-1.5 -3.6 1.8 -3.7 3.8 -2.1" stroke={shadow} strokeWidth="0.6" fill="none" opacity="0.65" strokeLinecap="round" /> : null}
       {mono ? <Path d="M-4 0.3 Q-3.3 -0.5 -2.5 -0.9" stroke={shadow} strokeWidth="0.6" fill="none" opacity="0.7" /> : null}
       <Path d="M-3 1 C-1 1.7 1.6 1.5 3.4 0.4" stroke={shadow} strokeWidth="0.5" fill="none" opacity="0.45" strokeLinecap="round" />
@@ -464,7 +599,7 @@ function Nose({ f, sh, hl }: { f: Features; sh: string; hl: string }) {
   return (
     <G>
       <Path d="M48.6 45.5 C48.3 49 48.2 51.5 48.4 53.5" stroke={hl} strokeWidth="1.3" fill="none" opacity="0.5" strokeLinecap="round" />
-      <Path d={`M51.4 45 C52.2 49.5 53 52.2 ${50 + 3.5 * k} 55.2 L${50 + 2.3 * k} 56.8 C52 55.4 51.2 50 51.1 45 Z`} fill={sh} opacity="0.75" />
+      <Path d={`M51.4 45 C52.2 49.5 53 52.2 ${50 + 3.5 * k} 55.2 L${50 + 2.3 * k} 56.8 C52 55.4 51.2 50 51.1 45 Z`} fill={sh} opacity={f.fem ? 0.45 : 0.75} />
       <Path d={`M${50 - 3.6 * k} 55 Q${50 - 4.7 * k} 57.5 ${50 - 1.8 * k} 57.7`} stroke={sh} strokeWidth="1" fill="none" strokeLinecap="round" />
       <Path d={`M${50 + 3.6 * k} 55 Q${50 + 4.7 * k} 57.5 ${50 + 1.8 * k} 57.7`} stroke={sh} strokeWidth="1" fill="none" strokeLinecap="round" />
       <Ellipse cx="50" cy="58.2" rx={3.3 * k} ry="0.8" fill={sh} opacity="0.55" />
@@ -477,11 +612,11 @@ function Nose({ f, sh, hl }: { f: Features; sh: string; hl: string }) {
 
 function Mouth({ f, sh }: { f: Features; sh: string }) {
   const lf = f.lips;
-  const mw = 4.6 + lf * 0.9;
+  const mw = (f.fem ? 4.2 : 4.6) + lf * 0.9;
   const Y = MOUTH_Y;
   const dark = lumaOf(f.skin) < 0.45;
-  const upper = mix(f.skin, '#5E2622', dark ? 0.24 : 0.3);
-  const lower = mix(f.skin, '#8A4540', dark ? 0.16 : 0.22);
+  const upper = mix(f.skin, f.fem ? '#7A2E36' : '#5E2622', dark ? 0.24 : 0.3);
+  const lower = mix(f.skin, f.fem ? '#A44F58' : '#8A4540', dark ? 0.18 : 0.26);
   return (
     <G>
       <Path d="M49.2 58.6 L49.3 60.6 M50.8 58.6 L50.7 60.6" stroke={sh} strokeWidth="0.5" opacity="0.4" />
@@ -535,6 +670,8 @@ export function Portrait({ who, size, jersey, ring }: { who: Face; size: number;
   const sh2 = darken(f.skin, 0.34);
   const hl = lighten(f.skin, lumaOf(f.skin) < 0.4 ? 0.2 : 0.16);
   const face = facePath(f);
+  /** Medio ancho del cuello. */
+  const nk = f.fem ? 8.4 : 10.5;
   const hairFill = `url(#${uid}h)`;
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100">
@@ -559,9 +696,9 @@ export function Portrait({ who, size, jersey, ring }: { who: Face; size: number;
         <G transform="translate(50 50) scale(1.1) translate(-50 -46.5)">
         <HairBack f={f} fill={hairFill} />
         {/* Cuello y trapecios */}
-        <Path d="M39.5 64 L38.6 80 C33 82 25 83 18 85 L82 85 C75 83 67 82 61.4 80 L60.5 64 Z" fill={f.skin} />
-        <Path d="M53 66 L54.5 82 L61.4 80 L60.5 64 Z" fill={sh} opacity="0.7" />
-        <Path d="M39.5 64 Q50 79 60.5 64 L60.6 70 Q50 84 39.4 70 Z" fill={sh2} opacity="0.55" />
+        <Path d={`M${50 - nk} 64 L${50 - nk - 0.9} 80 C33 82 25 83 18 85 L82 85 C75 83 67 82 ${50 + nk + 0.9} 80 L${50 + nk} 64 Z`} fill={f.skin} />
+        <Path d={`M53 66 L54.5 82 L${50 + nk + 0.9} 80 L${50 + nk} 64 Z`} fill={sh} opacity="0.7" />
+        <Path d={`M${50 - nk} 64 Q50 79 ${50 + nk} 64 L${50 + nk + 0.1} 70 Q50 84 ${50 - nk - 0.1} 70 Z`} fill={sh2} opacity="0.55" />
         <Path d="M44 75 Q50 79 56 75" stroke={sh} strokeWidth="0.8" fill="none" opacity="0.6" />
         <Jersey f={f} jersey={jersey} />
         {/* Orejas */}
@@ -574,14 +711,16 @@ export function Portrait({ who, size, jersey, ring }: { who: Face; size: number;
         <G clipPath={`url(#${uid}f)`}>
           <Path d={`M${50 + f.W * 0.4} 10 C${50 + f.W * 0.8} 24 ${50 + f.W * 0.62} 38 ${50 + f.W * 0.74} 46 C${50 + f.W * 0.86} 54 ${50 + f.jaw * 0.6} 63 51.5 76 L100 76 L100 0 Z`} fill={sh} />
           <Path d={`M${R - 2.5} 10 C${R - 1} 30 ${R - 1.2} 46 ${50 + f.jaw - 1.5} 62 C${50 + f.jaw - 4} 68 ${50 + f.chin + 1} 72 51 76 L100 76 L100 0 Z`} fill={sh2} opacity="0.55" />
-          <Path d={`M${L} 60 C${50 - f.jaw + 3} 66 ${50 - f.chin - 1} 70.5 50 71 C${50 + f.chin + 1} 70.5 ${50 + f.jaw - 3} 66 ${R} 60 L${R} 80 L${L} 80 Z`} fill={sh} opacity="0.45" />
+          <Path d={`M${L} 60 C${50 - f.jaw + 3} 66 ${50 - f.chin - 1} 70.5 50 71 C${50 + f.chin + 1} 70.5 ${50 + f.jaw - 3} 66 ${R} 60 L${R} 80 L${L} 80 Z`} fill={sh} opacity={f.fem ? 0.2 : 0.45} />
           <Ellipse cx="41.4" cy={EYE_Y - 0.6} rx="6" ry="3.4" fill={sh} opacity="0.55" />
           <Ellipse cx="58.6" cy={EYE_Y - 0.6} rx="6" ry="3.4" fill={sh2} opacity="0.45" />
           <Ellipse cx="44" cy="25" rx="9" ry="4.5" fill={hl} opacity="0.55" />
           <Ellipse cx="39.5" cy="51" rx="4.2" ry="2.2" fill={hl} opacity="0.45" />
           <Ellipse cx="48.6" cy="69.6" rx="2.6" ry="1.1" fill={hl} opacity="0.4" />
-          <Path d={`M${50 - 4.3 * f.nose} 57 Q43.5 60 43.6 63.5`} stroke={sh2} strokeWidth="0.6" fill="none" opacity="0.35" />
-          <Path d={`M${50 + 4.3 * f.nose} 57 Q56.5 60 56.4 63.5`} stroke={sh2} strokeWidth="0.6" fill="none" opacity="0.45" />
+          {!f.fem ? <Path d={`M${50 - 4.3 * f.nose} 57 Q43.5 60 43.6 63.5`} stroke={sh2} strokeWidth="0.6" fill="none" opacity="0.35" /> : null}
+          {!f.fem ? <Path d={`M${50 + 4.3 * f.nose} 57 Q56.5 60 56.4 63.5`} stroke={sh2} strokeWidth="0.6" fill="none" opacity="0.45" /> : null}
+          {f.fem ? <Ellipse cx="40" cy="53" rx="4" ry="2.2" fill="#E07A6A" opacity="0.13" /> : null}
+          {f.fem ? <Ellipse cx="60" cy="53" rx="4" ry="2.2" fill="#E07A6A" opacity="0.1" /> : null}
           <Beard f={f} />
         </G>
         <Mouth f={f} sh={sh2} />

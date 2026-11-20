@@ -31,10 +31,10 @@ function Game({ g }: { g: HistoryEntry }) {
         <Crest name={g.club} color={clubColor(0)} design={g.crest} size={40} />
         <View style={{ flex: 1, marginLeft: 10 }}>
           <Overline>
-            {when(g.date)} · {g.online ? 'EN LÍNEA' : 'UN DISPOSITIVO'} · {g.jornadas} JORNADAS
+            {when(g.date)} · {g.online ? 'EN LÍNEA' : 'UN DISPOSITIVO'}{g.league === 'femenina' ? ' · FEMENINA' : ''} · {g.jornadas} JORNADAS
           </Overline>
           <Text style={{ color: won ? C.accent : C.text, fontSize: 18, fontWeight: '900', marginTop: 2 }}>
-            {won ? '🏆 Campeón' : `${g.position}.º de ${g.clubs}`}
+            {won ? (g.league === 'femenina' ? '🏆 Campeonas' : '🏆 Campeón') : `${g.position}.º de ${g.clubs}`}
           </Text>
           <Text style={[s.p, { fontSize: 12 }]}>
             {g.points} pts · {g.goals} goles a favor, {g.against} en contra{won ? '' : ` · Campeón: ${g.champion}`}

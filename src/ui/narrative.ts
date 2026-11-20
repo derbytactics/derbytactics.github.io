@@ -95,6 +95,21 @@ function neutral(state: GameState, sum: number, play: Play, pick: ReturnType<typ
  * `seed` debe ser estable para la tirada (por ejemplo, jornada × 100 + número de tirada).
  */
 export function rollNews(state: GameState, roll: RollReport, seed: number, viewer: number | null): News[] {
+  const news = tellRoll(state, roll, seed, viewer);
+  return state.league === 'femenina' ? news.map((x) => ({ ...x, title: inFeminine(x.title), text: inFeminine(x.text) })) : news;
+}
+
+/** Pasa al femenino las frases de la crónica que hablan de las jugadoras. */
+const FEMININE: [RegExp, string][] = [
+  [/\bal portero\b/g, 'a la portera'],
+  [/\bel portero\b/g, 'la portera'],
+  [/\btu portero\b/g, 'tu portera'],
+  [/\bsu portero\b/g, 'su portera'],
+  [/\bse planta solo\b/g, 'se planta sola'],
+];
+export const inFeminine = (text: string) => FEMININE.reduce((t, [re, to]) => t.replace(re, to), text);
+
+function tellRoll(state: GameState, roll: RollReport, seed: number, viewer: number | null): News[] {
   const pick = picker(seed + (viewer ?? 0) * 31);
   const name = (id: number) => state.players[id].name;
   const n = roll.sum;

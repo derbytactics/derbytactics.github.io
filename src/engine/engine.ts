@@ -9,7 +9,7 @@ import {
   totalPips,
 } from './cards';
 import { CONFIG, SeasonLength, marketSize } from './config';
-import { CrestDesign, Identity, generateRoster, makeRand, randomCrest, sanitizeCrest } from './identity';
+import { CrestDesign, Identity, League, generateRoster, makeRand, randomCrest, sanitizeCrest, words } from './identity';
 import { nextRandom } from './rng';
 
 // ---------------------------------------------------------------- Tipos
@@ -156,12 +156,15 @@ export interface GameState {
   gameId?: string;
   /** Nombre y rasgos de cada futbolista en esta partida: cambian en cada una. */
   roster?: Record<string, Identity>;
+  /** Liga masculina (por defecto) o femenina. */
+  league?: League;
 }
 
 export interface NewGameOptions {
   players: { name: string; isBot: boolean; crest?: CrestDesign }[];
   season?: SeasonLength;
   seed?: number;
+  league?: League;
 }
 
 export type Action =
@@ -334,7 +337,8 @@ export function createGame(opts: NewGameOptions): GameState {
   const state: GameState = {
     seed,
     gameId: `g${(seed >>> 0).toString(36)}${n}`,
-    roster: generateRoster(FOOTBALLERS.map((f) => f.id), seed),
+    roster: generateRoster(FOOTBALLERS.map((f) => f.id), seed, opts.league),
+    ...(opts.league === 'femenina' ? { league: 'femenina' as const } : {}),
     totalJornadas: CONFIG.seasonLengths[opts.season ?? 'estandar'],
     jornada: 1,
     phase: 'market',
@@ -390,15 +394,16 @@ export function check(state: GameState, action: Action): string | null {
   const me = currentPlayer(state);
   if (!me) return 'No es fase de mercado.';
   const J = state.jornada;
+  const w = words(state);
   switch (action.type) {
     case 'endTurn':
       return null;
     case 'sign': {
-      if (!state.market.includes(action.cardId)) return 'Ese futbolista no está en el mercado.';
+      if (!state.market.includes(action.cardId)) return `${w.That} futbolista no está en el mercado.`;
       if (state.turn.signed) return 'Solo un fichaje por turno.';
       if (me.squad.length >= CONFIG.squadSize) return 'Plantilla completa: vende antes a alguien.';
-      if (footballer(action.cardId).position === 'POR' && hasKeeper(me)) return 'Ya tienes portero: véndelo antes de fichar otro.';
-      if (footballer(action.cardId).position === 'DEL' && lineup(me).DEL >= CONFIG.maxForwards) return `Ya tienes ${CONFIG.maxForwards} delanteros: vende uno antes de fichar otro.`;
+      if (footballer(action.cardId).position === 'POR' && hasKeeper(me)) return `Ya tienes ${w.keeper}: vénde${w.it} antes de fichar otr${w.fem ? 'a' : 'o'}.`;
+      if (footballer(action.cardId).position === 'DEL' && lineup(me).DEL >= CONFIG.maxForwards) return `Ya tienes ${CONFIG.maxForwards} ${w.forwards}: vende ${w.one} antes de fichar otr${w.fem ? 'a' : 'o'}.`;
       if (me.money < signPrice(state, action.cardId)) return 'No tienes dinero suficiente.';
       return null;
     }
@@ -406,21 +411,21 @@ export function check(state: GameState, action: Action): string | null {
       const owner = state.players[action.ownerId];
       if (!owner || owner.id === me.id) return 'Elige un club rival.';
       const entry = findEntry(owner, action.cardId);
-      if (!entry) return 'Ese club no tiene a ese futbolista.';
+      if (!entry) return `Ese club no tiene a ${w.that} futbolista.`;
       if (state.turn.signed) return 'Solo un fichaje por turno.';
       if (me.squad.length >= CONFIG.squadSize) return 'Plantilla completa: vende antes a alguien.';
-      if (footballer(action.cardId).position === 'POR' && hasKeeper(me)) return 'Ya tienes portero: véndelo antes de fichar otro.';
-      if (footballer(action.cardId).position === 'DEL' && lineup(me).DEL >= CONFIG.maxForwards) return `Ya tienes ${CONFIG.maxForwards} delanteros: vende uno antes de fichar otro.`;
-      if (isProtected(entry, J)) return 'Ese futbolista está protegido y no se puede fichar ahora.';
+      if (footballer(action.cardId).position === 'POR' && hasKeeper(me)) return `Ya tienes ${w.keeper}: vénde${w.it} antes de fichar otr${w.fem ? 'a' : 'o'}.`;
+      if (footballer(action.cardId).position === 'DEL' && lineup(me).DEL >= CONFIG.maxForwards) return `Ya tienes ${CONFIG.maxForwards} ${w.forwards}: vende ${w.one} antes de fichar otr${w.fem ? 'a' : 'o'}.`;
+      if (isProtected(entry, J)) return `${w.That} futbolista está ${w.protectedW} y no se puede fichar ahora.`;
       if (me.money < clauseOf(entry)) return 'No te llega para pagar la cláusula.';
       return null;
     }
     case 'sell':
-      return findEntry(me, action.cardId) ? null : 'Ese futbolista no es tuyo.';
+      return findEntry(me, action.cardId) ? null : `${w.That} futbolista no es ${w.yours}.`;
     case 'shield': {
       const entry = findEntry(me, action.cardId);
-      if (!entry) return 'Ese futbolista no es tuyo.';
-      if (entry.shielded) return 'Ya está blindado.';
+      if (!entry) return `${w.That} futbolista no es ${w.yours}.`;
+      if (entry.shielded) return `Ya está ${w.shielded}.`;
       if (me.money < shieldCost(action.cardId)) return 'No tienes dinero suficiente.';
       return null;
     }
@@ -454,18 +459,18 @@ export function check(state: GameState, action: Action): string | null {
         if (!rival || rival.id === me.id) return 'Elige un club rival.';
         if (info.target === 'rivalFootballer') {
           const e = action.targetCardId ? findEntry(rival, action.targetCardId) : undefined;
-          if (!e) return 'Elige un futbolista de ese club.';
-          if (isOut(e, J)) return 'Ese futbolista ya está de baja.';
+          if (!e) return `Elige ${w.fem ? 'una' : 'un'} futbolista de ese club.`;
+          if (isOut(e, J)) return `${w.That} futbolista ya está de baja.`;
         }
         if (card.kind === 'puertaCerrada' && rival.closedDoorsUntil >= J) return 'Ese club ya juega a puerta cerrada.';
       }
       if (info.target === 'ownFootballer') {
         const e = action.targetCardId ? findEntry(me, action.targetCardId) : undefined;
-        if (!e) return 'Elige uno de tus futbolistas.';
-        if (card.kind === 'racha' && onStreak(e, J)) return 'Ese futbolista ya está en racha.';
+        if (!e) return `Elige ${w.one} de tus futbolistas.`;
+        if (card.kind === 'racha' && onStreak(e, J)) return `${w.That} futbolista ya está en racha.`;
         if (card.kind === 'olfato') {
-          if (activeNumbers(e, J).includes(card.value!)) return `Ese futbolista ya marca con el ${card.value}.`;
-          if (e.extra && e.extra.until >= J) return 'Ese futbolista ya tiene un número extra.';
+          if (activeNumbers(e, J).includes(card.value!)) return `${w.That} futbolista ya marca con el ${card.value}.`;
+          if (e.extra && e.extra.until >= J) return `${w.That} futbolista ya tiene un número extra.`;
         }
       }
       if (card.kind === 'subvencion' && me.subsidy) return 'Ya tienes una subvención pendiente.';
@@ -631,7 +636,7 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
     case 'amarilla':
       if (isBooked(theirs!, J)) {
         theirs!.outUntil = Math.max(theirs!.outUntil, J);
-        say(state, `Segunda amarilla a ${cardName(state, theirs!.cardId)} (${rival!.name}): expulsado esta jornada.`, [rival!.id]);
+        say(state, `Segunda amarilla a ${cardName(state, theirs!.cardId)} (${rival!.name}): ${words(state).sentOff} esta jornada.`, [rival!.id]);
       } else {
         theirs!.yellowUntil = J;
         say(state, `Amarilla a ${cardName(state, theirs!.cardId)} (${rival!.name}): juega esta jornada con menos fuerza.`, [rival!.id]);
@@ -639,7 +644,7 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
       break;
     case 'roja':
       theirs!.outUntil = J + S.redCardRounds - 1;
-      say(state, `Roja a ${cardName(state, theirs!.cardId)} (${rival!.name}): expulsado esta jornada y la siguiente.`, [rival!.id]);
+      say(state, `Roja a ${cardName(state, theirs!.cardId)} (${rival!.name}): ${words(state).sentOff} esta jornada y la siguiente.`, [rival!.id]);
       break;
     case 'penalti':
       me.penalties = [...(me.penalties ?? []).filter((x) => x.jornada >= J), { jornada: J, rival: rival!.id }];

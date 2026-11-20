@@ -375,3 +375,19 @@ export const s = StyleSheet.create({
   tr: { paddingVertical: 5, paddingHorizontal: 4, borderRadius: 8 },
   td: { color: C.dim, textAlign: 'right', fontSize: 13 },
 });
+
+/** Selector de liga: masculina o femenina. */
+export function LeaguePicker({ value, onPick }: { value: 'masculina' | 'femenina'; onPick: (l: 'masculina' | 'femenina') => void }) {
+  return (
+    <View style={{ marginTop: 6, marginBottom: 16 }}>
+      <Overline>LIGA</Overline>
+      <View style={[s.row, { gap: 8, marginTop: 8 }]}>
+        <Btn small kind={value === 'masculina' ? 'primary' : 'ghost'} label="Masculina" onPress={() => onPick('masculina')} style={{ flex: 1 }} />
+        <Btn small kind={value === 'femenina' ? 'primary' : 'ghost'} label="Femenina" onPress={() => onPick('femenina')} style={{ flex: 1 }} />
+      </View>
+      <Text style={{ color: C.faint, fontSize: 11, marginTop: 4 }}>
+        {value === 'femenina' ? 'Todas las futbolistas son jugadoras. Las reglas son las mismas.' : 'Todos los futbolistas son jugadores. Las reglas son las mismas.'}
+      </Text>
+    </View>
+  );
+}
