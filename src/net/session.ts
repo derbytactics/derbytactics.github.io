@@ -3,7 +3,7 @@
  * El anfitrión publica el estado completo (retenido, para quien llegue tarde o se reconecte)
  * y escucha los mensajes de los invitados.
  */
-import { Action, check, currentRoller } from '../engine';
+import { Action, CrestDesign, check, currentRoller } from '../engine';
 import { MqttClient } from './mqtt';
 import { ClientMsg, RoomState, hostReduce, newRoom, seatOf } from './room';
 import { remove, save } from './storage';
@@ -55,7 +55,7 @@ export class HostSession {
   }
 
   /** Crea una sala nueva en el primer servidor que responda. */
-  static create(hostId: string, hostName: string, hostUserId: string | null, l: Listener<RoomState>): Promise<HostSession> {
+  static create(hostId: string, hostName: string, hostUserId: string | null, l: Listener<RoomState>, hostCrest?: CrestDesign): Promise<HostSession> {
     const list = brokers();
     const attempt = (i: number): Promise<HostSession> =>
       new Promise((resolve, reject) => {
@@ -63,7 +63,7 @@ export class HostSession {
         let code = ALPHABET[i];
         for (let k = 0; k < 4; k++) code += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
         let settled = false;
-        const s = new HostSession(newRoom(code, hostId, hostName, hostUserId), list[i], l, () => {
+        const s = new HostSession(newRoom(code, hostId, hostName, hostUserId, hostCrest), list[i], l, () => {
           settled = true;
           clearTimeout(timer);
           save(HOST_KEY, s.room);
@@ -114,10 +114,10 @@ export class GuestSession {
   private client: MqttClient;
   private pending: { msg: ClientMsg; seq: number; timer: ReturnType<typeof setInterval> } | null = null;
 
-  private constructor(public code: string, private clientId: string, private name: string, url: string, private l: Listener<RoomState | null>) {
+  private constructor(public code: string, private clientId: string, private name: string, url: string, private l: Listener<RoomState | null>, private crest?: CrestDesign) {
     this.client = new MqttClient(url, {
       onStatus: (ok) => {
-        if (ok) this.send({ t: 'join', clientId, name });
+        if (ok) this.send({ t: 'join', clientId, name, crest: this.crest });
         this.l.onStatus(ok);
       },
       onMessage: (_t, payload) => {
@@ -132,7 +132,7 @@ export class GuestSession {
           this.room = room;
           if (this.pending && room.seq !== this.pending.seq) this.clearPending();
           // El estado retenido puede ser anterior a nuestra petición de entrada: se repite.
-          if (firstSight && seatOf(room, clientId) < 0) this.send({ t: 'join', clientId, name });
+          if (firstSight && seatOf(room, clientId) < 0) this.send({ t: 'join', clientId, name, crest: this.crest });
           this.l.onChange(room);
         } catch {}
       },
@@ -141,12 +141,12 @@ export class GuestSession {
     this.client.connect();
   }
 
-  static join(rawCode: string, clientId: string, name: string, l: Listener<RoomState | null>): GuestSession | null {
+  static join(rawCode: string, clientId: string, name: string, l: Listener<RoomState | null>, crest?: CrestDesign): GuestSession | null {
     const code = normalizeCode(rawCode);
     const url = brokerFor(code);
     if (!url) return null;
     save(GUEST_KEY, { code, name });
-    return new GuestSession(code, clientId, name, url, l);
+    return new GuestSession(code, clientId, name, url, l, crest);
   }
 
   get seat(): number {

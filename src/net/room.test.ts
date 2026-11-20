@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RoomState, botStep, hostAct, hostReady, hostReduce, newRoom, pendingReady, playTurnForAbsent, setLobby, startGame } from './room';
+import { RoomState, botStep, finalSeats, hostAct, hostReady, hostReduce, newRoom, pendingReady, playTurnForAbsent, setLobby, startGame } from './room';
 
 const lobby = () => {
   let r = newRoom('AKXRT', 'host', 'Anfitrión FC');
@@ -78,5 +78,27 @@ describe('partida en línea', () => {
   it('el estado de la sala viaja como JSON sin perder nada', () => {
     const r = until(started(), 0);
     expect(JSON.parse(JSON.stringify(r))).toEqual(r);
+  });
+});
+
+describe('clubes y escudos en la sala', () => {
+  const crest = { shape: 1, pattern: 2, emblem: 3, primary: '#1C6DD0', secondary: '#F4F1E8' };
+  it('cada persona entra con su escudo y llega a la partida', () => {
+    let r = newRoom('BQWER', 'host', 'Anfitrión FC', null, crest);
+    r = hostReduce(r, { t: 'join', clientId: 'ana', name: 'Ana United', crest: { ...crest, primary: '#C8102E' } });
+    r = startGame(setLobby(r, { clubs: 4 }), 3);
+    expect(r.game!.players[0].crest).toEqual(crest);
+    expect(r.game!.players[1].crest!.primary).toBe('#C8102E');
+    // La IA recibe nombre y escudo, distintos de los de las personas.
+    expect(r.game!.players[2].crest).toBeDefined();
+    expect(new Set(r.game!.players.map((p) => p.name)).size).toBe(4);
+  });
+  it('descarta escudos mal formados que llegan por la red', () => {
+    const r = hostReduce(newRoom('BQWER', 'host', 'Anfitrión FC'), { t: 'join', clientId: 'eva', name: 'Eva', crest: { primary: 'javascript:' } as never });
+    expect(r.seats[1].crest).toBeUndefined();
+  });
+  it('los nombres de la IA son fijos para una sala', () => {
+    const r = setLobby(newRoom('ZXCVB', 'host', 'Anfitrión FC'), { clubs: 5 });
+    expect(finalSeats(r)).toEqual(finalSeats(r));
   });
 });

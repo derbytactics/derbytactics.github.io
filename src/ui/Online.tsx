@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { HostCard, backendEnabled, getAccount, refreshProfile, rpc } from '../account/api';
 import { useAccount } from '../account/useAccount';
-import { CONFIG, SeasonLength, standings } from '../engine';
+import { CONFIG, CrestDesign, SeasonLength, standings } from '../engine';
 import { RoomState, botStep, finalSeats, hostAct, hostReady, pendingReady, playTurnForAbsent, setLobby, startGame } from '../net/room';
 import { GuestSession, HostSession } from '../net/session';
 import { deviceId } from '../net/storage';
@@ -39,7 +39,7 @@ function Seats({ room, mine }: { room: RoomState; mine: number }) {
         const seat = room.seats[i];
         return (
           <View key={i} style={[s.panel, s.row, { paddingVertical: 8, marginBottom: 8, borderStyle: seat ? 'solid' : 'dashed' }]}>
-            {seat ? <Crest name={seat.name} color={clubColor(i)} size={34} /> : <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: C.panelAlt }} />}
+            {seat ? <Crest name={seat.name} color={clubColor(i)} design={seat.crest} size={34} /> : <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: C.panelAlt }} />}
             <Text numberOfLines={1} style={{ flex: 1, marginLeft: 10, color: seat ? C.text : C.faint, fontWeight: '700', fontSize: 16 }}>
               {seat ? seat.name : 'Asiento libre'}
             </Text>
@@ -88,7 +88,7 @@ function Connecting({ text, error, onExit, children }: { text: string; error?: s
 
 // ---------------------------------------------------------------- Anfitrión
 
-export function OnlineHost(props: { name: string; resume: RoomState | null; onHelp: () => void; onExit: () => void }) {
+export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: RoomState | null; onHelp: () => void; onExit: () => void }) {
   const session = useRef<HostSession | null>(null);
   const [room, setRoom] = useState<RoomState | null>(props.resume);
   const [connected, setConnected] = useState(false);
@@ -106,7 +106,7 @@ export function OnlineHost(props: { name: string; resume: RoomState | null; onHe
       session.current = HostSession.resume(props.resume, l);
       if (!session.current) setError('No se ha podido reanudar la sala.');
     } else {
-      HostSession.create(deviceId(), props.name, getAccount().session?.user.id ?? null, l).then(
+      HostSession.create(deviceId(), props.name, getAccount().session?.user.id ?? null, l, props.crest).then(
         (s2) => {
           if (!alive) return s2.close(true);
           session.current = s2;
@@ -273,7 +273,7 @@ export function OnlineHost(props: { name: string; resume: RoomState | null; onHe
 
 // ---------------------------------------------------------------- Invitado
 
-export function OnlineGuest(props: { code: string; name: string; onHelp: () => void; onExit: () => void }) {
+export function OnlineGuest(props: { code: string; name: string; crest?: CrestDesign; onHelp: () => void; onExit: () => void }) {
   const session = useRef<GuestSession | null>(null);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [connected, setConnected] = useState(false);
@@ -313,7 +313,7 @@ export function OnlineGuest(props: { code: string; name: string; onHelp: () => v
         setRoom(r);
       },
       onStatus: (ok) => alive && setConnected(ok),
-    });
+    }, props.crest);
     const t = setTimeout(() => alive && setSlow(true), 8000);
     return () => {
       alive = false;

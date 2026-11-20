@@ -9,6 +9,7 @@ import {
   totalPips,
 } from './cards';
 import { CONFIG, SeasonLength, marketSize } from './config';
+import { CrestDesign, Identity, generateRoster, makeRand, randomCrest, sanitizeCrest } from './identity';
 import { nextRandom } from './rng';
 
 // ---------------------------------------------------------------- Tipos
@@ -49,6 +50,8 @@ export interface Player {
   lastSeen: number;
   /** Penaltis a favor conseguidos con cartas: jornada en la que se lanzan y rival que los encaja. */
   penalties?: { jornada: number; rival: number }[];
+  /** Escudo del club (las partidas antiguas no lo tienen). */
+  crest?: CrestDesign;
 }
 
 /** Una jugada de ataque: un club con atacantes en el número que ha salido. */
@@ -149,10 +152,14 @@ export interface GameState {
   log: LogEntry[];
   /** Contador de entradas de crónica escritas en toda la partida. */
   logSeq: number;
+  /** Identificador de la partida (para el historial). */
+  gameId?: string;
+  /** Nombre y rasgos de cada futbolista en esta partida: cambian en cada una. */
+  roster?: Record<string, Identity>;
 }
 
 export interface NewGameOptions {
-  players: { name: string; isBot: boolean }[];
+  players: { name: string; isBot: boolean; crest?: CrestDesign }[];
   season?: SeasonLength;
   seed?: number;
 }
@@ -195,6 +202,11 @@ function say(state: GameState, text: string, affects?: number[]) {
   state.log.push({ n: state.logSeq, jornada: state.jornada, text, ...(affects?.length ? { affects } : {}) });
   // La crónica viaja con el estado en las partidas en línea: se limita su tamaño.
   if (state.log.length > 150) state.log.splice(0, state.log.length - 150);
+}
+
+/** Nombre del futbolista en esta partida. */
+export function cardName(state: GameState, cardId: string): string {
+  return state.roster?.[cardId]?.name ?? footballer(cardId).name;
 }
 
 const freshTurn = (): TurnFlags => ({ signed: false, upgraded: false, boughtCard: false, cardsPlayed: 0, scout: false });
@@ -316,8 +328,13 @@ export function createGame(opts: NewGameOptions): GameState {
   if (n < CONFIG.minPlayers || n > CONFIG.maxPlayers) {
     throw new Error(`Futcards es para ${CONFIG.minPlayers}-${CONFIG.maxPlayers} jugadores.`);
   }
+  const seed = (opts.seed ?? Math.floor(Math.random() * 2 ** 31)) | 0;
+  // Identidades con un generador aparte: no cambian la secuencia aleatoria de las reglas.
+  const looks = makeRand(seed ^ 0x51ed270b);
   const state: GameState = {
-    seed: (opts.seed ?? Math.floor(Math.random() * 2 ** 31)) | 0,
+    seed,
+    gameId: `g${(seed >>> 0).toString(36)}${n}`,
+    roster: generateRoster(FOOTBALLERS.map((f) => f.id), seed),
     totalJornadas: CONFIG.seasonLengths[opts.season ?? 'estandar'],
     jornada: 1,
     phase: 'market',
@@ -336,6 +353,7 @@ export function createGame(opts: NewGameOptions): GameState {
       clubDayJornada: 0,
       subsidy: false,
       lastSeen: 0,
+      crest: sanitizeCrest(p.crest) ?? randomCrest(looks),
     })),
     turnOrder: [],
     turnIndex: 0,
@@ -483,7 +501,7 @@ export function apply(prev: GameState, action: Action): GameState {
       const refill = state.footballDeck.shift();
       if (refill) state.market[i] = refill;
       else state.market.splice(i, 1);
-      say(state, `${me.name} ficha a ${footballer(action.cardId).name} por ${price}M.`);
+      say(state, `${me.name} ficha a ${cardName(state, action.cardId)} por ${price}M.`);
       break;
     }
     case 'clause': {
@@ -495,7 +513,7 @@ export function apply(prev: GameState, action: Action): GameState {
       owner.squad = owner.squad.filter((e) => e !== entry);
       state.turn.signed = true;
       me.squad.push({ ...entry, shielded: false, noClauseUntil: J + CONFIG.transferProtection });
-      say(state, `¡Bombazo! ${me.name} paga la cláusula de ${footballer(action.cardId).name} (${cost}M) a ${owner.name}.`, [owner.id]);
+      say(state, `¡Bombazo! ${me.name} paga la cláusula de ${cardName(state, action.cardId)} (${cost}M) a ${owner.name}.`, [owner.id]);
       break;
     }
     case 'sell': {
@@ -503,14 +521,14 @@ export function apply(prev: GameState, action: Action): GameState {
       me.squad = me.squad.filter((e) => e.cardId !== action.cardId);
       me.money += value;
       state.footballDeck.push(action.cardId);
-      say(state, `${me.name} traspasa a ${footballer(action.cardId).name} por ${value}M.`);
+      say(state, `${me.name} traspasa a ${cardName(state, action.cardId)} por ${value}M.`);
       break;
     }
     case 'shield': {
       const cost = shieldCost(action.cardId);
       me.money -= cost;
       findEntry(me, action.cardId)!.shielded = true;
-      say(state, `${me.name} blinda a ${footballer(action.cardId).name} (${cost}M).`);
+      say(state, `${me.name} blinda a ${cardName(state, action.cardId)} (${cost}M).`);
       break;
     }
     case 'upgradeStadium': {
@@ -608,20 +626,20 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
       break;
     case 'lesion':
       theirs!.outUntil = J + S.injuryRounds - 1;
-      say(state, `${footballer(theirs!.cardId).name} (${rival!.name}) se lesiona: ${S.injuryRounds} jornadas de baja.`, [rival!.id]);
+      say(state, `${cardName(state, theirs!.cardId)} (${rival!.name}) se lesiona: ${S.injuryRounds} jornadas de baja.`, [rival!.id]);
       break;
     case 'amarilla':
       if (isBooked(theirs!, J)) {
         theirs!.outUntil = Math.max(theirs!.outUntil, J);
-        say(state, `Segunda amarilla a ${footballer(theirs!.cardId).name} (${rival!.name}): expulsado esta jornada.`, [rival!.id]);
+        say(state, `Segunda amarilla a ${cardName(state, theirs!.cardId)} (${rival!.name}): expulsado esta jornada.`, [rival!.id]);
       } else {
         theirs!.yellowUntil = J;
-        say(state, `Amarilla a ${footballer(theirs!.cardId).name} (${rival!.name}): juega esta jornada con menos fuerza.`, [rival!.id]);
+        say(state, `Amarilla a ${cardName(state, theirs!.cardId)} (${rival!.name}): juega esta jornada con menos fuerza.`, [rival!.id]);
       }
       break;
     case 'roja':
       theirs!.outUntil = J + S.redCardRounds - 1;
-      say(state, `Roja a ${footballer(theirs!.cardId).name} (${rival!.name}): expulsado esta jornada y la siguiente.`, [rival!.id]);
+      say(state, `Roja a ${cardName(state, theirs!.cardId)} (${rival!.name}): expulsado esta jornada y la siguiente.`, [rival!.id]);
       break;
     case 'penalti':
       me.penalties = [...(me.penalties ?? []).filter((x) => x.jornada >= J), { jornada: J, rival: rival!.id }];
@@ -629,15 +647,15 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
       break;
     case 'racha':
       own!.streakUntil = J + S.streakRounds - 1;
-      say(state, `${footballer(own!.cardId).name} (${me.name}) está en racha: doble fuerza ${S.streakRounds} jornadas.`);
+      say(state, `${cardName(state, own!.cardId)} (${me.name}) está en racha: doble fuerza ${S.streakRounds} jornadas.`);
       break;
     case 'olfato':
       own!.extra = { number: card.value!, until: J + S.extraNumberRounds - 1 };
-      say(state, `${footballer(own!.cardId).name} (${me.name}) también actúa con el ${card.value} durante ${S.extraNumberRounds} jornadas.`);
+      say(state, `${cardName(state, own!.cardId)} (${me.name}) también actúa con el ${card.value} durante ${S.extraNumberRounds} jornadas.`);
       break;
     case 'cantera':
       own!.noClauseUntil = Math.max(own!.noClauseUntil, J + S.academyRounds);
-      say(state, `${footballer(own!.cardId).name} es de la cantera de ${me.name}: intransferible ${S.academyRounds} jornadas.`);
+      say(state, `${cardName(state, own!.cardId)} es de la cantera de ${me.name}: intransferible ${S.academyRounds} jornadas.`);
       break;
     case 'patrocinador':
       me.money += S.sponsor;

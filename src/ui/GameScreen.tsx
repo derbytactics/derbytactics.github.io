@@ -162,7 +162,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
 
       <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
         <View style={s.row}>
-          <Crest name={me.name} color={color} size={46} />
+          <Crest name={me.name} color={color} design={me.crest} size={46} />
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Overline>TE TOCA</Overline>
             <Text numberOfLines={1} style={s.h1}>{me.name}</Text>
@@ -292,7 +292,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
             {rivals.map((r) => (
               <View key={r.id} style={{ marginBottom: 14 }}>
                 <View style={[s.row, { marginBottom: 8 }]}>
-                  <Crest name={r.name} color={clubColor(r.id)} size={30} />
+                  <Crest name={r.name} color={clubColor(r.id)} design={r.crest} size={30} />
                   <View style={{ marginLeft: 8, flex: 1 }}>
                     <Text style={[s.h2, { marginBottom: 0 }]}>{r.name}</Text>
                     <Text style={{ color: C.dim, fontSize: 12 }}>
@@ -330,7 +330,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
                 {pendingTarget === 'rival'
                   ? rivals.map((r) => (
                       <Pressable key={r.id} onPress={() => act({ type: 'playCard', handIndex: pending!, targetPlayerId: r.id })} style={[s.row, { borderWidth: 1, borderColor: C.line, borderRadius: 10, padding: 10, marginBottom: 8 }]}>
-                        <Crest name={r.name} color={clubColor(r.id)} size={28} />
+                        <Crest name={r.name} color={clubColor(r.id)} design={r.crest} size={28} />
                         <Text style={{ color: C.text, fontWeight: '700', marginLeft: 8, flex: 1 }}>{r.name}</Text>
                         <Text style={{ color: C.dim }}>{r.points} pts · {r.money}M</Text>
                       </Pressable>

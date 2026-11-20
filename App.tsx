@@ -4,17 +4,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, View } from 'react-native';
 import { backendEnabled, getAccount, initAccount, refreshProfile } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
-import { Action, BOT_STYLES, GameState, apply, botAction, check, createGame, currentPlayer } from './src/engine';
+import { Action, BOT_STYLES, CrestDesign, GameState, apply, botAction, check, createGame, currentPlayer } from './src/engine';
 import { RoomState } from './src/net/room';
 import { GUEST_KEY, HOST_KEY, normalizeCode } from './src/net/session';
 import { hydrateStorage, load, remove, save } from './src/net/storage';
 import { AccountScreen, formatDate } from './src/ui/AccountScreen';
+import { reloadClub, useMyClub } from './src/ui/club';
+import { ClubScreen } from './src/ui/ClubScreen';
 import { ErrorBoundary, installGlobalErrorHandlers } from './src/ui/ErrorBoundary';
 import { GameView } from './src/ui/GameView';
 import { HelpScreen } from './src/ui/HelpScreen';
+import { HistoryScreen } from './src/ui/HistoryScreen';
 import { LegalScreen, LegalTab } from './src/ui/LegalScreen';
 import { OnlineGuest, OnlineHost } from './src/ui/Online';
 import { SetupScreen } from './src/ui/SetupScreen';
+import { SideMenu } from './src/ui/SideMenu';
 import { WelcomeScreen } from './src/ui/WelcomeScreen';
 import { NavContext } from './src/ui/components';
 import { C, TOP_INSET } from './src/ui/theme';
@@ -22,8 +26,8 @@ import { C, TOP_INSET } from './src/ui/theme';
 type Mode =
   | { kind: 'menu' }
   | { kind: 'local' }
-  | { kind: 'host'; name: string; resume: RoomState | null }
-  | { kind: 'guest'; code: string; name: string };
+  | { kind: 'host'; name: string; crest?: CrestDesign; resume: RoomState | null }
+  | { kind: 'guest'; code: string; name: string; crest?: CrestDesign };
 
 /** Partida de un solo dispositivo guardada para poder continuarla. */
 const LOCAL_KEY = 'futcards.local.v3';
@@ -47,11 +51,16 @@ export default function App() {
   /** Ha elegido jugar sin cuenta en esta visita. */
   const [guest, setGuest] = useState(false);
   const [legal, setLegal] = useState<LegalTab | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [clubOpen, setClubOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const club = useMyClub();
   /** En la app nativa hay que cargar lo guardado antes de pintar nada. */
   const [booted, setBooted] = useState(Platform.OS === 'web');
   const account = useAccount();
   useEffect(() => {
     hydrateStorage(Platform.OS === 'web' ? null : AsyncStorage)
+      .then(() => reloadClub())
       .then(() => initAccount())
       .then(() => getAccount().recovering && setAccountOpen(true))
       .finally(() => setBooted(true));
@@ -103,11 +112,14 @@ export default function App() {
   } else if (backendEnabled() && !account.session && !guest && mode.kind === 'menu') {
     body = <WelcomeScreen onGuest={() => setGuest(true)} startWithLogin={!!account.linkError} />;
   } else if (mode.kind === 'host') {
-    body = <OnlineHost name={mode.name} resume={mode.resume} onHelp={onHelp} onExit={toMenu} />;
+    body = <OnlineHost name={mode.name} crest={mode.crest} resume={mode.resume} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'guest') {
-    body = <OnlineGuest code={mode.code} name={mode.name} onHelp={onHelp} onExit={toMenu} />;
+    body = <OnlineGuest code={mode.code} name={mode.name} crest={mode.crest} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'local' && game) {
     body = <GameView game={game} seat={null} dispatch={dispatch} onHelp={onHelp} onExit={toMenu} exitText="La partida queda guardada en este dispositivo: podrás continuarla desde el menú." />;
+  } else if (!club) {
+    // Cada persona tiene un club: se crea antes de jugar la primera vez.
+    body = <ClubScreen first initial={null} onClose={() => {}} />;
   } else {
     const savedHost = load<RoomState>(HOST_KEY);
     const savedGuest = load<{ code: string; name: string }>(GUEST_KEY);
@@ -125,12 +137,13 @@ export default function App() {
           setGame(savedLocal);
           setMode({ kind: 'local' });
         }}
-        onHost={(name) => setMode({ kind: 'host', name, resume: null })}
-        onJoin={(code, name) => setMode({ kind: 'guest', code, name })}
+        club={club}
+        onEditClub={() => setClubOpen(true)}
+        onHost={() => setMode({ kind: 'host', name: club.name, crest: club.crest, resume: null })}
+        onJoin={(code) => setMode({ kind: 'guest', code, name: club.name, crest: club.crest })}
         resumeCode={savedHost?.code ?? null}
-        onResume={() => savedHost && setMode({ kind: 'host', name: savedHost.seats[0].name, resume: savedHost })}
+        onResume={() => savedHost && setMode({ kind: 'host', name: savedHost.seats[0].name, crest: savedHost.seats[0].crest, resume: savedHost })}
         initialCode={codeFromLink() || savedGuest?.code || ''}
-        initialName={savedGuest?.name ?? savedHost?.seats[0].name ?? account.profile?.username ?? ''}
         accountsOn={backendEnabled()}
         hostGate={async () => {
           if (!backendEnabled()) return null;
@@ -146,12 +159,22 @@ export default function App() {
   }
 
   return (
-    <NavContext.Provider value={{ onHelp, onAccount: () => setAccountOpen(true), onLegal: setLegal }}>
+    <NavContext.Provider value={{ onHelp, onAccount: () => setAccountOpen(true), onMenu: () => setMenuOpen(true), onLegal: setLegal }}>
     <ErrorBoundary onReset={toMenu}>
     <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: TOP_INSET }}>
       <View style={{ flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' }}>
         {body}
-        {/* La ayuda se superpone: así no se corta la conexión de una partida en línea. */}
+        {/* Menú, club, historial y ayuda se superponen: así no se corta la conexión de una partida en línea. */}
+        {clubOpen && club ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
+            <ClubScreen initial={club} inGame={mode.kind !== 'menu'} onClose={() => setClubOpen(false)} />
+          </View>
+        ) : null}
+        {historyOpen ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
+            <HistoryScreen onClose={() => setHistoryOpen(false)} />
+          </View>
+        ) : null}
         {accountOpen ? (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
             <AccountScreen onClose={() => setAccountOpen(false)} />
@@ -166,6 +189,16 @@ export default function App() {
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
             <LegalScreen initial={legal} onClose={() => setLegal(null)} />
           </View>
+        ) : null}
+        {menuOpen ? (
+          <SideMenu
+            onClose={() => setMenuOpen(false)}
+            onClub={() => setClubOpen(true)}
+            onHistory={() => setHistoryOpen(true)}
+            onAccount={() => setAccountOpen(true)}
+            onHelp={onHelp}
+            onLegal={setLegal}
+          />
         ) : null}
       </View>
       <StatusBar style="light" />

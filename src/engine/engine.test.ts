@@ -3,7 +3,12 @@ import {
   Action,
   BOT_STYLES,
   CONFIG,
+  ETHNICITIES,
   FOOTBALLERS,
+  cardName,
+  makeRand,
+  randomClubName,
+  sanitizeCrest,
   GameState,
   SPECIAL_CARDS,
   apply,
@@ -354,5 +359,54 @@ describe('partidas completas de bots', () => {
       return s.players.map((p) => [p.points, p.goals, p.against, p.money]);
     };
     expect(run()).toEqual(run());
+  });
+});
+
+describe('identidades', () => {
+  const opts = (seed: number) => ({ players: [{ name: 'Mi Club', isBot: false }, { name: 'Rival', isBot: true }], seed });
+
+  it('los nombres de los futbolistas cambian en cada partida, sin repetirse dentro de una', () => {
+    const a = createGame(opts(1));
+    const b = createGame(opts(2));
+    const names = FOOTBALLERS.map((f) => cardName(a, f.id));
+    expect(new Set(names).size).toBe(FOOTBALLERS.length);
+    expect(FOOTBALLERS.filter((f) => cardName(a, f.id) === cardName(b, f.id)).length).toBeLessThan(10);
+    // Misma semilla, mismos nombres.
+    expect(createGame(opts(1)).roster).toEqual(a.roster);
+  });
+
+  it('hay futbolistas de todas las procedencias', () => {
+    const g = createGame({ ...opts(3), players: opts(3).players });
+    const seen = new Set(Object.values(g.roster!).map((x) => x.eth));
+    for (const e of ETHNICITIES) expect(seen.has(e)).toBe(true);
+  });
+
+  it('las identidades no cambian la secuencia aleatoria de las reglas', () => {
+    const g = createGame(opts(7));
+    const { roster, gameId, ...rest } = g;
+    expect(roster).toBeDefined();
+    expect(gameId).toBeDefined();
+    expect(rest.seed).toBe(createGame(opts(7)).seed);
+  });
+
+  it('cada club lleva su escudo; los que no traen uno reciben uno al azar', () => {
+    const crest = { shape: 2, pattern: 1, emblem: 3, primary: '#C8102E', secondary: '#F4F1E8' };
+    const g = createGame({ players: [{ name: 'Mi Club', isBot: false, crest }, { name: 'Rival', isBot: true }], seed: 4 });
+    expect(g.players[0].crest).toEqual(crest);
+    expect(sanitizeCrest(g.players[1].crest)).toEqual(g.players[1].crest);
+  });
+
+  it('descarta escudos mal formados', () => {
+    expect(sanitizeCrest({ shape: 1, pattern: 1, emblem: 1, primary: 'red', secondary: '#000000' })).toBeUndefined();
+    expect(sanitizeCrest({ shape: 99, pattern: -1, emblem: 1.5, primary: '#FFFFFF', secondary: '#000000' })).toEqual({ shape: 0, pattern: 0, emblem: 0, primary: '#FFFFFF', secondary: '#000000' });
+    expect(sanitizeCrest(null)).toBeUndefined();
+  });
+
+  it('los nombres de club al azar no repiten los ya usados', () => {
+    const r = makeRand(9);
+    const taken: string[] = [];
+    for (let i = 0; i < 8; i++) taken.push(randomClubName(r, taken));
+    expect(new Set(taken).size).toBe(8);
+    expect(taken.every((n) => n.length <= 20)).toBe(true);
   });
 });

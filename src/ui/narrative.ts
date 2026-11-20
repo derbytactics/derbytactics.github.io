@@ -2,7 +2,10 @@
  * Crónica de cada tirada, contada desde el punto de vista de un club (o neutral).
  * Devuelve las noticias en el orden en que deben aparecer, una a una.
  */
-import { GameState, Play, RollReport, activeNumbers, footballer, isOut } from '../engine';
+import { GameState, Play, RollReport, activeNumbers, cardName, footballer, isOut } from '../engine';
+
+/** Futbolista con el nombre que lleva en esta partida. */
+const fb = (state: GameState, id: string) => ({ ...footballer(id), name: cardName(state, id) });
 
 export type NewsKind = 'attack' | 'goal' | 'stopped' | 'concede' | 'save' | 'info' | 'var' | 'card';
 
@@ -52,9 +55,9 @@ const NOTHING = [
 const VAR = ['El árbitro se lleva la mano al pinganillo: revisión del VAR. No hay jugada.', 'Parón por el VAR. Nadie ataca en esta tirada.', 'El VAR detiene el partido. En esta tirada no hay jugada.'];
 
 /** Describe cómo se arma una jugada de ataque según quién participa. */
-function buildUp(play: Play, pick: ReturnType<typeof picker>): { title: string; text: string } {
-  const mids = play.cards.filter((id) => footballer(id).position === 'MED').map((id) => footballer(id).name);
-  const fwds = play.cards.filter((id) => footballer(id).position === 'DEL').map((id) => footballer(id).name);
+function buildUp(state: GameState, play: Play, pick: ReturnType<typeof picker>): { title: string; text: string } {
+  const mids = play.cards.filter((id) => footballer(id).position === 'MED').map((id) => cardName(state, id));
+  const fwds = play.cards.filter((id) => footballer(id).position === 'DEL').map((id) => cardName(state, id));
   const midsMany = mids.length > 1;
   if (fwds.length === 0) {
     return { title: 'Disparo lejano', text: midsMany ? `${list(mids)} combinan en la frontal y disparan desde lejos.` : `${mids[0]} ${pick(LONG_SHOT)}.` };
@@ -70,7 +73,7 @@ function buildUp(play: Play, pick: ReturnType<typeof picker>): { title: string; 
 /** Quién defiende en un club con un número: su portero (si lo tiene ahí) y sus defensas. */
 function defenders(state: GameState, clubId: number, n: number) {
   const J = state.jornada;
-  const active = state.players[clubId].squad.filter((e) => !isOut(e, J) && activeNumbers(e, J).includes(n)).map((e) => footballer(e.cardId));
+  const active = state.players[clubId].squad.filter((e) => !isOut(e, J) && activeNumbers(e, J).includes(n)).map((e) => fb(state, e.cardId));
   return {
     keeper: active.find((f) => f.position === 'POR') ?? null,
     backs: active.filter((f) => f.position === 'DEF'),
@@ -80,7 +83,7 @@ function defenders(state: GameState, clubId: number, n: number) {
 /** Jugada contada en tercera persona, para quien no participa. */
 function neutral(state: GameState, sum: number, play: Play, pick: ReturnType<typeof picker>): News {
   const name = (id: number) => state.players[id].name;
-  const b = buildUp(play, pick);
+  const b = buildUp(state, play, pick);
   const parts = [b.text];
   if (play.scored.length) parts.push(`Gol a ${list(play.scored.map(name))}.`);
   if (play.stopped.length) parts.push(`${list(play.stopped.map((x) => name(x.playerId)))} lo ${play.stopped.length > 1 ? 'paran' : 'para'}.`);
@@ -120,14 +123,14 @@ export function rollNews(state: GameState, roll: RollReport, seed: number, viewe
 
   // 1. Lo que te llega: primero lo que encajas y luego lo que paras.
   for (const pl of conceded) {
-    const b = buildUp(pl, pick);
+    const b = buildUp(state, pl, pick);
     const why = mineDef.keeper || mineDef.backs.length ? `Tu defensa con el ${n} no basta contra un ataque de fuerza ${pl.power}.` : `No tienes a nadie que defienda el ${n}.`;
     out.push({ kind: 'concede', title: pick(CONCEDE_TITLE), text: `${name(pl.playerId)}: ${b.text} ${why}`, cards: pl.cards, club: pl.playerId });
   }
-  let lastHero: ReturnType<typeof footballer> | null = null;
+  let lastHero: ReturnType<typeof fb> | null = null;
   for (const pl of saved) {
     const st = pl.stopped.find((x) => x.playerId === viewer)!;
-    const b = buildUp(pl, pick);
+    const b = buildUp(state, pl, pick);
     const hero = st.keeper && mineDef.keeper ? mineDef.keeper : mineDef.backs[0] ?? mineDef.keeper;
     lastHero = hero ?? lastHero;
     const action = hero?.position === 'POR' ? pick(KEEPER_SAVE) : pick(DEF_STOP);
@@ -142,10 +145,10 @@ export function rollNews(state: GameState, roll: RollReport, seed: number, viewe
 
   // 2. Tu ataque. Si vienes de parar, la jugada nace de esa recuperación; si vienes de encajar, del saque de centro.
   if (mine) {
-    let b = buildUp(mine, pick);
+    let b = buildUp(state, mine, pick);
     if (lastHero && !conceded.length) {
-      const mids = mine.cards.filter((id) => footballer(id).position === 'MED').map((id) => footballer(id).name);
-      const fwds = mine.cards.filter((id) => footballer(id).position === 'DEL').map((id) => footballer(id).name);
+      const mids = mine.cards.filter((id) => footballer(id).position === 'MED').map((id) => cardName(state, id));
+      const fwds = mine.cards.filter((id) => footballer(id).position === 'DEL').map((id) => cardName(state, id));
       const outlet = `${lastHero.name} ${lastHero.position === 'POR' ? pick(OUTLET_KEEPER) : pick(OUTLET_BACK)}`;
       // Con varios medios se cuenta en plural para que la frase concuerde.
       const many = mids.length > 1;

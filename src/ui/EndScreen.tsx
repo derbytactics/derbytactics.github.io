@@ -27,7 +27,7 @@ export function EndScreen({ state, onRestart, extra }: { state: GameState; onRes
           const pos = table.indexOf(p) + 1;
           return (
             <View key={p.id} style={{ alignItems: 'center', width: 96 }}>
-              <Crest name={p.name} color={clubColor(p.id)} size={pos === 1 ? 52 : 40} />
+              <Crest name={p.name} color={clubColor(p.id)} design={p.crest} size={pos === 1 ? 52 : 40} />
               <Text numberOfLines={1} style={{ color: C.text, fontWeight: '800', fontSize: 12, marginVertical: 4 }}>{p.name}</Text>
               <View style={{ width: '100%', height: heights.get(p.id), backgroundColor: pos === 1 ? C.accent : C.panelAlt, borderTopLeftRadius: 10, borderTopRightRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ color: pos === 1 ? C.accentText : C.text, fontSize: 26, fontWeight: '900' }}>{pos}</Text>

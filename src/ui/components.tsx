@@ -6,6 +6,7 @@ import {
   SquadEntry,
   activeNumbers,
   basePrice,
+  cardName,
   footballer,
   isBooked,
   isOut,
@@ -17,7 +18,8 @@ import {
   tierForPrice,
 } from '../engine';
 import { useAccount } from '../account/useAccount';
-import { Avatar, Crest, UserAvatar } from './art';
+import { Avatar, Crest } from './art';
+import { useMyClub } from './club';
 import { isMuted, setMuted, soundAvailable } from './sound';
 import { C, NATIVE_DRIVER, POS_COLOR, TIER_COLOR, clubColor } from './theme';
 
@@ -83,6 +85,8 @@ export function Overline({ children }: { children: React.ReactNode }) {
 /** Carta de futbolista. Con `entry` muestra además su estado en la plantilla. */
 export function FootballerCard(props: { cardId: string; entry?: SquadEntry; state?: GameState; owner?: Player; children?: React.ReactNode }) {
   const f = footballer(props.cardId);
+  const roster = React.useContext(RosterContext);
+  const who = props.state?.roster?.[f.id] ?? roster?.[f.id];
   const J = props.state?.jornada ?? 0;
   const e = props.entry;
   const nums = e ? activeNumbers(e, J) : f.numbers;
@@ -96,14 +100,14 @@ export function FootballerCard(props: { cardId: string; entry?: SquadEntry; stat
       <View style={[s.cardBand, { backgroundColor: tint }]} />
       <View style={[s.row, { padding: 12, opacity: out ? 0.6 : 1 }]}>
         <View>
-          <Avatar seed={f.id} size={58} jersey={props.owner ? clubColor(props.owner.id) : '#7C8F84'} ring={tint} />
+          <Avatar seed={f.id} who={who} size={58} jersey={props.owner ? clubColor(props.owner.id) : '#7C8F84'} ring={tint} />
           <View style={[s.posBadge, { backgroundColor: pos }]}>
             <Text style={s.posText}>{f.position}</Text>
           </View>
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={[s.tier, { color: tint }]}>{tier.toUpperCase()}</Text>
-          <Text numberOfLines={1} style={s.cardName}>{f.name}</Text>
+          <Text numberOfLines={1} style={s.cardName}>{who?.name ?? f.name}</Text>
           <View style={[s.row, { marginTop: 3 }]}>
             {role.attack > 0 ? <Text style={[s.power, { color: POS_COLOR.DEL }]}>⚔ Ataque {role.attack}</Text> : null}
             {role.defense > 0 ? <Text style={[s.power, { color: POS_COLOR.DEF }]}>🛡 Defensa {role.defense}</Text> : null}
@@ -163,28 +167,44 @@ export function Popup(props: { icon?: React.ReactNode; overline: string; title: 
   );
 }
 
+/** Nombres y caras de los futbolistas de la partida en curso. */
+export const RosterContext = React.createContext<GameState['roster']>(undefined);
+
+/** Nombre de un futbolista en la partida en curso. */
+export function useCardName(cardId: string): string {
+  const roster = React.useContext(RosterContext);
+  return roster?.[cardId]?.name ?? footballer(cardId).name;
+}
+
 /** Acciones de la barra de navegación; las pone App. */
-export const NavContext = React.createContext<{ onHelp: () => void; onAccount: () => void; onLegal: (tab: 'privacidad' | 'condiciones') => void }>({
+export const NavContext = React.createContext<{ onHelp: () => void; onAccount: () => void; onMenu: () => void; onLegal: (tab: 'privacidad' | 'condiciones') => void }>({
   onHelp: () => {},
   onAccount: () => {},
+  onMenu: () => {},
   onLegal: () => {},
 });
 
-/** Barra superior: avatar (abre tu cuenta), nombre del juego, jornada y ayuda. */
+/** Barra superior: menú lateral con tu club, nombre del juego, jornada y ayuda. */
 export function NavBar({ subtitle }: { subtitle?: string }) {
   const nav = React.useContext(NavContext);
-  const { avatar, profile } = useAccount();
+  const { profile } = useAccount();
+  const club = useMyClub();
   const [muted, setMute] = React.useState(isMuted());
   return (
     <View style={s.navbar}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Tu cuenta y avatar" onPress={nav.onAccount} hitSlop={6}>
-        <UserAvatar id={avatar} size={38} />
+      <Pressable accessibilityRole="button" accessibilityLabel="Abrir el menú" onPress={nav.onMenu} hitSlop={6} style={[s.row, { gap: 8 }]}>
+        <View style={{ gap: 4, paddingVertical: 4 }}>
+          <View style={s.burger} />
+          <View style={s.burger} />
+          <View style={s.burger} />
+        </View>
+        {club ? <Crest name={club.name} color={club.crest.primary} design={club.crest} size={36} /> : null}
       </Pressable>
       <View style={{ flex: 1, marginLeft: 10 }}>
         <Text style={{ color: C.text, fontSize: 17, fontWeight: '900', letterSpacing: -0.3 }}>
           FUT<Text style={{ color: C.accent }}>CARDS</Text>
         </Text>
-        <Text numberOfLines={1} style={{ color: C.dim, fontSize: 12, fontWeight: '600' }}>{subtitle ?? profile?.username ?? 'Invitado'}</Text>
+        <Text numberOfLines={1} style={{ color: C.dim, fontSize: 12, fontWeight: '600' }}>{subtitle ?? club?.name ?? profile?.username ?? 'Invitado'}</Text>
       </View>
       {soundAvailable() ? (
         <Pressable
@@ -285,7 +305,7 @@ export function StandingsTable({ state, highlight }: { state: GameState; highlig
       {standings(state).map((p, i) => (
         <View key={p.id} style={[s.row, s.tr, p.id === highlight && { backgroundColor: C.panelAlt }]}>
           <Text style={{ color: C.faint, width: 20, fontWeight: '700' }}>{i + 1}</Text>
-          <Crest name={p.name} color={clubColor(p.id)} size={24} />
+          <Crest name={p.name} color={clubColor(p.id)} design={p.crest} size={24} />
           <Text numberOfLines={1} style={{ color: C.text, flex: 1, fontWeight: '700', marginLeft: 8 }}>
             {p.name}
             {p.isBot ? <Text style={{ color: C.faint, fontWeight: '500' }}> · IA</Text> : null}
@@ -318,6 +338,7 @@ export function Chronicle({ state, max = 25 }: { state: GameState; max?: number 
 
 export const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
+  burger: { width: 18, height: 2.5, borderRadius: 2, backgroundColor: C.text },
   navbar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#0A1E15', borderBottomWidth: 1, borderBottomColor: C.line },
   navHelp: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, borderColor: C.line, alignItems: 'center', justifyContent: 'center', backgroundColor: C.panel },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(3,10,7,0.86)', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 10 },

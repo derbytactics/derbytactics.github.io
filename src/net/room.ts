@@ -3,12 +3,14 @@
  * Los invitados mandan mensajes; el anfitrión los valida, aplica la acción
  * con el motor y difunde el estado completo de la sala.
  */
-import { Action, CONFIG, GameState, SeasonLength, apply, botAction, check, createGame, currentRoller, BOT_STYLES } from '../engine';
+import { Action, BOT_STYLES, CONFIG, CrestDesign, GameState, SeasonLength, apply, botAction, check, createGame, currentRoller, makeRand, randomClubName, sanitizeCrest } from '../engine';
 
 export interface Seat {
   name: string;
   /** Dispositivo que ocupa el asiento; null si lo lleva la IA. */
   clientId: string | null;
+  /** Escudo del club; los de la IA se eligen al empezar. */
+  crest?: CrestDesign;
 }
 
 export interface RoomState {
@@ -28,15 +30,21 @@ export interface RoomState {
 }
 
 export type ClientMsg =
-  | { t: 'join'; clientId: string; name: string }
+  | { t: 'join'; clientId: string; name: string; crest?: CrestDesign }
   | { t: 'leave'; clientId: string }
   | { t: 'act'; clientId: string; seq: number; action: Action }
   | { t: 'ready'; clientId: string; seq: number };
 
-const BOT_NAMES = ['Deportivo Norte', 'Racing Meseta', 'CF Bahía', 'Rayo Sur', 'Sporting Ribera', 'Unión Levante', 'Real Chamartín'];
+export function newRoom(code: string, hostId: string, hostName: string, hostUserId: string | null = null, hostCrest?: CrestDesign): RoomState {
+  const host: Seat = { name: hostName, clientId: hostId, ...(sanitizeCrest(hostCrest) ? { crest: sanitizeCrest(hostCrest) } : {}) };
+  return { v: 1, code, seq: 1, clubs: 4, season: 'estandar', seats: [host], game: null, ready: [], hostUserId, gameId: null };
+}
 
-export function newRoom(code: string, hostId: string, hostName: string, hostUserId: string | null = null): RoomState {
-  return { v: 1, code, seq: 1, clubs: 4, season: 'estandar', seats: [{ name: hostName, clientId: hostId }], game: null, ready: [], hostUserId, gameId: null };
+/** Semilla estable para una sala (los nombres de la IA no cambian entre llamadas). */
+function codeSeed(code: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < code.length; i++) h = Math.imul(h ^ code.charCodeAt(i), 16777619);
+  return h | 0;
 }
 
 export const seatOf = (room: RoomState, clientId: string) => room.seats.findIndex((s) => s.clientId === clientId);
@@ -58,13 +66,16 @@ export function hostReduce(room: RoomState, msg: ClientMsg): RoomState {
   const seat = seatOf(room, msg.clientId);
   switch (msg.t) {
     case 'join': {
+      const crest = sanitizeCrest(msg.crest);
       if (seat >= 0) {
-        // Reconexión: en la sala de espera puede corregir el nombre.
-        if (room.game || room.seats[seat].name === cleanName(msg.name, room.seats[seat].name)) return room;
-        return bump(room, { seats: room.seats.map((s, i) => (i === seat ? { ...s, name: cleanName(msg.name, s.name) } : s)) });
+        // Reconexión: en la sala de espera puede corregir el nombre y el escudo.
+        const cur = room.seats[seat];
+        const name = cleanName(msg.name, cur.name);
+        if (room.game || (cur.name === name && JSON.stringify(cur.crest) === JSON.stringify(crest ?? cur.crest))) return room;
+        return bump(room, { seats: room.seats.map((s, i) => (i === seat ? { ...s, name, ...(crest ? { crest } : {}) } : s)) });
       }
       if (room.game || room.seats.length >= room.clubs) return room;
-      return bump(room, { seats: [...room.seats, { name: cleanName(msg.name, `Club ${room.seats.length + 1}`), clientId: msg.clientId }] });
+      return bump(room, { seats: [...room.seats, { name: cleanName(msg.name, `Club ${room.seats.length + 1}`), clientId: msg.clientId, ...(crest ? { crest } : {}) }] });
     }
     case 'leave': {
       if (seat <= 0) return room;
@@ -102,10 +113,10 @@ export function setLobby(room: RoomState, patch: { clubs?: number; season?: Seas
 
 /** Asientos definitivos al empezar: los libres los ocupa la IA. */
 export function finalSeats(room: RoomState): Seat[] {
-  const used = new Set(room.seats.map((s) => s.name));
-  const bots = BOT_NAMES.filter((n) => !used.has(n));
+  // Nombres de la IA al azar, pero fijos para esta sala.
+  const r = makeRand(codeSeed(room.code));
   const seats = [...room.seats];
-  while (seats.length < room.clubs) seats.push({ name: bots.shift() ?? `Club ${seats.length + 1}`, clientId: null });
+  while (seats.length < room.clubs) seats.push({ name: randomClubName(r, seats.map((s) => s.name)), clientId: null });
   return seats;
 }
 
@@ -113,7 +124,7 @@ export function finalSeats(room: RoomState): Seat[] {
 export function startGame(room: RoomState, seed?: number, gameId: string | null = null): RoomState {
   if (room.game) return room;
   const seats = finalSeats(room);
-  const game = createGame({ players: seats.map((s) => ({ name: s.name, isBot: !s.clientId })), season: room.season, seed });
+  const game = createGame({ players: seats.map((s) => ({ name: s.name, isBot: !s.clientId, crest: s.crest })), season: room.season, seed });
   return bump(room, { seats, game, ready: [], gameId });
 }
 

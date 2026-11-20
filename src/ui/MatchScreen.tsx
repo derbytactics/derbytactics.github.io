@@ -3,7 +3,7 @@ import { Animated, Easing, ScrollView, Text, View } from 'react-native';
 import { GameState, MatchResult, RollReport, currentRoller, penaltiesOf, standings, ticketPerGoal } from '../engine';
 import { Avatar, Crest, Die } from './art';
 import { NumberLine, SpecialCardFace } from './GameScreen';
-import { Btn, FootballerCard, Overline, PhaseStepper, Pop, StandingsTable, s } from './components';
+import { Btn, FootballerCard, Overline, PhaseStepper, Pop, RosterContext, StandingsTable, s } from './components';
 import { News, NewsKind, rollNews, rollScore } from './narrative';
 import { Sfx, play } from './sound';
 import { Tip } from './Tip';
@@ -58,7 +58,7 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
   return (
     <View style={{ borderRadius: 16, borderWidth: 2, borderColor: color, backgroundColor: C.panel, marginBottom: 12, overflow: 'hidden' }}>
       <View style={[s.row, { backgroundColor: color + '33', padding: 12 }]}>
-        <Crest name={p.name} color={color} size={40} />
+        <Crest name={p.name} color={color} design={p.crest} size={40} />
         <View style={{ marginLeft: 10, flex: 1 }}>
           <Overline>{p.name.toUpperCase()}</Overline>
           <Text style={{ color: C.text, fontSize: 20, fontWeight: '900' }}>{headline}</Text>
@@ -104,6 +104,7 @@ const NEWS_STYLE: Record<NewsKind, { color: string; icon: string }> = {
 
 /** Una noticia de la tirada: aparece con una pequeña animación. */
 function NewsCard({ news, big }: { news: News; big: boolean }) {
+  const roster = React.useContext(RosterContext);
   const st = NEWS_STYLE[news.kind];
   const strong = news.kind === 'goal' || news.kind === 'concede' || news.kind === 'save';
   return (
@@ -114,7 +115,7 @@ function NewsCard({ news, big }: { news: News; big: boolean }) {
             <View style={[s.row, { marginRight: 10 }]}>
               {news.cards.slice(0, 2).map((id, i) => (
                 <View key={id} style={{ marginLeft: i ? -14 : 0 }}>
-                  <Avatar seed={id} size={big && strong ? 46 : 38} jersey={clubColor(news.club!)} ring={st.color} />
+                  <Avatar seed={id} who={roster?.[id]} size={big && strong ? 46 : 38} jersey={clubColor(news.club!)} ring={st.color} />
                 </View>
               ))}
             </View>
@@ -366,7 +367,7 @@ export function MatchScreen(props: {
             {report.results.map((r) => (
               <View key={r.playerId} style={[s.row, s.tr]}>
                 <Text style={{ color: C.faint, width: 20, fontWeight: '700' }}>{r.rank}</Text>
-                <Crest name={name(r.playerId)} color={clubColor(r.playerId)} size={24} />
+                <Crest name={name(r.playerId)} color={clubColor(r.playerId)} design={state.players[r.playerId].crest} size={24} />
                 <Text numberOfLines={1} style={{ color: C.text, flex: 1, fontWeight: '700', marginLeft: 8 }}>{name(r.playerId)}</Text>
                 <Text style={[s.td, { width: 50, color: C.text, fontWeight: '800' }]}>{r.goals}:{r.against}</Text>
                 <Text style={[s.td, { width: 52, color: C.accent, fontWeight: '900', fontSize: 15 }]}>+{r.points}</Text>
@@ -406,7 +407,7 @@ export function MatchScreen(props: {
             {state.players.filter((p) => isMine(p.id)).map((p) => (
               <View key={p.id} style={[s.panel, { borderColor: clubColor(p.id) + '88' }]}>
                 <View style={[s.row, { marginBottom: 8 }]}>
-                  <Crest name={p.name} color={clubColor(p.id)} size={24} />
+                  <Crest name={p.name} color={clubColor(p.id)} design={p.crest} size={24} />
                   <Text style={{ color: C.text, fontWeight: '800', marginLeft: 8, flex: 1 }}>{p.name}</Text>
                   <Overline>TUS NÚMEROS</Overline>
                 </View>
@@ -419,7 +420,7 @@ export function MatchScreen(props: {
             <View style={[s.row, { alignSelf: 'stretch' }]}>
               <Text style={[s.overline, { flex: 1 }]}>TIRADA {cur + 1} DE {total}</Text>
               <View style={s.row}>
-                <Crest name={name(rollers[cur])} color={clubColor(rollers[cur])} size={18} />
+                <Crest name={name(rollers[cur])} color={clubColor(rollers[cur])} design={state.players[rollers[cur]].crest} size={18} />
                 <Text style={[s.overline, { marginLeft: 6, color: C.dim }]}>TIRA {name(rollers[cur]).toUpperCase()}</Text>
               </View>
             </View>
@@ -455,7 +456,7 @@ export function MatchScreen(props: {
             iRoll ? (
               <>
                 <View style={[s.row, { justifyContent: 'center', marginBottom: 8 }]}>
-                  <Crest name={name(roller)} color={clubColor(roller)} size={22} />
+                  <Crest name={name(roller)} color={clubColor(roller)} design={state.players[roller].crest} size={22} />
                   <Text style={{ color: C.text, fontWeight: '800', marginLeft: 8 }}>
                     {roller === viewer ? (cur < 0 ? 'Abres tú el partido' : '¡Te toca tirar!') : `Turno de ${name(roller)}`}
                   </Text>
@@ -470,7 +471,7 @@ export function MatchScreen(props: {
             ) : (
               <>
                 <View style={[s.row, { justifyContent: 'center' }]}>
-                  <Crest name={name(roller)} color={clubColor(roller)} size={24} />
+                  <Crest name={name(roller)} color={clubColor(roller)} design={state.players[roller].crest} size={24} />
                   <Text style={{ color: C.text, fontWeight: '800', marginLeft: 8 }}>Esperando a que {name(roller)} tire los dados…</Text>
                 </View>
                 {props.waitingExtra}
@@ -486,7 +487,7 @@ export function MatchScreen(props: {
           ? state.players.filter((p) => isMine(p.id)).map((p) => (
               <View key={p.id} style={[s.panel, { borderColor: clubColor(p.id) + '66' }]}>
                 <View style={[s.row, { marginBottom: 8 }]}>
-                  <Crest name={p.name} color={clubColor(p.id)} size={20} />
+                  <Crest name={p.name} color={clubColor(p.id)} design={p.crest} size={20} />
                   <Text style={[s.overline, { flex: 1, marginLeft: 8 }]}>{viewer === null ? p.name.toUpperCase() : 'TUS NÚMEROS'}</Text>
                   {viewer !== null ? <Btn small kind="ghost" label={showCards ? 'Ocultar cartas' : 'Ver mis cartas'} onPress={() => setShowCards((x) => !x)} /> : null}
                 </View>
@@ -511,7 +512,7 @@ export function MatchScreen(props: {
             const sc = score(p.id);
             return (
               <View key={p.id} style={[s.row, { marginTop: 8, padding: 6, borderRadius: 10, backgroundColor: isMine(p.id) && viewer !== null ? clubColor(p.id) + '22' : 'transparent' }]}>
-                <Crest name={p.name} color={clubColor(p.id)} size={28} />
+                <Crest name={p.name} color={clubColor(p.id)} design={p.crest} size={28} />
                 <View style={{ flex: 1, marginLeft: 8 }}>
                   <Text numberOfLines={1} style={{ color: C.text, fontWeight: '700', fontSize: 13 }}>
                     {p.name}

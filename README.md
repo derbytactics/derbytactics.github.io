@@ -15,15 +15,17 @@ Eres el presidente de un club recién ascendido. Con 80M en caja tienes que mont
 - **Multijugador en línea:** cada persona desde su móvil, con salas por código o enlace de invitación.
 - Partida en un solo dispositivo: varias personas pasándoselo y/o rivales controlados por IA (cuatro tácticas).
 - Mercado de fichajes, cláusulas, blindajes, ampliación de estadio, 43 cartas especiales, recuento de goles y reparto por posición cada jornada.
-- Ilustraciones vectoriales generadas por código (retratos, escudos, dados, estadio) y guía de pasos en pantalla.
+- **Tu club:** cada persona funda un único club (nombre y escudo a medida: forma, dibujo, emblema y colores) que se guarda en el dispositivo y la acompaña a todas sus partidas. Desde el menú lateral se cambia el nombre o el escudo y se consulta el historial de temporadas terminadas.
+- Futbolistas con nombres y caras nuevos en cada partida, de todas las procedencias (`src/engine/identity.ts`). Los rivales de la IA también reciben nombre y escudo al azar.
+- Ilustraciones vectoriales generadas por código (retratos con volumen, escudos, dados, estadio) y guía de pasos en pantalla.
 - Motor de reglas independiente de la interfaz (`src/engine`), determinista y con tests.
 - Simulador de partidas entre bots para medir el equilibrio (`npm run simulate`).
 
 ## Jugar en línea con amigos
 
-1. Una persona abre el juego, elige **En línea**, escribe el nombre de su club y pulsa **Crear una sala**.
+1. Una persona abre el juego, elige **En línea** y pulsa **Crear una sala**: juega con su club.
 2. Comparte el código de 5 letras o el enlace de invitación.
-3. Los demás abren el enlace (o eligen **En línea** y escriben el código) y ponen nombre a su club.
+3. Los demás abren el enlace (o eligen **En línea** y escriben el código) y entran con su club.
 4. El anfitrión elige cuántos clubes hay y pulsa **Empezar**. Los asientos libres los lleva la IA.
 
 Cómo funciona y qué límites tiene:
