@@ -67,7 +67,9 @@ En [Certificates, Identifiers & Profiles](https://developer.apple.com/account/re
 4. Genera la clave secreta con la herramienta de la [guía de Supabase para Apple](https://supabase.com/docs/guides/auth/social-sign-in/auth-apple), en Chrome o Firefox (en Safari no funciona). La clave no sale del navegador.
 5. En Supabase → **Authentication → Sign In / Providers → Apple**: en *Client IDs* pon el **Services ID** en primer lugar; en *Secret Key*, la clave generada. Actívalo.
 
-**Importante: la clave secreta de Apple caduca a los 6 meses.** Pon un recordatorio para generar otra con el mismo `.p8` y pegarla en Supabase. Si caduca, nadie podrá entrar con Apple hasta que la renueves (el resto del juego sigue funcionando).
+**En iPhone, Apple entra de forma nativa** (ventana del sistema, sin web). Para que Supabase acepte esos accesos, en *Client IDs* añade también el App ID detrás del Services ID, separados por coma: `com.derbytactics.web,com.derbytactics.app` (con tu Services ID real primero). En Android, Apple sigue entrando por la web.
+
+**Importante: la clave secreta de Apple caduca a los 6 meses.** Solo afecta a la web y a Android: en iPhone el acceso nativo no la usa. Pon un recordatorio para generar otra con el mismo `.p8` y pegarla en Supabase. Si caduca, nadie podrá entrar con Apple hasta que la renueves (el resto del juego sigue funcionando).
 
 Apple puede dar un correo anónimo de reenvío (`…@privaterelay.appleid.com`) si el usuario elige ocultar el suyo. Es normal.
 
