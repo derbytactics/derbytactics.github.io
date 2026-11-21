@@ -51,7 +51,6 @@ export function SetupScreen(props: {
   const [season, setSeason] = useState<SeasonLength>('estandar');
   const [league, setLeague] = useState<League>('masculina');
   const [rivals, setRivals] = useState(() => randomRivals(club.name));
-  const [options, setOptions] = useState(false);
   const patch = (i: number, p: Partial<Rival>) => setRivals((all) => all.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const reroll = (i: number) =>
     patch(i, { name: randomClubName(rnd, [club.name, ...rivals.filter((_, j) => j !== i).map((r) => r.name)]), crest: randomCrest(rnd) });
@@ -67,13 +66,11 @@ export function SetupScreen(props: {
   );
 
   const humans = 1 + rivals.slice(0, count - 1).filter((r) => !r.isBot).length;
-  const seasonInfo = SEASONS.find((x) => x.key === season)!;
   const start = () =>
     onStart({ players: [{ name: club.name, isBot: false, crest: club.crest }, ...rivals.slice(0, count - 1).map((r, i) => ({ ...r, name: r.name.trim() || `Club ${i + 2}` }))], season, league });
   // «Atrás» en Android: vuelve a jugar aquí o pliega las opciones antes de salir de la app.
   useBack(() => {
     if (mode === 'online') return setMode('local'), true;
-    if (options) return setOptions(false), true;
     return false;
   });
 
@@ -152,29 +149,7 @@ export function SetupScreen(props: {
           ) : null}
           {myClubCard}
 
-          <Btn
-            kind={props.savedLocal ? 'ghost' : 'primary'}
-            icon={I.ball}
-            label={humans > 1 ? 'Empezar la partida' : 'Jugar contra la IA'}
-            onPress={start}
-            style={{ paddingVertical: 16 }}
-          />
-          {props.savedLocal ? <Text style={[s.p, { fontSize: 13, marginTop: 6, textAlign: 'center' }]}>Empezar una nueva sustituye a la partida a medias.</Text> : null}
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded: options }}
-            onPress={() => setOptions((x) => !x)}
-            style={[s.row, { minHeight: 48, marginTop: 8, marginBottom: 8, justifyContent: 'center' }]}
-          >
-            <Text style={{ color: C.dim, fontWeight: '700', fontSize: 14 }}>
-              {count} clubes · {league} · {seasonInfo.note}
-            </Text>
-            <Text style={{ color: C.accent, fontWeight: '800', fontSize: 14, marginLeft: 8 }}>{options ? 'Ocultar ▴' : 'Cambiar ▾'}</Text>
-          </Pressable>
-
-          {options ? (
-            <View style={[s.panel, { paddingBottom: 4 }]}>
+          <View style={[s.panel, { paddingBottom: 4 }]}>
               <View style={[s.row, { marginBottom: 10 }]}>
                 <View style={{ flex: 1 }}>
                   <Overline>CLUBES EN LA LIGA</Overline>
@@ -222,12 +197,22 @@ export function SetupScreen(props: {
                 </View>
               </View>
             </View>
-          ) : null}
         </>
       )}
 
       <LegalLinks />
     </ScrollView>
+    {mode === 'local' ? (
+      <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: C.bg }}>
+        <Btn
+          kind={props.savedLocal ? 'ghost' : 'primary'}
+          icon={I.ball}
+          label={props.savedLocal ? 'Empezar una nueva partida' : humans > 1 ? 'Empezar la partida' : 'Jugar contra la IA'}
+          onPress={start}
+        />
+        {props.savedLocal ? <Text style={[s.p, { fontSize: 13, marginTop: 4, textAlign: 'center' }]}>Sustituye a la partida a medias.</Text> : null}
+      </View>
+    ) : null}
     </View>
   );
 }
