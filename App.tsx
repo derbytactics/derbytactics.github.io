@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler, Platform, Text, View } from 'react-native';
-import { backendEnabled, getAccount, initAccount, refreshProfile, signOut, subscribeAccount } from './src/account/api';
+import { backendEnabled, browserLocation, getAccount, initAccount, refreshProfile, signOut, subscribeAccount } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
 import { Action, BOT_STYLES, CrestDesign, GameState, apply, botAction, check, createGame, currentPlayer } from './src/engine';
 import { RoomState } from './src/net/room';
@@ -43,7 +43,7 @@ installGlobalErrorHandlers();
 /** Código de sala que llega en el enlace de invitación (?sala=ABCDE). */
 function codeFromLink(): string {
   try {
-    const search = (globalThis as { location?: Location }).location?.search ?? '';
+    const search = browserLocation()?.search ?? '';
     return normalizeCode(new URLSearchParams(search).get('sala') ?? '');
   } catch {
     return '';

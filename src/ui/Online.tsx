@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AppState, ScrollView, Text, View } from 'react-native';
-import { HostCard, backendEnabled, getAccount, refreshProfile, rpc } from '../account/api';
+import { HostCard, backendEnabled, getAccount, refreshProfile, rpc, browserLocation } from '../account/api';
 import { useAccount } from '../account/useAccount';
 import { CONFIG, CrestDesign, SeasonLength, standings } from '../engine';
 import { RoomState, botStep, finalSeats, hostAct, hostReady, kickSeat, pendingReady, playTurnForAbsent, seatOf, setLobby, startGame } from '../net/room';
@@ -19,7 +19,7 @@ const SEASONS: { key: SeasonLength; label: string }[] = [
 ];
 
 function inviteLink(code: string): string | null {
-  const loc = (globalThis as { location?: Location }).location;
+  const loc = browserLocation();
   return loc?.origin ? `${loc.origin}${loc.pathname}?sala=${code}` : null;
 }
 
