@@ -5,6 +5,7 @@ import { Avatar, Die, StadiumArt, Trophy } from './art';
 import { Btn, LegalLinks, NumberToken, Overline, s } from './components';
 import { resetTips } from './Tip';
 import { C } from './theme';
+import { I, Icon } from './icons';
 
 function Step({ n, title, text, art }: { n: number; title: string; text: string; art: React.ReactNode }) {
   return (
@@ -54,7 +55,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
         n={3}
         title="Qué hace cada posición"
         text="Delantero: ataque 2; lo para el portero. Como mucho 2 por club. Medio: ataque 1; con un delantero forma la jugada combinada (fuerza 3), que solo paran el portero y un defensa juntos. Defensa: defensa 1 en tres o cuatro números; corta a los medios y completa al portero. Portero: defensa 2 en tres o cuatro números; cobra prima por parada y con 3 en una jornada gana una carta."
-        art={<Text style={{ fontSize: 40 }}>🧤</Text>}
+        art={<Icon name={I.save} size={44} color={C.accent} />}
       />
       <Step
         n={4}
@@ -66,7 +67,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
         n={5}
         title="Juega sucio (con elegancia)"
         text="Paga la cláusula de un rival y llévate a su estrella. Lanza sanciones con cartas especiales: multas, partidos a puerta cerrada, lesiones… O protégete blindando a tus jugadores."
-        art={<Text style={{ fontSize: 40 }}>🚨</Text>}
+        art={<Icon name="alarm-light" size={44} color={C.danger} />}
       />
       <Step
         n={6}

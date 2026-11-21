@@ -5,16 +5,19 @@ import { useAccount } from '../account/useAccount';
 import { Crest, UserAvatar } from './art';
 import { useHistory, useMyClub } from '../account/club';
 import { s } from './components';
-import { C } from './theme';
+import { C, DISPLAY } from './theme';
+import { I, Icon, IconName } from './icons';
 
-function Item({ icon, label, note, onPress }: { icon: string; label: string; note?: string; onPress: () => void }) {
+function Item({ icon, label, note, onPress }: { icon: IconName; label: string; note?: string; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [s.row, { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, backgroundColor: pressed ? C.panelAlt : 'transparent' }]}
     >
-      <Text style={{ fontSize: 20, width: 34 }}>{icon}</Text>
+      <View style={{ width: 34 }}>
+        <Icon name={icon} size={22} color={C.accent} />
+      </View>
       <View style={{ flex: 1 }}>
         <Text style={{ color: C.text, fontSize: 16, fontWeight: '800' }}>{label}</Text>
         {note ? <Text style={{ color: C.dim, fontSize: 12, marginTop: 1 }}>{note}</Text> : null}
@@ -46,13 +49,13 @@ export function SideMenu(props: {
         <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 30 }}>
           <View style={{ alignItems: 'center', paddingVertical: 18, marginBottom: 8, borderBottomWidth: 1, borderBottomColor: C.line }}>
             {club ? <Crest name={club.name} color={club.crest.primary} design={club.crest} size={96} /> : null}
-            <Text numberOfLines={1} style={{ color: C.text, fontSize: 20, fontWeight: '900', marginTop: 10 }}>{club?.name ?? 'Sin club'}</Text>
+            <Text numberOfLines={1} style={{ color: C.text, fontSize: 22, ...DISPLAY, marginTop: 10 }}>{club?.name ?? 'Sin club'}</Text>
             <Text style={{ color: C.dim, fontSize: 12, marginTop: 2 }}>
               {history.length} {history.length === 1 ? 'temporada' : 'temporadas'} · {titles} {titles === 1 ? 'título' : 'títulos'}
             </Text>
           </View>
-          <Item icon="🛡️" label="Mi club" note="Cambiar nombre y escudo" onPress={go(props.onClub)} />
-          <Item icon="📜" label="Historial de partidas" note={history.length ? `Última: ${history[0].position === 1 ? 'campeón' : `${history[0].position}.º puesto`}` : 'Aún sin partidas terminadas'} onPress={go(props.onHistory)} />
+          <Item icon={I.club} label="Mi club" note="Cambiar nombre y escudo" onPress={go(props.onClub)} />
+          <Item icon={I.history} label="Historial de partidas" note={history.length ? `Última: ${history[0].position === 1 ? 'campeón' : `${history[0].position}.º puesto`}` : 'Aún sin partidas terminadas'} onPress={go(props.onHistory)} />
           {backendEnabled() ? (
             <Pressable accessibilityRole="button" onPress={go(props.onAccount)} style={({ pressed }) => [s.row, { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, backgroundColor: pressed ? C.panelAlt : 'transparent' }]}>
               <View style={{ width: 34 }}>
@@ -64,7 +67,7 @@ export function SideMenu(props: {
               </View>
             </Pressable>
           ) : null}
-          <Item icon="❓" label="Cómo se juega" onPress={go(props.onHelp)} />
+          <Item icon={I.help} label="Cómo se juega" onPress={go(props.onHelp)} />
           <View style={[s.row, { paddingHorizontal: 14, marginTop: 18 }]}>
             <Pressable accessibilityRole="link" onPress={go(() => props.onLegal('privacidad'))} hitSlop={6}>
               <Text style={{ color: C.faint, fontSize: 12, textDecorationLine: 'underline' }}>Privacidad</Text>

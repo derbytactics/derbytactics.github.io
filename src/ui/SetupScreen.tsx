@@ -5,7 +5,8 @@ import { Crest, Logo } from './art';
 import { MyClub } from '../account/club';
 import { useAccount } from '../account/useAccount';
 import { Btn, LeaguePicker, LegalLinks, NavBar, NavContext, Overline, s, useBack } from './components';
-import { C, clubColor } from './theme';
+import { C, clubColor, DISPLAY } from './theme';
+import { I, Icon } from './icons';
 
 type Rival = { name: string; isBot: boolean; crest: CrestDesign };
 const rnd = () => Math.random();
@@ -64,7 +65,7 @@ export function SetupScreen(props: {
       <Crest name={club.name} color={club.crest.primary} design={club.crest} size={42} />
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Overline>TU CLUB</Overline>
-        <Text numberOfLines={1} style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>{club.name}</Text>
+        <Text numberOfLines={1} style={{ color: C.text, fontSize: 20, ...DISPLAY }}>{club.name}</Text>
       </View>
       <Btn small kind="ghost" label="Cambiar" onPress={props.onEditClub} />
     </View>
@@ -87,7 +88,7 @@ export function SetupScreen(props: {
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
       <View style={{ alignItems: 'center', marginTop: 4, marginBottom: 16 }}>
         <Logo size={84} />
-        <Text style={{ color: C.text, fontSize: 32, fontWeight: '900', letterSpacing: -1 }}>
+        <Text style={{ color: C.text, fontSize: 36, ...DISPLAY, letterSpacing: -1 }}>
           DERBY<Text style={{ color: C.accent }}>TACTICS</Text>
         </Text>
         <Text style={[s.p, { textAlign: 'center', marginTop: 2 }]}>Ficha, amplía tu estadio y gana la liga a golpe de dado.</Text>
@@ -103,9 +104,9 @@ export function SetupScreen(props: {
               setMode(m);
               setWarn(null);
             }}
-            style={{ flex: 1, minHeight: 44, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: mode === m ? C.accent : 'transparent' }}
+            style={{ flex: 1, minHeight: 44, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: mode === m ? C.sel : 'transparent', borderWidth: 1, borderColor: mode === m ? C.selLine : 'transparent' }}
           >
-            <Text style={{ color: mode === m ? C.accentText : C.text, fontWeight: '800', fontSize: 15 }}>{m === 'local' ? 'Jugar aquí' : 'Con amigos en línea'}</Text>
+            <Text style={{ color: C.text, fontWeight: '800', fontSize: 15 }}>{m === 'local' ? 'Jugar aquí' : 'Con amigos en línea'}</Text>
           </Pressable>
         ))}
       </View>
@@ -137,7 +138,7 @@ export function SetupScreen(props: {
               accessibilityLabel="Código de sala"
               placeholder="ABCDE"
               placeholderTextColor={C.faint}
-              style={{ color: C.accent, fontSize: 30, fontWeight: '900', letterSpacing: 8, textAlign: 'center', paddingVertical: 6 }}
+              style={{ color: C.accent, fontSize: 34, ...DISPLAY, letterSpacing: 8, textAlign: 'center', paddingVertical: 6 }}
             />
           </View>
           <Btn
@@ -159,7 +160,8 @@ export function SetupScreen(props: {
 
           <Btn
             kind={props.savedLocal ? 'ghost' : 'primary'}
-            label={humans > 1 ? '⚽ Empezar la partida' : '⚽ Jugar contra la IA'}
+            icon={I.ball}
+            label={humans > 1 ? 'Empezar la partida' : 'Jugar contra la IA'}
             onPress={start}
             style={{ paddingVertical: 16 }}
           />
@@ -182,7 +184,7 @@ export function SetupScreen(props: {
               <View style={[s.row, { marginBottom: 10 }]}>
                 <View style={{ flex: 1 }}>
                   <Overline>CLUBES EN LA LIGA</Overline>
-                  <Text style={{ color: C.text, fontSize: 20, fontWeight: '900' }}>{count} clubes</Text>
+                  <Text style={{ color: C.text, fontSize: 22, ...DISPLAY }}>{count} clubes</Text>
                 </View>
                 <Btn label="−" small kind="ghost" onPress={() => setCount((c) => Math.max(CONFIG.minPlayers, c - 1))} style={{ width: 48 }} />
                 <Btn label="+" small kind="ghost" onPress={() => setCount((c) => Math.min(CONFIG.maxPlayers, c + 1))} style={{ width: 48, marginLeft: 8 }} />
@@ -203,9 +205,9 @@ export function SetupScreen(props: {
                     placeholder={`Club ${i + 2}`}
                   />
                   <Pressable accessibilityRole="button" accessibilityLabel="Otro nombre y escudo al azar" onPress={() => reroll(i)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20 }}>🎲</Text>
+                    <Icon name={I.dice} size={24} color={C.dim} />
                   </Pressable>
-                  <Btn small kind={p.isBot ? 'ghost' : 'primary'} label={p.isBot ? 'IA' : 'Persona'} onPress={() => patch(i, { isBot: !p.isBot })} style={{ width: 84 }} />
+                  <Btn small kind={p.isBot ? 'ghost' : 'selected'} label={p.isBot ? 'IA' : 'Persona'} onPress={() => patch(i, { isBot: !p.isBot })} style={{ width: 84 }} />
                 </View>
               ))}
               {humans > 1 ? (
@@ -219,7 +221,7 @@ export function SetupScreen(props: {
                 <View style={[s.row, { gap: 8, marginTop: 8 }]}>
                   {SEASONS.map((x) => (
                     <View key={x.key} style={{ flex: 1 }}>
-                      <Btn small kind={season === x.key ? 'primary' : 'ghost'} label={x.label} onPress={() => setSeason(x.key)} />
+                      <Btn small kind={season === x.key ? 'selected' : 'ghost'} label={x.label} onPress={() => setSeason(x.key)} />
                       <Text style={{ color: C.dim, fontSize: 12, textAlign: 'center', marginTop: 4 }}>{x.note}</Text>
                     </View>
                   ))}
@@ -232,7 +234,7 @@ export function SetupScreen(props: {
 
       {props.accountsOn && !session && mode === 'local' ? (
         <Pressable accessibilityRole="button" onPress={nav.onAccount} style={[s.panel, s.row, { marginTop: 14 }]}>
-          <Text style={{ fontSize: 22, marginRight: 10 }}>☁️</Text>
+          <Icon name={I.cloud} size={26} color={C.accent} style={{ marginRight: 10 }} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontWeight: '800' }}>Guarda tu club en tu cuenta</Text>
             <Text style={[s.p, { fontSize: 13 }]}>Entra con Google o Apple para no perder tu club ni tu historial y para crear salas.</Text>

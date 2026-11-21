@@ -22,28 +22,32 @@ import {
 import { Crest, StadiumArt } from './art';
 import { Btn, Chronicle, FootballerCard, NumberToken, Overline, PhaseStepper, Popup, StandingsTable, Tag, s } from './components';
 import { Tip } from './Tip';
-import { C, POS_COLOR, clubColor } from './theme';
+import { C, POS_COLOR, DISPLAY } from './theme';
+import { useClubColor } from './clubColors';
+import { I, Icon, IconName } from './icons';
 
 const J_IS_PRESEASON = (st: GameState) => st.jornada === 1 && st.turnOrder.length > st.players.length;
 
 type Tab = 'mercado' | 'plantilla' | 'rivales' | 'cartas';
 
-export const SPECIAL_ICON: Record<SpecialKind, string> = {
-  incidentes: '🚨',
-  puertaCerrada: '🚪',
-  lesion: '🩹',
-  amarilla: '🟨',
-  roja: '🟥',
-  penalti: '🥅',
-  racha: '🔥',
-  olfato: '🎯',
-  cantera: '🌱',
-  patrocinador: '🤝',
-  diaDelClub: '🎉',
-  subvencion: '🏗',
-  ojeador: '🔭',
-  abogados: '⚖️',
+export const SPECIAL_ICON: Record<SpecialKind, IconName> = {
+  incidentes: 'alarm-light',
+  puertaCerrada: 'door-closed-lock',
+  lesion: 'bandage',
+  amarilla: 'card',
+  roja: 'card-remove',
+  penalti: 'soccer-field',
+  racha: 'fire',
+  olfato: 'target',
+  cantera: 'sprout',
+  patrocinador: 'handshake',
+  diaDelClub: 'party-popper',
+  subvencion: 'crane',
+  ojeador: 'binoculars',
+  abogados: 'scale-balance',
 };
+/** Las tarjetas se pintan de su color. */
+const SPECIAL_ICON_COLOR: Partial<Record<SpecialKind, string>> = { amarilla: '#F5C542', roja: '#E5484D' };
 
 /** Carta especial dibujada con su icono, tipo y efecto. */
 export function SpecialCardFace({ id, children }: { id: string; children?: React.ReactNode }) {
@@ -55,7 +59,7 @@ export function SpecialCardFace({ id, children }: { id: string; children?: React
       <View style={[s.cardBand, { backgroundColor: tint }]} />
       <View style={[s.row, { padding: 12, alignItems: 'flex-start' }]}>
         <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: tint + '26', alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: 24 }}>{SPECIAL_ICON[c.kind]}</Text>
+          <Icon name={SPECIAL_ICON[c.kind]} size={28} color={SPECIAL_ICON_COLOR[c.kind] ?? tint} />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={[s.tier, { color: tint }]}>{info.sanction ? 'SANCIÓN · CONTRA UN RIVAL' : info.target === 'passive' ? 'DEFENSA · AUTOMÁTICA' : 'VENTAJA · PARA TU CLUB'}</Text>
@@ -69,7 +73,7 @@ export function SpecialCardFace({ id, children }: { id: string; children?: React
 }
 
 /**
- * Tu fuerza con cada número: ataque (⚔) y defensa (🛡).
+ * Tu fuerza con cada número: ataque (espada) y defensa (escudo).
  * Con `state`, añade cuántos rivales pararían hoy tu ataque con ese número.
  */
 export function NumberLine({ player, jornada, highlight, state }: { player: Player; jornada: number; highlight?: number; state?: GameState }) {
@@ -85,8 +89,8 @@ export function NumberLine({ player, jornada, highlight, state }: { player: Play
               <View style={highlight === n ? { borderRadius: 20, borderWidth: 2, borderColor: C.accent, padding: 1 } : { padding: 3 }}>
                 <NumberToken n={n} size={27} dim={st.attack === 0 && st.defense === 0} />
               </View>
-              <Text style={{ color: st.attack ? POS_COLOR.DEL : C.faint, fontSize: 12, fontWeight: '800', marginTop: 2 }}>{st.attack ? `⚔${st.attack}` : '–'}</Text>
-              <Text style={{ color: st.defense ? POS_COLOR.DEF : C.faint, fontSize: 12, fontWeight: '800' }}>{st.defense ? `🛡${st.defense}` : '–'}</Text>
+              <View style={[s.row, { marginTop: 2, minHeight: 16 }]}>{st.attack ? <Icon name={I.attack} size={11} color={POS_COLOR.DEL} /> : null}<Text style={{ color: st.attack ? POS_COLOR.DEL : C.faint, fontSize: 12, fontWeight: '800' }}>{st.attack || '–'}</Text></View>
+              <View style={[s.row, { minHeight: 16 }]}>{st.defense ? <Icon name={I.defense} size={11} color={POS_COLOR.DEF} /> : null}<Text style={{ color: st.defense ? POS_COLOR.DEF : C.faint, fontSize: 12, fontWeight: '800' }}>{st.defense || '–'}</Text></View>
               {state ? (
                 <Text style={{ color: st.attack ? (stoppers === 0 ? C.good : stoppers === rivals.length ? C.danger : C.dim) : C.faint, fontSize: 12, fontWeight: '700' }}>
                   {st.attack ? `${rivals.length - stoppers}/${rivals.length}` : ''}
@@ -97,13 +101,15 @@ export function NumberLine({ player, jornada, highlight, state }: { player: Play
         })}
       </View>
       <Text style={{ color: C.faint, fontSize: 12, marginTop: 6 }}>
-        ⚔ tu ataque · 🛡 tu defensa{state ? ' · debajo, a cuántos rivales marcarías hoy con ese número' : ''}
+        <Icon name={I.attack} size={12} color={POS_COLOR.DEL} /> tu ataque · <Icon name={I.defense} size={12} color={POS_COLOR.DEF} /> tu defensa
+        {state ? ' · debajo, a cuántos rivales marcarías hoy con ese número' : ''}
       </Text>
     </View>
   );
 }
 
 export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: Action) => string | null }) {
+  const clubColor = useClubColor();
   const { state, me } = props;
   const [tab, setTab] = useState<Tab>('mercado');
   const [error, setError] = useState<string | null>(null);
@@ -168,14 +174,14 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
         <View style={s.row}>
           <Crest name={me.name} color={color} design={me.crest} size={38} />
           <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text numberOfLines={1} style={{ color: C.text, fontSize: 19, fontWeight: '900' }}>{me.name}</Text>
+            <Text numberOfLines={1} style={{ color: C.text, fontSize: 21, ...DISPLAY }}>{me.name}</Text>
             <Text numberOfLines={1} style={{ color: C.dim, fontSize: 12, fontWeight: '700' }}>
               Te toca · {preseason ? `pretemporada, vuelta ${round} de 2` : `turno ${state.turnIndex + 1} de ${state.turnOrder.length}`}
             </Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={{ color: C.dim, fontSize: 12, fontWeight: '700' }}>Caja</Text>
-            <Text style={{ color: C.accent, fontSize: 22, fontWeight: '900' }}>{me.money}M</Text>
+            <Text style={{ color: C.accent, fontSize: 25, ...DISPLAY }}>{me.money}M</Text>
           </View>
         </View>
 
@@ -198,10 +204,10 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
 
         {me.closedDoorsUntil >= J || me.clubDayJornada === J || state.turn.scout || me.subsidy ? (
           <View style={[s.row, { flexWrap: 'wrap', marginTop: 4 }]}>
-            {me.closedDoorsUntil >= J ? <Tag text={`🚪 Puerta cerrada hasta J${me.closedDoorsUntil}`} color={C.danger} /> : null}
-            {me.clubDayJornada === J ? <Tag text="🎉 Día del club: taquilla ×2" color={C.good} /> : null}
-            {state.turn.scout ? <Tag text="🔭 Ojeador: −30% en tu fichaje" color={C.good} /> : null}
-            {me.subsidy ? <Tag text="🏗 Subvención: ampliación a mitad de precio" color={C.good} /> : null}
+            {me.closedDoorsUntil >= J ? <Tag icon={I.closedDoors} text={`Puerta cerrada hasta J${me.closedDoorsUntil}`} color={C.danger} /> : null}
+            {me.clubDayJornada === J ? <Tag icon={I.clubDay} text="Día del club: taquilla ×2" color={C.good} /> : null}
+            {state.turn.scout ? <Tag icon={I.scout} text="Ojeador: −30% en tu fichaje" color={C.good} /> : null}
+            {me.subsidy ? <Tag icon={I.subsidy} text="Subvención: ampliación a mitad de precio" color={C.good} /> : null}
           </View>
         ) : null}
 
@@ -214,7 +220,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
         ) : null}
         {error ? (
           <View style={{ backgroundColor: C.danger + '22', borderColor: C.danger, borderWidth: 1, borderRadius: 10, padding: 9, marginTop: 6 }}>
-            <Text style={{ color: '#FFB3B5', fontWeight: '700' }}>✋ {error}</Text>
+            <View style={s.row}><Icon name={I.stop} size={16} color="#FFB3B5" style={{ marginRight: 6 }} /><Text style={{ color: '#FFB3B5', fontWeight: '700', flex: 1 }}>{error}</Text></View>
           </View>
         ) : lastAction ? (
           <View style={{ backgroundColor: C.good + '1F', borderColor: C.good, borderWidth: 1, borderRadius: 10, padding: 9, marginTop: 6 }}>
@@ -235,11 +241,11 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
                 setTab(t.key);
                 setPending(null);
               }}
-              style={{ flex: 1, minHeight: 44, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.accent : 'transparent' }}
+              style={{ flex: 1, minHeight: 44, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.sel : 'transparent', borderWidth: 1, borderColor: on ? C.selLine : 'transparent' }}
             >
-              <Text numberOfLines={1} style={{ color: on ? C.accentText : C.text, fontWeight: '800', fontSize: 13 }}>
+              <Text numberOfLines={1} style={{ color: C.text, fontWeight: '800', fontSize: 13 }}>
                 {t.label}
-                {t.badge ? <Text style={{ color: on ? C.accentText : C.dim, fontWeight: '700' }}> {t.badge}</Text> : null}
+                {t.badge ? <Text style={{ color: on ? C.text : C.dim, fontWeight: '700' }}> {t.badge}</Text> : null}
               </Text>
             </Pressable>
           );
@@ -266,13 +272,13 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
         {tab === 'plantilla' ? (
           <>
             <Tip id="club" title="Tu tabla de números">
-              Para cada número ves tu ataque (⚔), tu defensa (🛡) y a cuántos rivales marcarías hoy. Busca números donde los rivales no defiendan, y tapa aquellos con los que te atacan.
+              Para cada número ves tu ataque (espada), tu defensa (escudo) y a cuántos rivales marcarías hoy. Busca números donde los rivales no defiendan, y tapa aquellos con los que te atacan.
             </Tip>
             <View style={s.panel}>
               <View style={[s.row, { alignItems: 'flex-start' }]}>
                 <View style={{ flex: 1 }}>
                   <Overline>ESTADIO · NIVEL {me.stadium} DE 5</Overline>
-                  <Text style={{ color: C.text, fontSize: 22, fontWeight: '900', marginTop: 2 }}>{ticketPerGoal(me.stadium)}M por gol</Text>
+                  <Text style={{ color: C.text, fontSize: 25, ...DISPLAY, marginTop: 2 }}>{ticketPerGoal(me.stadium)}M por gol</Text>
                   <Text style={[s.p, { marginTop: 2 }]}>
                     {upCost !== null ? `Al ampliar cobrarás ${ticketPerGoal(me.stadium + 1)}M por cada gol.` : 'Tu estadio ya es el más grande de la liga.'}
                   </Text>
@@ -292,7 +298,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
                 {(['POR', 'DEF', 'MED', 'DEL'] as const).map((pos) => (
                   <Tag key={pos} text={`${lineup(me)[pos]} ${pos}`} color={lineup(me)[pos] ? POS_COLOR[pos] : undefined} />
                 ))}
-                {lineup(me).POR === 0 ? <Tag text={`⚠ Sin ${words(state).keeper}`} color={C.danger} /> : null}
+                {lineup(me).POR === 0 ? <Tag icon={I.warning} text={`Sin ${words(state).keeper}`} color={C.danger} /> : null}
               </View>
               <NumberLine player={me} jornada={J} state={state} />
             </View>
@@ -343,9 +349,10 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
             {pendingCard ? (
               <View style={[s.panel, { borderColor: C.accent }]}>
                 <Overline>ELIGE OBJETIVO</Overline>
-                <Text style={[s.h2, { marginTop: 4 }]}>
-                  {SPECIAL_ICON[pendingCard.kind]} {SPECIAL_INFO[pendingCard.kind].title}
-                </Text>
+                <View style={[s.row, { marginTop: 4 }]}>
+                  <Icon name={SPECIAL_ICON[pendingCard.kind]} size={22} color={SPECIAL_ICON_COLOR[pendingCard.kind] ?? C.text} style={{ marginRight: 8 }} />
+                  <Text style={s.h2}>{SPECIAL_INFO[pendingCard.kind].title}</Text>
+                </View>
                 {pendingTarget === 'ownFootballer'
                   ? me.squad.map((e) => (
                       <FootballerCard key={e.cardId} cardId={e.cardId} entry={e} state={state} owner={me}>
@@ -407,7 +414,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
       </View>
 
       {news.length ? (
-        <Popup overline="DESDE TU ÚLTIMO TURNO" title="Novedades en tu club" color={C.danger} icon={<Text style={{ fontSize: 44 }}>📣</Text>} onClose={() => setNews([])}>
+        <Popup overline="DESDE TU ÚLTIMO TURNO" title="Novedades en tu club" color={C.danger} icon={<Icon name={I.news} size={44} color={C.danger} />} onClose={() => setNews([])}>
           {news.map((l) => (
             <View key={l.n} style={[s.row, { alignItems: 'flex-start', marginBottom: 8 }]}>
               <Text style={{ color: C.danger, fontWeight: '900', marginRight: 8 }}>•</Text>

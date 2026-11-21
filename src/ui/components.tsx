@@ -21,23 +21,30 @@ import { useAccount } from '../account/useAccount';
 import { Avatar, Crest } from './art';
 import { useMyClub } from '../account/club';
 import { isMuted, setMuted, soundAvailable } from './sound';
-import { C, NATIVE_DRIVER, POS_COLOR, TIER_COLOR, clubColor } from './theme';
+import { C, NATIVE_DRIVER, POS_COLOR, SHADOW, TIER_COLOR, DISPLAY, DISPLAY_BOLD } from './theme';
+import { useClubColor } from './clubColors';
+import { I, Icon, IconName } from './icons';
 
 export function Btn(props: {
   label: string;
   onPress: () => void;
-  kind?: 'primary' | 'ghost' | 'danger' | 'muted';
+  /** primary: la acción principal (dorado) · selected: opción elegida en un selector · ghost, danger, muted. */
+  kind?: 'primary' | 'selected' | 'ghost' | 'danger' | 'muted';
   small?: boolean;
+  icon?: IconName;
   style?: ViewStyle;
 }) {
   const kind = props.kind ?? 'primary';
+  const color = kind === 'primary' ? C.accentText : kind === 'muted' ? C.faint : kind === 'danger' ? '#fff' : C.text;
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={kind === 'selected' ? { selected: true } : undefined}
       onPress={props.onPress}
       style={({ pressed }) => [
         s.btn,
         props.small && s.btnSmall,
+        kind === 'selected' && s.btnSelected,
         kind === 'ghost' && s.btnGhost,
         kind === 'muted' && s.btnMuted,
         kind === 'danger' && s.btnDanger,
@@ -45,9 +52,10 @@ export function Btn(props: {
         props.style,
       ]}
     >
-      <Text style={[s.btnText, props.small && { fontSize: 13 }, kind === 'ghost' && { color: C.text }, kind === 'muted' && { color: C.faint }, kind === 'danger' && { color: '#fff' }]}>
-        {props.label}
-      </Text>
+      <View style={s.row}>
+        {props.icon ? <Icon name={props.icon} size={props.small ? 16 : 20} color={color} style={{ marginRight: 6 }} /> : null}
+        <Text style={[s.btnText, props.small && { fontSize: 13 }, { color }]}>{props.label}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -70,9 +78,10 @@ export function NumberToken({ n, extra, size = 38, dim }: { n: number; extra?: b
   );
 }
 
-export function Tag({ text, color }: { text: string; color?: string }) {
+export function Tag({ text, color, icon }: { text: string; color?: string; icon?: IconName }) {
   return (
-    <View style={[s.tag, color ? { borderColor: color, backgroundColor: color + '1F' } : null]}>
+    <View style={[s.tag, s.row, color ? { borderColor: color, backgroundColor: color + '1F' } : null]}>
+      {icon ? <Icon name={icon} size={13} color={color ?? C.dim} style={{ marginRight: 4 }} /> : null}
       <Text style={[s.tagText, color ? { color } : null]}>{text}</Text>
     </View>
   );
@@ -82,8 +91,13 @@ export function Overline({ children }: { children: React.ReactNode }) {
   return <Text style={s.overline}>{children}</Text>;
 }
 
-/** Carta de futbolista. Con `entry` muestra además su estado en la plantilla. */
+const TIER_ICON: Record<string, IconName> = { Cantera: 'sprout', Plata: 'medal-outline', Oro: 'star', Crack: 'star-shooting' };
+const ROLE_MASC: Record<string, string> = { POR: 'Portero', DEF: 'Defensa', MED: 'Medio', DEL: 'Delantero' };
+const ROLE_FEM: Record<string, string> = { POR: 'Portera', DEF: 'Defensa', MED: 'Media', DEL: 'Delantera' };
+
+/** Carta de futbolista, con marco y cabecera del color de su categoría. Con `entry` muestra además su estado en la plantilla. */
 export function FootballerCard(props: { cardId: string; entry?: SquadEntry; state?: GameState; owner?: Player; children?: React.ReactNode }) {
+  const clubColor = useClubColor();
   const f = footballer(props.cardId);
   const roster = React.useContext(RosterContext);
   const who = props.state?.roster?.[f.id] ?? roster?.[f.id];
@@ -95,38 +109,47 @@ export function FootballerCard(props: { cardId: string; entry?: SquadEntry; stat
   const pos = POS_COLOR[f.position];
   const role = roleOf(f.position);
   const out = e ? isOut(e, J) : false;
+  const roleName = (who?.fem ? ROLE_FEM : ROLE_MASC)[f.position];
   return (
-    <View style={[s.card, { borderColor: tint + '55' }]}>
-      <View style={[s.cardBand, { backgroundColor: tint }]} />
-      <View style={[s.row, { padding: 12, opacity: out ? 0.6 : 1 }]}>
+    <View style={[s.card, { borderColor: tint, borderWidth: tier === 'Cantera' ? 1 : 2 }]}>
+      {/* Cabecera de la carta: categoría y precio, en el color de su categoría. */}
+      <View style={[s.row, { backgroundColor: tint + (tier === 'Crack' ? '44' : '26'), paddingHorizontal: 12, paddingVertical: 5 }]}>
+        <Icon name={TIER_ICON[tier]} size={15} color={tint} style={{ marginRight: 5 }} />
+        <Text style={[s.tier, { color: tint, flex: 1 }]}>{tier.toUpperCase()}</Text>
+        <Text style={{ color: C.text, fontSize: 18, ...DISPLAY }}>{basePrice(f.id)}M</Text>
+      </View>
+      <View style={[s.row, { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6, opacity: out ? 0.6 : 1 }]}>
         <View>
-          <Avatar seed={f.id} who={who} size={58} jersey={props.owner ? clubColor(props.owner.id) : '#7C8F84'} ring={tint} />
+          <Avatar seed={f.id} who={who} size={66} jersey={props.owner ? clubColor(props.owner.id) : '#7C8F84'} ring={tint} />
           <View style={[s.posBadge, { backgroundColor: pos }]}>
             <Text style={s.posText}>{f.position}</Text>
           </View>
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={[s.tier, { color: tint }]}>{tier.toUpperCase()}</Text>
           <Text numberOfLines={1} style={s.cardName}>{who?.name ?? f.name}</Text>
-          <View style={[s.row, { marginTop: 3 }]}>
-            {role.attack > 0 ? <Text style={[s.power, { color: POS_COLOR.DEL }]}>⚔ Ataque {role.attack}</Text> : null}
-            {role.defense > 0 ? <Text style={[s.power, { color: POS_COLOR.DEF }]}>🛡 Defensa {role.defense}</Text> : null}
-            <Text style={s.cardMeta}>{basePrice(f.id)}M</Text>
+          <Text style={{ color: pos, fontSize: 13, fontWeight: '800' }}>{roleName}</Text>
+          <View style={[s.row, { marginTop: 4 }]}>
+            {role.attack > 0 ? <View style={[s.row, { marginRight: 10 }]}><Icon name={I.attack} size={14} color={POS_COLOR.DEL} /><Text style={[s.power, { color: POS_COLOR.DEL, marginLeft: 3 }]}>Ataque {role.attack}</Text></View> : null}
+            {role.defense > 0 ? <View style={[s.row, { marginRight: 10 }]}><Icon name={I.defense} size={14} color={POS_COLOR.DEF} /><Text style={[s.power, { color: POS_COLOR.DEF, marginLeft: 3 }]}>Defensa {role.defense}</Text></View> : null}
           </View>
         </View>
-        <View style={[s.row, { gap: 4 }]}>
+      </View>
+      {/* Números con los que actúa: los «sellos» de la carta. */}
+      <View style={[s.row, { paddingHorizontal: 12, paddingBottom: 10, opacity: out ? 0.6 : 1 }]}>
+        <Text style={[s.overline, { marginRight: 8 }]}>ACTÚA CON</Text>
+        <View style={[s.row, { gap: 6, flexWrap: 'wrap', flex: 1 }]}>
           {nums.map((n) => (
-            <NumberToken key={n} n={n} extra={!f.numbers.includes(n)} />
+            <NumberToken key={n} n={n} size={34} extra={!f.numbers.includes(n)} />
           ))}
         </View>
       </View>
       {e && (out || isBooked(e, J) || onStreak(e, J) || isProtected(e, J) || e.shielded) ? (
         <View style={[s.row, { paddingHorizontal: 12, paddingBottom: 6, flexWrap: 'wrap' }]}>
-          {out ? <Tag text={`🩹 De baja hasta J${e.outUntil}`} color={C.danger} /> : null}
-          {!out && isBooked(e, J) ? <Tag text="🟨 Amonestado: −1 de fuerza" color={C.accent} /> : null}
-          {onStreak(e, J) ? <Tag text={`🔥 Doble fuerza hasta J${e.streakUntil}`} color={C.accent} /> : null}
-          {isProtected(e, J) ? <Tag text={`🔒 Intransferible hasta J${e.noClauseUntil}`} color={C.good} /> : null}
-          {e.shielded ? <Tag text="🛡 Blindado" color={C.good} /> : null}
+          {out ? <Tag icon={I.injury} text={`De baja hasta J${e.outUntil}`} color={C.danger} /> : null}
+          {!out && isBooked(e, J) ? <Tag icon={I.yellow} text="Amonestado: −1 de fuerza" color={C.accent} /> : null}
+          {onStreak(e, J) ? <Tag icon={I.streak} text={`Doble fuerza hasta J${e.streakUntil}`} color={C.accent} /> : null}
+          {isProtected(e, J) ? <Tag icon={I.locked} text={`Intransferible hasta J${e.noClauseUntil}`} color={C.good} /> : null}
+          {e.shielded ? <Tag icon={I.shielded} text="Blindado" color={C.good} /> : null}
         </View>
       ) : null}
       {props.children ? <View style={s.cardActions}>{props.children}</View> : null}
@@ -201,7 +224,7 @@ export function NavBar({ subtitle }: { subtitle?: string }) {
         {club ? <Crest name={club.name} color={club.crest.primary} design={club.crest} size={36} /> : null}
       </Pressable>
       <View style={{ flex: 1, marginLeft: 10 }}>
-        <Text style={{ color: C.text, fontSize: 17, fontWeight: '900', letterSpacing: -0.3 }}>
+        <Text style={{ color: C.text, fontSize: 21, ...DISPLAY, letterSpacing: 0.2 }}>
           DERBY<Text style={{ color: C.accent }}>TACTICS</Text>
         </Text>
         <Text numberOfLines={1} style={{ color: C.dim, fontSize: 12, fontWeight: '600' }}>{subtitle ?? club?.name ?? profile?.username ?? 'Invitado'}</Text>
@@ -217,11 +240,11 @@ export function NavBar({ subtitle }: { subtitle?: string }) {
           hitSlop={6}
           style={[s.navHelp, { marginRight: 8 }]}
         >
-          <Text style={{ fontSize: 15 }}>{muted ? '🔇' : '🔊'}</Text>
+          <Icon name={muted ? I.soundOff : I.soundOn} size={20} color={C.text} />
         </Pressable>
       ) : null}
       <Pressable accessibilityRole="button" accessibilityLabel="Reglas del juego" onPress={nav.onHelp} hitSlop={6} style={s.navHelp}>
-        <Text style={{ color: C.text, fontWeight: '900', fontSize: 16 }}>?</Text>
+        <Icon name="help" size={20} color={C.text} />
       </Pressable>
     </View>
   );
@@ -302,6 +325,7 @@ export function jornadaLabel(state: GameState): string {
 }
 
 export function StandingsTable({ state, highlight }: { state: GameState; highlight?: number }) {
+  const clubColor = useClubColor();
   return (
     <View style={s.panel}>
       <View style={[s.row, { marginBottom: 6 }]}>
@@ -354,6 +378,7 @@ export const s = StyleSheet.create({
   popup: { backgroundColor: C.panel, borderRadius: 18, borderWidth: 2, overflow: 'hidden' },
   btn: { backgroundColor: C.accent, paddingVertical: 13, paddingHorizontal: 18, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   btnSmall: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 9, minHeight: 44 },
+  btnSelected: { backgroundColor: C.sel, borderWidth: 1, borderColor: C.selLine },
   btnGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line },
   btnMuted: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line, borderStyle: 'dashed' },
   btnDanger: { backgroundColor: C.danger },
@@ -361,26 +386,26 @@ export const s = StyleSheet.create({
   token: { backgroundColor: C.chip, borderWidth: 2, borderColor: '#D9CFA8', alignItems: 'center', justifyContent: 'center' },
   tag: { borderWidth: 1, borderColor: C.line, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3, marginRight: 6, marginBottom: 6 },
   tagText: { color: C.dim, fontSize: 12, fontWeight: '700' },
-  overline: { color: C.faint, fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
-  card: { backgroundColor: C.panel, borderRadius: 14, borderWidth: 1, marginBottom: 10, overflow: 'hidden' },
+  overline: { color: C.faint, fontSize: 14, ...DISPLAY_BOLD, letterSpacing: 1.1 },
+  card: { backgroundColor: C.panel, borderRadius: 14, borderWidth: 1, marginBottom: 12, overflow: 'hidden', ...SHADOW },
   cardBand: { height: 4 },
   cardActions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: 10, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: '#0C2318' },
   posBadge: { position: 'absolute', bottom: -4, alignSelf: 'center', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1 },
-  posText: { color: '#14261B', fontSize: 11, fontWeight: '900' },
-  tier: { fontSize: 12, fontWeight: '900', letterSpacing: 0.8 },
-  cardName: { color: C.text, fontWeight: '800', fontSize: 16, marginTop: 1 },
+  posText: { color: '#14261B', fontSize: 12, fontWeight: '900' },
+  tier: { fontSize: 14, ...DISPLAY_BOLD, letterSpacing: 1 },
+  cardName: { color: C.text, fontSize: 20, ...DISPLAY, marginTop: 0 },
   cardMeta: { color: C.dim, fontSize: 12 },
   power: { fontSize: 12, fontWeight: '800', marginRight: 8 },
-  h1: { color: C.text, fontSize: 26, fontWeight: '900', letterSpacing: -0.3 },
-  h2: { color: C.text, fontSize: 17, fontWeight: '800', marginBottom: 8 },
+  h1: { color: C.text, fontSize: 29, ...DISPLAY, letterSpacing: -0.3 },
+  h2: { color: C.text, fontSize: 21, ...DISPLAY, marginBottom: 8 },
   p: { color: C.dim, fontSize: 14, lineHeight: 20 },
-  panel: { backgroundColor: C.panel, borderRadius: 14, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: C.line },
+  panel: { backgroundColor: C.panel, borderRadius: 14, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: C.line, ...SHADOW },
   stepper: { paddingHorizontal: 16, paddingTop: 2, paddingBottom: 2, borderBottomWidth: 1, borderBottomColor: C.line },
   stepLine: { flex: 1, height: 2, backgroundColor: C.line, marginHorizontal: 8 },
   stepDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   stepActive: { backgroundColor: C.accent, borderColor: C.accent },
   stepDone: { backgroundColor: '#B8922C', borderColor: '#B8922C' },
-  th: { color: C.faint, fontSize: 12, fontWeight: '800', letterSpacing: 0.6, textAlign: 'right' },
+  th: { color: C.faint, fontSize: 14, ...DISPLAY_BOLD, letterSpacing: 0.6, textAlign: 'right' },
   tr: { paddingVertical: 5, paddingHorizontal: 4, borderRadius: 8 },
   td: { color: C.dim, textAlign: 'right', fontSize: 13 },
 });
@@ -391,8 +416,8 @@ export function LeaguePicker({ value, onPick }: { value: 'masculina' | 'femenina
     <View style={{ marginTop: 6, marginBottom: 16 }}>
       <Overline>LIGA</Overline>
       <View style={[s.row, { gap: 8, marginTop: 8 }]}>
-        <Btn small kind={value === 'masculina' ? 'primary' : 'ghost'} label="Masculina" onPress={() => onPick('masculina')} style={{ flex: 1 }} />
-        <Btn small kind={value === 'femenina' ? 'primary' : 'ghost'} label="Femenina" onPress={() => onPick('femenina')} style={{ flex: 1 }} />
+        <Btn small kind={value === 'masculina' ? 'selected' : 'ghost'} label="Masculina" onPress={() => onPick('masculina')} style={{ flex: 1 }} />
+        <Btn small kind={value === 'femenina' ? 'selected' : 'ghost'} label="Femenina" onPress={() => onPick('femenina')} style={{ flex: 1 }} />
       </View>
       <Text style={{ color: C.faint, fontSize: 12, marginTop: 4 }}>
         {value === 'femenina' ? 'Todas las futbolistas son jugadoras. Las reglas son las mismas.' : 'Todos los futbolistas son jugadores. Las reglas son las mismas.'}

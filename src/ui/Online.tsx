@@ -10,7 +10,7 @@ import { Stars } from './AccountScreen';
 import { Crest } from './art';
 import { Btn, LeaguePicker, NavBar, Overline, s, useBack } from './components';
 import { GameView } from './GameView';
-import { C, clubColor } from './theme';
+import { C, clubColor, DISPLAY } from './theme';
 
 const SEASONS: { key: SeasonLength; label: string }[] = [
   { key: 'corta', label: `Corta · ${CONFIG.seasonLengths.corta}` },
@@ -203,7 +203,7 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           <Overline>SALA CREADA · COMPARTE ESTE CÓDIGO</Overline>
           <View style={[s.panel, { alignItems: 'center', marginTop: 8, borderColor: C.accent }]}>
-            <Text selectable style={{ color: C.accent, fontSize: 52, fontWeight: '900', letterSpacing: 8 }}>{room.code}</Text>
+            <Text selectable style={{ color: C.accent, fontSize: 58, ...DISPLAY, letterSpacing: 8 }}>{room.code}</Text>
             {link ? <Text selectable style={[s.p, { fontSize: 12, textAlign: 'center', marginTop: 4 }]}>{link}</Text> : null}
             {link ? <Btn small kind="ghost" label={copied ? '✓ Enlace copiado' : 'Copiar enlace de invitación'} onPress={copy} style={{ marginTop: 10 }} /> : null}
           </View>
@@ -214,7 +214,7 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
           <View style={[s.row, { marginBottom: 10 }]}>
             <View style={{ flex: 1 }}>
               <Overline>CLUBES EN LA LIGA</Overline>
-              <Text style={{ color: C.text, fontSize: 22, fontWeight: '900' }}>
+              <Text style={{ color: C.text, fontSize: 25, ...DISPLAY }}>
                 {room.clubs} clubes · {room.seats.length} {room.seats.length === 1 ? 'persona' : 'personas'}
               </Text>
             </View>
@@ -228,7 +228,7 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
             <Overline>DURACIÓN (JORNADAS)</Overline>
             <View style={[s.row, { gap: 8, marginTop: 8 }]}>
               {SEASONS.map((x) => (
-                <Btn key={x.key} small kind={room.season === x.key ? 'primary' : 'ghost'} label={x.label} onPress={() => ses.update((r) => setLobby(r, { season: x.key }))} style={{ flex: 1 }} />
+                <Btn key={x.key} small kind={room.season === x.key ? 'selected' : 'ghost'} label={x.label} onPress={() => ses.update((r) => setLobby(r, { season: x.key }))} style={{ flex: 1 }} />
               ))}
             </View>
           </View>

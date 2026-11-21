@@ -5,7 +5,8 @@ import { Crest } from './art';
 import { MyClub, setMyClub } from '../account/club';
 import { EMBLEM_NAMES, PATTERN_NAMES, SHAPE_NAMES } from './crest';
 import { Btn, Overline, s } from './components';
-import { C } from './theme';
+import { C, DISPLAY } from './theme';
+import { I, Icon } from './icons';
 
 const rnd = () => Math.random();
 
@@ -76,7 +77,7 @@ export function ClubScreen({ initial, first, inGame, onClose, onLogin }: { initi
 
       <View style={{ alignItems: 'center', marginBottom: 14 }}>
         <Crest name={name.trim() || 'Mi club'} color={crest.primary} size={112} design={crest} />
-        <Text numberOfLines={1} style={{ color: C.text, fontSize: 22, fontWeight: '900', marginTop: 8 }}>{name.trim() || 'Tu club'}</Text>
+        <Text numberOfLines={1} style={{ color: C.text, fontSize: 25, ...DISPLAY, marginTop: 8 }}>{name.trim() || 'Tu club'}</Text>
       </View>
 
       <Overline>NOMBRE DEL CLUB</Overline>
@@ -93,14 +94,14 @@ export function ClubScreen({ initial, first, inGame, onClose, onLogin }: { initi
           placeholderTextColor={C.faint}
           style={{ flex: 1, minWidth: 0, color: C.text, fontSize: 18, fontWeight: '700', paddingVertical: 8 }}
         />
-        <Pressable accessibilityRole="button" accessibilityLabel="Nombre al azar" onPress={() => setName(randomClubName(rnd))} hitSlop={8}>
-          <Text style={{ fontSize: 22 }}>🎲</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Nombre al azar" onPress={() => setName(randomClubName(rnd))} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={I.dice} size={24} color={C.dim} />
         </Pressable>
       </View>
 
       <View style={[s.row, { marginBottom: 4 }]}>
         <Text style={[s.h2, { flex: 1 }]}>Escudo</Text>
-        <Btn small kind="ghost" label="🎲 Sorpréndeme" onPress={() => setCrest(randomCrest(rnd))} />
+        <Btn small kind="ghost" icon={I.dice} label="Sorpréndeme" onPress={() => setCrest(randomCrest(rnd))} />
       </View>
 
       <Overline>FORMA</Overline>

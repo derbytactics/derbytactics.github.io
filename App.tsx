@@ -1,3 +1,7 @@
+import { BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed/700Bold';
+import { BarlowCondensed_800ExtraBold } from '@expo-google-fonts/barlow-condensed/800ExtraBold';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -56,6 +60,14 @@ export default function App() {
   /** En la app nativa hay que cargar lo guardado antes de pintar nada. */
   const [booted, setBooted] = useState(Platform.OS === 'web');
   const account = useAccount();
+  // Fuentes de marcador e iconos: si tardan o fallan, se pinta igual con las del sistema.
+  const [fontsLoaded, fontError] = useFonts({ BarlowCondensed_700Bold, BarlowCondensed_800ExtraBold, ...MaterialCommunityIcons.font });
+  const [fontTimeout, setFontTimeout] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setFontTimeout(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+  const fontsReady = fontsLoaded || !!fontError || fontTimeout;
   const userId = account.session?.user.id;
   // Con cuenta, el club y el historial se sincronizan al entrar.
   useEffect(() => {
@@ -153,7 +165,7 @@ export default function App() {
   const onHelp = () => setHelp(true);
 
   let body: React.ReactNode;
-  if (!booted) {
+  if (!booted || !fontsReady) {
     body = null;
   } else if (mode.kind === 'host') {
     body = <OnlineHost name={mode.name} crest={mode.crest} resume={mode.resume} onHelp={onHelp} onExit={toMenu} />;

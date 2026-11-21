@@ -7,7 +7,9 @@ import { Btn, FootballerCard, Overline, PhaseStepper, Pop, RosterContext, Standi
 import { News, NewsKind, rollNews, rollScore } from './narrative';
 import { Sfx, play } from './sound';
 import { Tip } from './Tip';
-import { C, NATIVE_DRIVER, POS_COLOR, clubColor } from './theme';
+import { C, NATIVE_DRIVER, POS_COLOR, DISPLAY } from './theme';
+import { useClubColor } from './clubColors';
+import { I, Icon, IconName } from './icons';
 
 const ordinal = (n: number) => `${n}.º`;
 
@@ -47,6 +49,7 @@ function Stat({ label, value, color, big }: { label: string; value: string; colo
 
 /** Tarjeta grande con lo que ha conseguido un club en la jornada. */
 function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
+  const clubColor = useClubColor();
   const p = state.players[r.playerId];
   const color = clubColor(p.id);
   const pts = useCountUp(r.points, true);
@@ -61,9 +64,9 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
         <Crest name={p.name} color={color} design={p.crest} size={40} />
         <View style={{ marginLeft: 10, flex: 1 }}>
           <Overline>{p.name.toUpperCase()}</Overline>
-          <Text style={{ color: C.text, fontSize: 20, fontWeight: '900' }}>{headline}</Text>
+          <Text style={{ color: C.text, fontSize: 22, ...DISPLAY }}>{headline}</Text>
         </View>
-        {r.rank === 1 ? <Text style={{ fontSize: 30 }}>🥇</Text> : null}
+        {r.rank === 1 ? <Icon name={I.medal} size={34} color={C.accent} /> : null}
       </View>
       <View style={[s.row, { paddingVertical: 12, paddingHorizontal: 8 }]}>
         <Stat label="A FAVOR – EN CONTRA" value={`${r.goals}–${r.against}`} />
@@ -91,19 +94,20 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
   );
 }
 
-const NEWS_STYLE: Record<NewsKind, { color: string; icon: string }> = {
-  attack: { color: '#C9D3DC', icon: '⚽' },
-  goal: { color: C.accent, icon: '🥅' },
-  stopped: { color: '#8FA89A', icon: '🧤' },
-  concede: { color: C.danger, icon: '😖' },
-  save: { color: C.good, icon: '🧤' },
-  info: { color: C.line, icon: '•' },
-  var: { color: C.danger, icon: '📺' },
-  card: { color: C.good, icon: '🃏' },
+const NEWS_STYLE: Record<NewsKind, { color: string; icon: IconName }> = {
+  attack: { color: '#C9D3DC', icon: I.ball },
+  goal: { color: C.accent, icon: I.goal },
+  stopped: { color: '#8FA89A', icon: I.save },
+  concede: { color: C.danger, icon: I.concede },
+  save: { color: C.good, icon: I.save },
+  info: { color: C.selLine, icon: 'circle-small' },
+  var: { color: C.danger, icon: I.var },
+  card: { color: C.good, icon: I.card },
 };
 
 /** Una noticia de la tirada: aparece con una pequeña animación. */
 function NewsCard({ news, big }: { news: News; big: boolean }) {
+  const clubColor = useClubColor();
   const roster = React.useContext(RosterContext);
   const st = NEWS_STYLE[news.kind];
   const strong = news.kind === 'goal' || news.kind === 'concede' || news.kind === 'save';
@@ -120,7 +124,7 @@ function NewsCard({ news, big }: { news: News; big: boolean }) {
               ))}
             </View>
           ) : (
-            <Text style={{ fontSize: 22, marginRight: 10 }}>{st.icon}</Text>
+            <Icon name={st.icon} size={24} color={st.color} style={{ marginRight: 10 }} />
           )}
           <View style={{ flex: 1 }}>
             <Text style={{ color: strong ? st.color : C.text, fontSize: strong ? 20 : 14, fontWeight: '900' }}>{news.title}</Text>
@@ -156,7 +160,7 @@ function ReadingBar({ duration, token }: { duration: number; token: string }) {
  * para no bloquear a los demás. En un dispositivo espera a que la persona pulse.
  * `token` reinicia la cuenta cuando cambia lo que se está esperando.
  */
-function RefereeButton({ label, seconds, token, auto, onGo }: { label: string; seconds: number; token: string; auto: boolean; onGo: (forced: boolean) => void }) {
+function RefereeButton({ label, icon, seconds, token, auto, onGo }: { label: string; icon?: IconName; seconds: number; token: string; auto: boolean; onGo: (forced: boolean) => void }) {
   const [left, setLeft] = useState(seconds);
   const fired = useRef(false);
   useEffect(() => {
@@ -180,7 +184,7 @@ function RefereeButton({ label, seconds, token, auto, onGo }: { label: string; s
   };
   return (
     <View>
-      <Btn label={label} onPress={go} />
+      <Btn icon={icon} label={label} onPress={go} />
       {auto ? (
       <View style={[s.row, { justifyContent: 'center', marginTop: 8 }]}>
         <View style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: left <= 2 ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
@@ -209,7 +213,7 @@ function Dice({ roll, rolling }: { roll: RollReport | null; rolling: boolean }) 
       <Die value={show[0]} size={64} tone={tone} />
       <Die value={show[1]} size={64} tone={tone} />
       <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: sum === null ? C.panelAlt : sum === 7 ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: sum === null ? C.faint : sum === 7 ? '#fff' : C.accentText, fontSize: 30, fontWeight: '900' }}>{sum ?? '?'}</Text>
+        <Text style={{ color: sum === null ? C.faint : sum === 7 ? '#fff' : C.accentText, fontSize: 34, ...DISPLAY }}>{sum ?? '?'}</Text>
       </View>
     </Pop>
   );
@@ -238,6 +242,7 @@ export function MatchScreen(props: {
   /** Un dispositivo: juega de golpe las tiradas que falten y va al resultado. */
   onSkip?: () => void;
 }) {
+  const clubColor = useClubColor();
   const { state, focus } = props;
   const live = state.phase === 'match' && !!state.match;
   const rolls = live ? state.match!.rolls : state.lastMatch?.rolls ?? [];
@@ -384,7 +389,7 @@ export function MatchScreen(props: {
             ))}
           </View>
           <StandingsTable state={state} />
-          {props.footer ?? <Btn label={last ? '🏆 Ver el final de temporada' : `Ir al mercado de la jornada ${state.jornada + 1} →`} onPress={props.onNext} />}
+          {props.footer ?? <Btn icon={last ? I.trophy : undefined} label={last ? 'Ver el final de temporada' : `Ir al mercado de la jornada ${state.jornada + 1} →`} onPress={props.onNext} />}
           <Acta state={state} rolls={rolls} rollers={rollers} />
         </ScrollView>
       </View>
@@ -406,7 +411,7 @@ export function MatchScreen(props: {
             </Text>
             {penalties.map((pen, i) => (
               <View key={i} style={[s.panel, s.row, { borderColor: isMine(pen.playerId) ? C.accent : isMine(pen.rival) ? C.danger : C.line }]}>
-                <Text style={{ fontSize: 24, marginRight: 10 }}>🥅</Text>
+                <Icon name={I.goal} size={26} color={C.accent} style={{ marginRight: 10 }} />
                 <Text style={{ color: C.text, fontWeight: '700', flex: 1 }}>
                   Penalti a favor de {name(pen.playerId)}: lo transforma y marca a {name(pen.rival)}.
                 </Text>
@@ -435,7 +440,7 @@ export function MatchScreen(props: {
             <Dice roll={roll} rolling={rolling} />
             {forcedRoll === cur ? (
               <View style={{ backgroundColor: C.panelAlt, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, marginTop: 10 }}>
-                <Text style={{ color: C.dim, fontSize: 12, fontWeight: '700' }}>⏱ El árbitro ordena que siga el partido.</Text>
+                <View style={s.row}><Icon name={I.timer} size={14} color={C.dim} style={{ marginRight: 5 }} /><Text style={{ color: C.dim, fontSize: 12, fontWeight: '700' }}>El árbitro ordena que siga el partido.</Text></View>
               </View>
             ) : null}
             {rolling ? <Text style={[s.p, { marginTop: 12 }]}>Los dados están en el aire…</Text> : null}
@@ -473,7 +478,8 @@ export function MatchScreen(props: {
                   auto={!!props.online}
                   token={`r${rolls.length}`}
                   seconds={cur < 0 ? REFEREE_S * 2 : REFEREE_S}
-                  label={roller === viewer || viewer === null ? '🎲 Tirar los dados' : `🎲 Que tire ${name(roller)}`}
+                  icon={I.dice}
+                  label={roller === viewer || viewer === null ? 'Tirar los dados' : `Que tire ${name(roller)}`}
                   onGo={doRoll}
                 />
               </>
@@ -495,7 +501,8 @@ export function MatchScreen(props: {
           <Btn
             small
             kind="ghost"
-            label="⏩ Saltar al resultado"
+            icon={I.skip}
+            label="Saltar al resultado"
             onPress={() => {
               if (live) props.onSkip!();
               setReparto(true);
@@ -544,7 +551,7 @@ export function MatchScreen(props: {
                     <View style={{ height: 6, borderRadius: 3, backgroundColor: clubColor(p.id), width: `${Math.min(100, (100 * sc.gf) / maxGoals)}%` }} />
                   </View>
                 </View>
-                <Text style={{ color: C.text, fontSize: 22, fontWeight: '900', width: 64, textAlign: 'right' }}>
+                <Text style={{ color: C.text, fontSize: 25, ...DISPLAY, width: 64, textAlign: 'right' }}>
                   {sc.gf}
                   <Text style={{ color: C.faint }}> : </Text>
                   <Text style={{ color: C.dim }}>{sc.gc}</Text>
@@ -562,13 +569,14 @@ export function MatchScreen(props: {
 
 /** Crónica neutral de las tiradas ya jugadas. */
 function Acta({ state, rolls, rollers }: { state: GameState; rolls: RollReport[]; rollers: number[] }) {
+  const clubColor = useClubColor();
   return (
     <View style={[s.panel, { marginTop: 4 }]}>
       <Overline>ACTA DEL PARTIDO</Overline>
       <View style={{ marginTop: 6 }}>
         {penaltiesOf(state, state.jornada).map((pen, i) => (
           <Text key={`p${i}`} style={{ color: C.dim, fontSize: 13, lineHeight: 19, marginBottom: 4 }}>
-            🥅 <Text style={{ color: clubColor(pen.playerId), fontWeight: '800' }}>{state.players[pen.playerId].name}</Text> marca de penalti a {state.players[pen.rival].name}.
+            <Icon name={I.goal} size={13} color={C.dim} /> <Text style={{ color: clubColor(pen.playerId), fontWeight: '800' }}>{state.players[pen.playerId].name}</Text> marca de penalti a {state.players[pen.rival].name}.
           </Text>
         ))}
         {rolls.map((r, i) => (
