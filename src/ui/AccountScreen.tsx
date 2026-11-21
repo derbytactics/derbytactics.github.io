@@ -250,7 +250,6 @@ function ProfileTab() {
         )}
       </View>
 
-      <SignOutButton />
       {error ? <Text style={{ color: C.danger, fontWeight: '700', marginTop: 10 }}>{error}</Text> : null}
       {confirm ? (
         <View style={[s.panel, { borderColor: C.danger, marginTop: 12 }]}>

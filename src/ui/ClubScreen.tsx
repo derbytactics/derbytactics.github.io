@@ -49,7 +49,7 @@ function Options({ count, names, value, render, onPick }: { count: number; names
 /**
  * Crear o editar el club del jugador. Con `first` es obligatorio (no se puede cerrar sin guardar).
  */
-export function ClubScreen({ initial, first, inGame, onClose, onLogin }: { initial: MyClub | null; first?: boolean; inGame?: boolean; onClose: () => void; onLogin?: () => void }) {
+export function ClubScreen({ initial, first, inGame, onClose }: { initial: MyClub | null; first?: boolean; inGame?: boolean; onClose: () => void }) {
   // La primera vez llega relleno al azar: se puede fundar con un toque y cambiarlo cuando se quiera.
   const [name, setName] = useState(() => initial?.name ?? randomClubName(rnd));
   const [crest, setCrest] = useState<CrestDesign>(initial?.crest ?? randomCrest(rnd));
@@ -120,13 +120,6 @@ export function ClubScreen({ initial, first, inGame, onClose, onLogin }: { initi
     <View style={{ padding: 16, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.line }}>
       {warn ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>{warn}</Text> : null}
       <Btn label={first ? 'Fundar mi club y jugar' : 'Guardar cambios'} onPress={saveClub} />
-      {first && onLogin ? (
-        <Pressable accessibilityRole="button" onPress={onLogin} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
-          <Text style={{ color: C.dim, fontWeight: '700' }}>
-            ¿Ya tienes cuenta? <Text style={{ color: C.accent }}>Entra y recupera tu club</Text>
-          </Text>
-        </Pressable>
-      ) : null}
     </View>
     </View>
   );

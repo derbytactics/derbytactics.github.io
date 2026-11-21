@@ -3,8 +3,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { CONFIG, CrestDesign, League, NewGameOptions, SeasonLength, randomClubName, randomCrest } from '../engine';
 import { Crest, Logo } from './art';
 import { MyClub } from '../account/club';
-import { useAccount } from '../account/useAccount';
-import { Btn, LeaguePicker, Wordmark, LegalLinks, NavBar, NavContext, Overline, s, useBack } from './components';
+import { Btn, LeaguePicker, Wordmark, LegalLinks, NavBar, Overline, s, useBack } from './components';
 import { C, clubColor, DISPLAY } from './theme';
 import { I, Icon } from './icons';
 
@@ -40,8 +39,6 @@ export function SetupScreen(props: {
   /** Descripción de la partida local guardada, si la hay. */
   savedLocal: string | null;
   onContinueLocal: () => void;
-  /** Hay servidor de cuentas: crear salas exige estar registrado. */
-  accountsOn: boolean;
   /** Comprueba si esta persona puede crear salas; devuelve el motivo si no. */
   hostGate: () => Promise<string | null>;
 }) {
@@ -55,8 +52,6 @@ export function SetupScreen(props: {
   const [league, setLeague] = useState<League>('masculina');
   const [rivals, setRivals] = useState(() => randomRivals(club.name));
   const [options, setOptions] = useState(false);
-  const nav = React.useContext(NavContext);
-  const { session } = useAccount();
   const patch = (i: number, p: Partial<Rival>) => setRivals((all) => all.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const reroll = (i: number) =>
     patch(i, { name: randomClubName(rnd, [club.name, ...rivals.filter((_, j) => j !== i).map((r) => r.name)]), crest: randomCrest(rnd) });
@@ -117,8 +112,7 @@ export function SetupScreen(props: {
           {myClubCard}
           {warn ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{warn}</Text> : null}
 
-          {props.accountsOn && !session ? <Text style={[s.p, { fontSize: 13, marginBottom: 8 }]}>Para crear una sala hace falta entrar con tu cuenta. Para unirte a la de un amigo, no.</Text> : null}
-          <Btn label={props.accountsOn && !session ? 'Entrar y crear una sala' : 'Crear una sala'} onPress={() => props.hostGate().then((why) => (why ? setWarn(why) : props.onHost()))} />
+          <Btn label="Crear una sala" onPress={() => props.hostGate().then((why) => (why ? setWarn(why) : props.onHost()))} />
           {props.resumeCode ? <Btn kind="ghost" label={`Reanudar mi sala ${props.resumeCode}`} onPress={props.onResume} style={{ marginTop: 8 }} /> : null}
 
           <View style={[s.row, { marginVertical: 18 }]}>
@@ -232,16 +226,6 @@ export function SetupScreen(props: {
         </>
       )}
 
-      {props.accountsOn && !session && mode === 'local' ? (
-        <Pressable accessibilityRole="button" onPress={nav.onAccount} style={[s.panel, s.row, { marginTop: 14 }]}>
-          <Icon name={I.cloud} size={26} color={C.accent} style={{ marginRight: 10 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontWeight: '800' }}>Guarda tu club en tu cuenta</Text>
-            <Text style={[s.p, { fontSize: 13 }]}>Entra con Google o Apple para no perder tu club ni tu historial y para crear salas.</Text>
-          </View>
-          <Text style={{ color: C.accent, fontWeight: '800' }}>Entrar ›</Text>
-        </Pressable>
-      ) : null}
       <LegalLinks />
     </ScrollView>
     </View>
