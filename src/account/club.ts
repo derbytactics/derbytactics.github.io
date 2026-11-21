@@ -80,6 +80,9 @@ export function reloadClub() {
   listeners.forEach((l) => l());
 }
 
+/** Lo guardado en este dispositivo es de una cuenta (se sincronizó con ella). */
+export const belongsToAccount = () => !!load<string>(OWNER_KEY);
+
 /** Olvida el club y el historial guardados en este dispositivo (al cerrar sesión). */
 export function forgetLocalClub() {
   for (const k of [CLUB_KEY, HISTORY_KEY, OWNER_KEY, DIRTY_KEY]) remove(k);
