@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Text, View } from 'react-native';
-import { backendEnabled, getAccount, initAccount, refreshProfile } from './src/account/api';
+import { backendEnabled, getAccount, initAccount, refreshProfile, subscribeAccount } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
 import { Action, BOT_STYLES, CrestDesign, GameState, apply, botAction, check, createGame, currentPlayer } from './src/engine';
 import { RoomState } from './src/net/room';
@@ -64,6 +64,22 @@ export default function App() {
   useEffect(() => {
     if (booted && userId) syncClub();
   }, [booted, userId]);
+  // Al cerrar sesión o borrar la cuenta (desde donde sea): se cierran las ventanas y se vuelve a la bienvenida.
+  // Si había una partida en marcha, sigue; la bienvenida aparece al volver al menú.
+  useEffect(() => {
+    let had = !!getAccount().session;
+    return subscribeAccount(() => {
+      const has = !!getAccount().session;
+      if (had && !has) {
+        setAccountOpen(false);
+        setMenuOpen(false);
+        setClubOpen(false);
+        setHistoryOpen(false);
+        setGuest(false);
+      }
+      had = has;
+    });
+  }, []);
   useEffect(() => {
     hydrateStorage(Platform.OS === 'web' ? null : AsyncStorage)
       .then(() => reloadClub())
