@@ -8,7 +8,7 @@ import { GuestSession, HostSession } from '../net/session';
 import { deviceId } from '../net/storage';
 import { Stars } from './AccountScreen';
 import { Crest } from './art';
-import { Btn, LeaguePicker, NavBar, Overline, s } from './components';
+import { Btn, LeaguePicker, NavBar, Overline, s, useBack } from './components';
 import { GameView } from './GameView';
 import { C, clubColor } from './theme';
 
@@ -182,6 +182,11 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
     }
     ses2.update((r) => startGame(r, undefined, gid));
   };
+  // «Atrás» en Android fuera de la partida: cerrar la sala de espera (dentro, lo atiende la partida).
+  useBack(() => {
+    exit();
+    return true;
+  });
   if (!room || !session.current) return <Connecting text="Creando la sala…" error={error} onExit={props.onExit} />;
   const ses = session.current;
 
@@ -329,6 +334,10 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
     ses?.close(true);
     props.onExit();
   };
+  useBack(() => {
+    exit();
+    return true;
+  });
   if (!ses) return <Connecting text="" error="Ese código de sala no es válido." onExit={props.onExit} />;
   if (closed) {
     const prev = lastRoom.current;

@@ -250,37 +250,46 @@ export function LegalLinks() {
   );
 }
 
+/**
+ * Botón «atrás» del sistema (Android). Las pantallas registran qué hacer con `useBack`;
+ * manda la última registrada. Devolver true indica que ya se ha atendido.
+ */
+export const BackContext = React.createContext<(handler: () => boolean) => () => void>(() => () => {});
+export function useBack(handler: () => boolean, active = true) {
+  const register = React.useContext(BackContext);
+  const ref = React.useRef(handler);
+  ref.current = handler;
+  React.useEffect(() => (active ? register(() => ref.current()) : undefined), [register, active]);
+}
+
 /** Si se define, las pantallas de partida muestran un botón para salir. */
 export const ExitContext = React.createContext<(() => void) | null>(null);
 
 const STEPS = ['Mercado', 'Partido', 'Reparto'];
 
 /** Guía de la jornada: siempre visible para saber en qué paso estamos. */
-export function PhaseStepper({ step, label }: { step: 0 | 1 | 2; label: string }) {
+export function PhaseStepper({ step }: { step: 0 | 1 | 2; label?: string }) {
   const exit = React.useContext(ExitContext);
   return (
-    <View style={s.stepper}>
-      <View style={s.row}>
-        <Text style={[s.overline, { flex: 1 }]}>{label}</Text>
-        {exit ? (
-          <Pressable accessibilityRole="button" onPress={exit} hitSlop={8}>
-            <Text style={[s.overline, { color: C.dim }]}>SALIR ✕</Text>
-          </Pressable>
-        ) : null}
-      </View>
-      <View style={[s.row, { marginTop: 8 }]}>
+    <View style={[s.stepper, s.row]}>
+      <View style={[s.row, { flex: 1 }]}>
         {STEPS.map((name, i) => (
           <React.Fragment key={name}>
             {i > 0 ? <View style={[s.stepLine, i <= step && { backgroundColor: C.accent }]} /> : null}
-            <View style={s.row}>
+            <View style={s.row} accessibilityLabel={`Paso ${i + 1}: ${name}${i === step ? ', actual' : i < step ? ', hecho' : ''}`}>
               <View style={[s.stepDot, i < step && s.stepDone, i === step && s.stepActive]}>
                 <Text style={{ color: i <= step ? C.accentText : C.faint, fontWeight: '800', fontSize: 12 }}>{i < step ? '✓' : i + 1}</Text>
               </View>
-              <Text style={{ color: i === step ? C.text : C.faint, fontWeight: i === step ? '800' : '600', fontSize: 13, marginLeft: 6 }}>{name}</Text>
+              {i === step ? <Text style={{ color: C.text, fontWeight: '800', fontSize: 13, marginLeft: 6 }}>{name}</Text> : null}
             </View>
           </React.Fragment>
         ))}
       </View>
+      {exit ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Salir de la partida" onPress={exit} hitSlop={8} style={{ minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'flex-end', marginLeft: 10 }}>
+          <Text style={{ color: C.dim, fontWeight: '800', fontSize: 13 }}>Salir ✕</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -328,7 +337,7 @@ export function Chronicle({ state, max = 25 }: { state: GameState; max?: number 
         .reverse()
         .map((l, i) => (
           <View key={i} style={[s.row, { alignItems: 'flex-start', marginBottom: 6 }]}>
-            <Text style={{ color: C.accent, fontWeight: '800', fontSize: 11, width: 30, marginTop: 3 }}>J{l.jornada}</Text>
+            <Text style={{ color: C.accent, fontWeight: '800', fontSize: 12, width: 30, marginTop: 3 }}>J{l.jornada}</Text>
             <Text style={[s.p, { flex: 1, color: i === 0 ? C.text : C.dim }]}>{l.text}</Text>
           </View>
         ))}
@@ -340,38 +349,38 @@ export const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   burger: { width: 18, height: 2.5, borderRadius: 2, backgroundColor: C.text },
   navbar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#0A1E15', borderBottomWidth: 1, borderBottomColor: C.line },
-  navHelp: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, borderColor: C.line, alignItems: 'center', justifyContent: 'center', backgroundColor: C.panel },
+  navHelp: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: C.line, alignItems: 'center', justifyContent: 'center', backgroundColor: C.panel },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(3,10,7,0.86)', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 10 },
   popup: { backgroundColor: C.panel, borderRadius: 18, borderWidth: 2, overflow: 'hidden' },
   btn: { backgroundColor: C.accent, paddingVertical: 13, paddingHorizontal: 18, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  btnSmall: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 9 },
+  btnSmall: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 9, minHeight: 44 },
   btnGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line },
   btnMuted: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line, borderStyle: 'dashed' },
   btnDanger: { backgroundColor: C.danger },
   btnText: { color: C.accentText, fontWeight: '800', fontSize: 15 },
   token: { backgroundColor: C.chip, borderWidth: 2, borderColor: '#D9CFA8', alignItems: 'center', justifyContent: 'center' },
   tag: { borderWidth: 1, borderColor: C.line, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3, marginRight: 6, marginBottom: 6 },
-  tagText: { color: C.dim, fontSize: 11, fontWeight: '700' },
-  overline: { color: C.faint, fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
+  tagText: { color: C.dim, fontSize: 12, fontWeight: '700' },
+  overline: { color: C.faint, fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
   card: { backgroundColor: C.panel, borderRadius: 14, borderWidth: 1, marginBottom: 10, overflow: 'hidden' },
   cardBand: { height: 4 },
   cardActions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: 10, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: '#0C2318' },
   posBadge: { position: 'absolute', bottom: -4, alignSelf: 'center', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1 },
-  posText: { color: '#14261B', fontSize: 9, fontWeight: '900' },
-  tier: { fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  posText: { color: '#14261B', fontSize: 11, fontWeight: '900' },
+  tier: { fontSize: 12, fontWeight: '900', letterSpacing: 0.8 },
   cardName: { color: C.text, fontWeight: '800', fontSize: 16, marginTop: 1 },
   cardMeta: { color: C.dim, fontSize: 12 },
-  power: { fontSize: 11, fontWeight: '800', marginRight: 8 },
+  power: { fontSize: 12, fontWeight: '800', marginRight: 8 },
   h1: { color: C.text, fontSize: 26, fontWeight: '900', letterSpacing: -0.3 },
   h2: { color: C.text, fontSize: 17, fontWeight: '800', marginBottom: 8 },
   p: { color: C.dim, fontSize: 14, lineHeight: 20 },
   panel: { backgroundColor: C.panel, borderRadius: 14, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: C.line },
-  stepper: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: C.line },
+  stepper: { paddingHorizontal: 16, paddingTop: 2, paddingBottom: 2, borderBottomWidth: 1, borderBottomColor: C.line },
   stepLine: { flex: 1, height: 2, backgroundColor: C.line, marginHorizontal: 8 },
   stepDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   stepActive: { backgroundColor: C.accent, borderColor: C.accent },
   stepDone: { backgroundColor: '#B8922C', borderColor: '#B8922C' },
-  th: { color: C.faint, fontSize: 10, fontWeight: '800', letterSpacing: 1, textAlign: 'right' },
+  th: { color: C.faint, fontSize: 12, fontWeight: '800', letterSpacing: 0.6, textAlign: 'right' },
   tr: { paddingVertical: 5, paddingHorizontal: 4, borderRadius: 8 },
   td: { color: C.dim, textAlign: 'right', fontSize: 13 },
 });
@@ -385,7 +394,7 @@ export function LeaguePicker({ value, onPick }: { value: 'masculina' | 'femenina
         <Btn small kind={value === 'masculina' ? 'primary' : 'ghost'} label="Masculina" onPress={() => onPick('masculina')} style={{ flex: 1 }} />
         <Btn small kind={value === 'femenina' ? 'primary' : 'ghost'} label="Femenina" onPress={() => onPick('femenina')} style={{ flex: 1 }} />
       </View>
-      <Text style={{ color: C.faint, fontSize: 11, marginTop: 4 }}>
+      <Text style={{ color: C.faint, fontSize: 12, marginTop: 4 }}>
         {value === 'femenina' ? 'Todas las futbolistas son jugadoras. Las reglas son las mismas.' : 'Todos los futbolistas son jugadores. Las reglas son las mismas.'}
       </Text>
     </View>

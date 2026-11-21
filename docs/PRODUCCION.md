@@ -6,7 +6,7 @@ Estado de cada punto y qué queda por hacer. Lo marcado como **Tu parte** necesi
 
 | Punto | Qué hay |
 |---|---|
-| Textos legales | Política de privacidad y condiciones de uso en `src/legal/texts.ts`, enlazadas desde la bienvenida, el menú, la ayuda y la cuenta. Salen marcadas como **borrador** hasta que se rellenen titular y contacto. |
+| Textos legales | Política de privacidad y condiciones de uso en `src/legal/texts.ts`, enlazadas desde la pantalla de inicio, el menú, la ayuda y la cuenta. Salen marcadas como **borrador** hasta que se rellenen titular y contacto. |
 | Partida guardada | La partida de un solo dispositivo se guarda tras cada jugada y se continúa desde el menú. |
 | Sesión en la app nativa | El almacenamiento local funciona también fuera del navegador (sesión, avatar, partida guardada). |
 | Errores | Pantalla de error con salida al menú, y registro de errores en la tabla `client_errors` de Supabase. |

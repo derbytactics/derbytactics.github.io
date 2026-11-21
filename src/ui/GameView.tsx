@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import { Action, GameState, currentPlayer, currentRoller } from '../engine';
 import { Crest } from './art';
 import { recordGame } from '../account/club';
-import { Btn, Chronicle, ExitContext, NavBar, RosterContext, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
+import { Btn, Chronicle, ExitContext, NavBar, RosterContext, useBack, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
 import { EndScreen } from './EndScreen';
 import { GameScreen } from './GameScreen';
 import { MatchScreen } from './MatchScreen';
@@ -38,6 +38,11 @@ export function GameView(props: {
   endExtra?: React.ReactNode;
 }) {
   const [leaving, setLeaving] = useState(false);
+  // «Atrás» en Android: pregunta antes de salir de la partida (o cierra la pregunta).
+  useBack(() => {
+    setLeaving((x) => !x);
+    return true;
+  });
   const finished = props.game.phase === 'finished';
   // Al acabar la temporada, se apunta en el historial del club de este dispositivo.
   useEffect(() => {
@@ -98,6 +103,8 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
         footer={footer}
         waitingExtra={online?.onBotTurn && absent ? <Btn small kind="ghost" label="¿No responde? Tirar por él" onPress={online.onBotTurn} style={{ marginTop: 10 }} /> : undefined}
         onForceAbsent={online?.onBotTurn && absent ? online.onBotTurn : undefined}
+        online={!!online}
+        onSkip={online ? undefined : () => dispatch({ type: 'playMatch' })}
       />
     );
   }

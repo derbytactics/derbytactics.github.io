@@ -17,7 +17,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
       <Text style={{ color: C.accent, fontSize: 22, fontWeight: '900' }}>{value}</Text>
-      <Text style={{ color: C.dim, fontSize: 11, fontWeight: '700' }}>{label}</Text>
+      <Text style={{ color: C.dim, fontSize: 12, fontWeight: '700' }}>{label}</Text>
     </View>
   );
 }

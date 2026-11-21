@@ -267,7 +267,7 @@ function HistoryTab() {
                 {g.status === 'finished' && g.position ? (g.position === 1 ? '🏆 Campeón' : `${g.position}.º puesto`) : STATUS[g.status]}
               </Text>
             </View>
-            <Text style={{ color: g.ranked ? C.accent : C.faint, fontSize: 11, fontWeight: '800' }}>{g.ranked ? 'PUNTUABLE' : g.status === 'finished' ? 'AMISTOSA' : ''}</Text>
+            <Text style={{ color: g.ranked ? C.accent : C.faint, fontSize: 12, fontWeight: '800' }}>{g.ranked ? 'PUNTUABLE' : g.status === 'finished' ? 'AMISTOSA' : ''}</Text>
           </View>
           <View style={{ marginTop: 8 }}>
             {g.players.map((p, i) => (

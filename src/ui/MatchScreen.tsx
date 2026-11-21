@@ -152,20 +152,22 @@ function ReadingBar({ duration, token }: { duration: number; token: string }) {
 }
 
 /**
- * Botón con cuenta atrás: si nadie lo pulsa, el árbitro ordena seguir y se ejecuta solo.
+ * Botón de seguir. En línea lleva cuenta atrás (`auto`): si nadie lo pulsa, el árbitro ordena seguir
+ * para no bloquear a los demás. En un dispositivo espera a que la persona pulse.
  * `token` reinicia la cuenta cuando cambia lo que se está esperando.
  */
-function RefereeButton({ label, seconds, token, onGo }: { label: string; seconds: number; token: string; onGo: (forced: boolean) => void }) {
+function RefereeButton({ label, seconds, token, auto, onGo }: { label: string; seconds: number; token: string; auto: boolean; onGo: (forced: boolean) => void }) {
   const [left, setLeft] = useState(seconds);
   const fired = useRef(false);
   useEffect(() => {
     fired.current = false;
     setLeft(seconds);
+    if (!auto) return;
     const t = setInterval(() => setLeft((x) => x - 1), TICK_MS);
     return () => clearInterval(t);
-  }, [token, seconds]);
+  }, [token, seconds, auto]);
   useEffect(() => {
-    if (left <= 0 && !fired.current) {
+    if (auto && left <= 0 && !fired.current) {
       fired.current = true;
       onGo(true);
     }
@@ -179,12 +181,14 @@ function RefereeButton({ label, seconds, token, onGo }: { label: string; seconds
   return (
     <View>
       <Btn label={label} onPress={go} />
+      {auto ? (
       <View style={[s.row, { justifyContent: 'center', marginTop: 8 }]}>
         <View style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: left <= 2 ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: left <= 2 ? C.danger : C.accent, fontWeight: '900', fontSize: 13 }}>{Math.max(0, left)}</Text>
         </View>
         <Text style={{ color: C.dim, fontSize: 12, fontWeight: '700', marginLeft: 8 }}>El árbitro cuenta: si no, ordena seguir</Text>
       </View>
+      ) : null}
     </View>
   );
 }
@@ -229,6 +233,10 @@ export function MatchScreen(props: {
   waitingExtra?: React.ReactNode;
   /** Solo anfitrión: tira por una persona que no responde, pasado un tiempo. */
   onForceAbsent?: () => void;
+  /** Partida en línea: el árbitro sigue solo si nadie pulsa, para no bloquear a los demás. */
+  online?: boolean;
+  /** Un dispositivo: juega de golpe las tiradas que falten y va al resultado. */
+  onSkip?: () => void;
 }) {
   const { state, focus } = props;
   const live = state.phase === 'match' && !!state.match;
@@ -361,7 +369,7 @@ export function MatchScreen(props: {
             <View style={[s.row, { marginBottom: 6 }]}>
               <Text style={[s.th, { flex: 1, textAlign: 'left' }]}>REPARTO DE LA JORNADA</Text>
               <Text style={[s.th, { width: 50 }]}>GOLES</Text>
-              <Text style={[s.th, { width: 52 }]}>PUNTOS</Text>
+              <Text style={[s.th, { width: 52 }]}>PTS</Text>
               <Text style={[s.th, { width: 56 }]}>DINERO</Text>
             </View>
             {report.results.map((r) => (
@@ -451,7 +459,7 @@ export function MatchScreen(props: {
               <ReadingBar duration={readDuration} token={readToken} />
             </>
           ) : queued ? (
-            <RefereeButton token={`q${cur}`} seconds={REFEREE_S} label={cur < 0 ? 'Ver la primera tirada ▸' : 'Ver la siguiente tirada ▸'} onGo={advance} />
+            <RefereeButton auto={!!props.online} token={`q${cur}`} seconds={REFEREE_S} label={cur < 0 ? 'Ver la primera tirada ▸' : 'Ver la siguiente tirada ▸'} onGo={advance} />
           ) : live && roller !== null ? (
             iRoll ? (
               <>
@@ -462,6 +470,7 @@ export function MatchScreen(props: {
                   </Text>
                 </View>
                 <RefereeButton
+                  auto={!!props.online}
                   token={`r${rolls.length}`}
                   seconds={cur < 0 ? REFEREE_S * 2 : REFEREE_S}
                   label={roller === viewer || viewer === null ? '🎲 Tirar los dados' : `🎲 Que tire ${name(roller)}`}
@@ -481,6 +490,19 @@ export function MatchScreen(props: {
             <Btn label="Ver el reparto de la jornada →" onPress={() => setReparto(true)} />
           )}
         </View>
+
+        {props.onSkip && (live || queued || !ready) ? (
+          <Btn
+            small
+            kind="ghost"
+            label="⏩ Saltar al resultado"
+            onPress={() => {
+              if (live) props.onSkip!();
+              setReparto(true);
+            }}
+            style={{ alignSelf: 'center', marginBottom: 12 }}
+          />
+        ) : null}
 
         {/* Tus números y tus cartas, siempre a mano durante el partido. */}
         {cur >= 0

@@ -7,7 +7,8 @@ export const C = {
   line: '#24503A',
   text: '#F4F7F2',
   dim: '#9DB8A7',
-  faint: '#5F7F6D',
+  // Texto secundario: contraste de al menos 4,5:1 sobre todos los fondos de panel.
+  faint: '#86A594',
   accent: '#F5C542',
   accentText: '#231B00',
   danger: '#F0585D',

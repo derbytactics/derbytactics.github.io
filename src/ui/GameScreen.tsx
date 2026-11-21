@@ -20,13 +20,13 @@ import {
   words,
 } from '../engine';
 import { Crest, StadiumArt } from './art';
-import { Btn, Chronicle, FootballerCard, NumberToken, Overline, PhaseStepper, Popup, StandingsTable, Tag, jornadaLabel, s } from './components';
+import { Btn, Chronicle, FootballerCard, NumberToken, Overline, PhaseStepper, Popup, StandingsTable, Tag, s } from './components';
 import { Tip } from './Tip';
 import { C, POS_COLOR, clubColor } from './theme';
 
 const J_IS_PRESEASON = (st: GameState) => st.jornada === 1 && st.turnOrder.length > st.players.length;
 
-type Tab = 'mercado' | 'plantilla' | 'rivales' | 'cartas' | 'cronica';
+type Tab = 'mercado' | 'plantilla' | 'rivales' | 'cartas';
 
 export const SPECIAL_ICON: Record<SpecialKind, string> = {
   incidentes: '🚨',
@@ -85,10 +85,10 @@ export function NumberLine({ player, jornada, highlight, state }: { player: Play
               <View style={highlight === n ? { borderRadius: 20, borderWidth: 2, borderColor: C.accent, padding: 1 } : { padding: 3 }}>
                 <NumberToken n={n} size={27} dim={st.attack === 0 && st.defense === 0} />
               </View>
-              <Text style={{ color: st.attack ? POS_COLOR.DEL : C.faint, fontSize: 11, fontWeight: '800', marginTop: 2 }}>{st.attack ? `⚔${st.attack}` : '–'}</Text>
-              <Text style={{ color: st.defense ? POS_COLOR.DEF : C.faint, fontSize: 11, fontWeight: '800' }}>{st.defense ? `🛡${st.defense}` : '–'}</Text>
+              <Text style={{ color: st.attack ? POS_COLOR.DEL : C.faint, fontSize: 12, fontWeight: '800', marginTop: 2 }}>{st.attack ? `⚔${st.attack}` : '–'}</Text>
+              <Text style={{ color: st.defense ? POS_COLOR.DEF : C.faint, fontSize: 12, fontWeight: '800' }}>{st.defense ? `🛡${st.defense}` : '–'}</Text>
               {state ? (
-                <Text style={{ color: st.attack ? (stoppers === 0 ? C.good : stoppers === rivals.length ? C.danger : C.dim) : C.faint, fontSize: 10, fontWeight: '700' }}>
+                <Text style={{ color: st.attack ? (stoppers === 0 ? C.good : stoppers === rivals.length ? C.danger : C.dim) : C.faint, fontSize: 12, fontWeight: '700' }}>
                   {st.attack ? `${rivals.length - stoppers}/${rivals.length}` : ''}
                 </Text>
               ) : null}
@@ -96,7 +96,7 @@ export function NumberLine({ player, jornada, highlight, state }: { player: Play
           );
         })}
       </View>
-      <Text style={{ color: C.faint, fontSize: 11, marginTop: 6 }}>
+      <Text style={{ color: C.faint, fontSize: 12, marginTop: 6 }}>
         ⚔ tu ataque · 🛡 tu defensa{state ? ' · debajo, a cuántos rivales marcarías hoy con ese número' : ''}
       </Text>
     </View>
@@ -139,48 +139,59 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
     <Btn small kind={why(action) ? 'muted' : 'primary'} label={label} onPress={() => act(action)} />
   );
 
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: { key: Tab; label: string; badge?: string }[] = [
     { key: 'mercado', label: 'Mercado' },
-    { key: 'plantilla', label: `Mi club · ${me.squad.length}/${CONFIG.squadSize}` },
+    { key: 'plantilla', label: 'Plantilla', badge: `${me.squad.length}/${CONFIG.squadSize}` },
     { key: 'rivales', label: 'Rivales' },
-    { key: 'cartas', label: `Cartas · ${me.hand.length}` },
-    { key: 'cronica', label: 'Crónica' },
+    { key: 'cartas', label: 'Cartas', badge: String(me.hand.length) },
   ];
   const todo: { label: string; done: boolean; tab: Tab }[] = [
-    { label: state.turn.signed ? 'Fichaje hecho' : '1 fichaje', done: state.turn.signed, tab: 'mercado' },
-    { label: state.turn.upgraded ? 'Estadio ampliado' : 'Ampliar estadio', done: state.turn.upgraded || upCost === null, tab: 'plantilla' },
-    { label: state.turn.boughtCard ? 'Carta comprada' : 'Comprar carta', done: state.turn.boughtCard, tab: 'cartas' },
-    { label: `Jugar cartas ${state.turn.cardsPlayed}/${CONFIG.special.maxPlayedPerTurn}`, done: state.turn.cardsPlayed >= CONFIG.special.maxPlayedPerTurn, tab: 'cartas' },
+    { label: 'Fichaje', done: state.turn.signed, tab: 'mercado' },
+    { label: 'Estadio', done: state.turn.upgraded || upCost === null, tab: 'plantilla' },
+    { label: 'Carta', done: state.turn.boughtCard, tab: 'cartas' },
+    { label: `Usar ${state.turn.cardsPlayed}/${CONFIG.special.maxPlayedPerTurn}`, done: state.turn.cardsPlayed >= CONFIG.special.maxPlayedPerTurn, tab: 'cartas' },
   ];
 
   const pendingCard = pending !== null && me.hand[pending] ? specialCard(me.hand[pending]) : null;
   const pendingTarget = pendingCard ? SPECIAL_INFO[pendingCard.kind].target : null;
   const canStillSign = !state.turn.signed && me.squad.length < CONFIG.squadSize && state.market.some((id) => signPrice(state, id) <= me.money);
+  /** Pide confirmación antes de pasar el turno sin fichar pudiendo hacerlo. */
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const endTurn = () => (canStillSign ? setConfirmEnd(true) : act({ type: 'endTurn' }));
+  const round = state.turnIndex < state.players.length ? 1 : 2;
 
   return (
     <View style={{ flex: 1 }}>
-      <PhaseStepper step={0} label={jornadaLabel(state)} />
+      <PhaseStepper step={0} />
 
-      <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
         <View style={s.row}>
-          <Crest name={me.name} color={color} design={me.crest} size={46} />
+          <Crest name={me.name} color={color} design={me.crest} size={38} />
           <View style={{ flex: 1, marginLeft: 10 }}>
-            <Overline>TE TOCA</Overline>
-            <Text numberOfLines={1} style={s.h1}>{me.name}</Text>
+            <Text numberOfLines={1} style={{ color: C.text, fontSize: 19, fontWeight: '900' }}>{me.name}</Text>
+            <Text numberOfLines={1} style={{ color: C.dim, fontSize: 12, fontWeight: '700' }}>
+              Te toca · {preseason ? `pretemporada, vuelta ${round} de 2` : `turno ${state.turnIndex + 1} de ${state.turnOrder.length}`}
+            </Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Overline>CAJA</Overline>
-            <Text style={{ color: C.accent, fontSize: 26, fontWeight: '900' }}>{me.money}M</Text>
+            <Text style={{ color: C.dim, fontSize: 12, fontWeight: '700' }}>Caja</Text>
+            <Text style={{ color: C.accent, fontSize: 22, fontWeight: '900' }}>{me.money}M</Text>
           </View>
         </View>
 
-        <View style={[s.row, { flexWrap: 'wrap', marginTop: 10 }]}>
-          {todo.map((t) => (
-            <Pressable key={t.label} onPress={() => setTab(t.tab)} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12, marginBottom: 6 }}>
-              <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, borderColor: t.done ? C.good : C.faint, backgroundColor: t.done ? C.good : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-                {t.done ? <Text style={{ color: C.bg, fontSize: 10, fontWeight: '900' }}>✓</Text> : null}
-              </View>
-              <Text style={{ color: t.done ? C.faint : C.text, fontSize: 12, fontWeight: '700', marginLeft: 5 }}>{t.label}</Text>
+        <View style={[s.row, { marginTop: 8, gap: 6 }]}>
+          {todo.map((t, i) => (
+            <Pressable
+              key={t.label}
+              accessibilityRole="button"
+              accessibilityLabel={`${t.label}${t.done ? ', hecho' : i === 0 ? ', pendiente' : ', opcional'}`}
+              onPress={() => setTab(t.tab)}
+              style={{ flex: i === 0 ? 1.2 : 1, minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderWidth: 1, borderColor: t.done ? C.good : i === 0 ? C.accent : C.line, backgroundColor: t.done ? C.good + '22' : 'transparent', paddingHorizontal: 6 }}
+            >
+              <Text numberOfLines={1} style={{ color: t.done ? C.good : i === 0 ? C.accent : C.dim, fontSize: 12, fontWeight: '800' }}>
+                {t.done ? '✓ ' : ''}
+                {t.label}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -196,9 +207,8 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
 
         {preseason && !error && !lastAction ? (
           <View style={{ backgroundColor: C.accent + '1A', borderColor: C.accent, borderWidth: 1, borderRadius: 10, padding: 9, marginTop: 6 }}>
-            <Text style={{ color: '#FBE7A6', fontWeight: '700' }}>
-              Pretemporada: antes de la jornada 1 todos los clubes fichan dos veces. Esta es tu vuelta {state.turnIndex < state.players.length ? 1 : 2} de 2
-              {state.turnIndex < state.players.length ? '; en la segunda el orden va al revés.' : '. Después se juega el primer partido.'}
+            <Text style={{ color: '#FBE7A6', fontWeight: '700', fontSize: 13 }}>
+              {round === 1 ? 'Pretemporada: todos fichan dos veces antes de la jornada 1.' : 'Último fichaje antes del primer partido.'}
             </Text>
           </View>
         ) : null}
@@ -213,11 +223,28 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
         ) : null}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: 10 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
-        {tabs.map((t) => (
-          <Btn key={t.key} small kind={tab === t.key ? 'primary' : 'ghost'} label={t.label} onPress={() => { setTab(t.key); setPending(null); }} />
-        ))}
-      </ScrollView>
+      <View accessibilityRole="tablist" style={[s.row, { marginTop: 10, marginHorizontal: 16, backgroundColor: C.panel, borderRadius: 12, padding: 3, borderWidth: 1, borderColor: C.line }]}>
+        {tabs.map((t) => {
+          const on = tab === t.key;
+          return (
+            <Pressable
+              key={t.key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+              onPress={() => {
+                setTab(t.key);
+                setPending(null);
+              }}
+              style={{ flex: 1, minHeight: 44, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.accent : 'transparent' }}
+            >
+              <Text numberOfLines={1} style={{ color: on ? C.accentText : C.text, fontWeight: '800', fontSize: 13 }}>
+                {t.label}
+                {t.badge ? <Text style={{ color: on ? C.accentText : C.dim, fontWeight: '700' }}> {t.badge}</Text> : null}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
         {tab === 'mercado' ? (
@@ -225,11 +252,6 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
             <Tip id="mercado" title="Empieza por un portero y un delantero">
               Tienes 80M para montar un equipo de 7. Un buen comienzo: un portero con números que salgan mucho (6 y 8), uno o dos delanteros y medios que compartan número con ellos. Solo puedes hacer un fichaje por turno.
             </Tip>
-            <Text style={[s.p, { marginBottom: 10 }]}>
-              {words(state).fem
-                ? 'Las delanteras y medias atacan cuando sale su número; porteras y defensas lo paran si tienen ese mismo número. Caben 7 futbolistas y una sola portera.'
-                : 'Los delanteros y medios atacan cuando sale su número; porteros y defensas lo paran si tienen ese mismo número. Caben 7 futbolistas y un solo portero.'}
-            </Text>
             {state.market.map((id) => (
               <FootballerCard key={id} cardId={id}>
                 <ActionBtn label={`Fichar · ${signPrice(state, id)}M`} action={{ type: 'sign', cardId: id }} />
@@ -311,6 +333,8 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
                 ))}
               </View>
             ))}
+            <Text style={[s.h2, { marginTop: 8, marginBottom: 8 }]}>Crónica de la liga</Text>
+            <Chronicle state={state} max={60} />
           </>
         ) : null}
 
@@ -373,14 +397,13 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
           </>
         ) : null}
 
-        {tab === 'cronica' ? <Chronicle state={state} max={60} /> : null}
       </ScrollView>
 
       <View style={{ padding: 16, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.line }}>
         <Text style={{ color: canStillSign ? C.accent : C.faint, fontSize: 12, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
           {canStillSign ? `Aún puedes fichar a ${words(state).fem ? 'una' : 'un'} futbolista este turno` : 'Cuando acabes, pasa el turno'}
         </Text>
-        <Btn label="Terminar turno →" onPress={() => act({ type: 'endTurn' })} />
+        <Btn label="Terminar turno →" onPress={endTurn} />
       </View>
 
       {news.length ? (
@@ -391,6 +414,23 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
               <Text style={{ color: C.text, flex: 1, fontSize: 15, lineHeight: 21 }}>{l.text}</Text>
             </View>
           ))}
+        </Popup>
+      ) : confirmEnd ? (
+        <Popup overline="TERMINAR TURNO" title="¿Pasar sin fichar?" color={C.accent} button="Seguir en el mercado" onClose={() => setConfirmEnd(false)}>
+          <Text style={[s.p, { textAlign: 'center', marginBottom: 12 }]}>
+            {preseason
+              ? `Aún puedes fichar este turno. En pretemporada cada fichaje cuenta: si pasas, empezarás la liga con menos futbolistas.`
+              : `Aún puedes fichar ${words(state).fem ? 'a una' : 'a un'} futbolista este turno. Solo se puede fichar una vez por turno.`}
+          </Text>
+          <Btn
+            kind="ghost"
+            label="Terminar sin fichar"
+            onPress={() => {
+              setConfirmEnd(false);
+              act({ type: 'endTurn' });
+            }}
+            style={{ marginBottom: 4 }}
+          />
         </Popup>
       ) : drawn ? (
         <Popup overline="CARTA NUEVA" title="Has robado esta carta" color={C.good} button="A la mano" onClose={() => setDrawn(null)}>

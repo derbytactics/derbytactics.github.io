@@ -38,7 +38,7 @@ function Options({ count, names, value, render, onPick }: { count: number; names
           style={{ alignItems: 'center', padding: 6, borderRadius: 12, borderWidth: 2, borderColor: value === i ? C.accent : 'transparent', backgroundColor: value === i ? C.panelAlt : 'transparent', width: 66 }}
         >
           <Crest name="FC" color="#000000" size={44} design={render(i)} />
-          <Text numberOfLines={1} style={{ color: value === i ? C.accent : C.dim, fontSize: 11, fontWeight: '700', marginTop: 4 }}>{names[i]}</Text>
+          <Text numberOfLines={1} style={{ color: value === i ? C.accent : C.dim, fontSize: 12, fontWeight: '700', marginTop: 4 }}>{names[i]}</Text>
         </Pressable>
       ))}
     </ScrollView>
@@ -48,8 +48,9 @@ function Options({ count, names, value, render, onPick }: { count: number; names
 /**
  * Crear o editar el club del jugador. Con `first` es obligatorio (no se puede cerrar sin guardar).
  */
-export function ClubScreen({ initial, first, inGame, onClose }: { initial: MyClub | null; first?: boolean; inGame?: boolean; onClose: () => void }) {
-  const [name, setName] = useState(initial?.name ?? '');
+export function ClubScreen({ initial, first, inGame, onClose, onLogin }: { initial: MyClub | null; first?: boolean; inGame?: boolean; onClose: () => void; onLogin?: () => void }) {
+  // La primera vez llega relleno al azar: se puede fundar con un toque y cambiarlo cuando se quiera.
+  const [name, setName] = useState(() => initial?.name ?? randomClubName(rnd));
   const [crest, setCrest] = useState<CrestDesign>(initial?.crest ?? randomCrest(rnd));
   const [warn, setWarn] = useState<string | null>(null);
   const patch = (p: Partial<CrestDesign>) => setCrest((c) => ({ ...c, ...p }));
@@ -60,20 +61,21 @@ export function ClubScreen({ initial, first, inGame, onClose }: { initial: MyClu
     onClose();
   };
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+    <View style={{ flex: 1 }}>
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
       <View style={[s.row, { marginBottom: 6 }]}>
         <Text style={[s.h1, { flex: 1 }]}>{first ? 'Funda tu club' : 'Mi club'}</Text>
         {!first ? <Btn small kind="ghost" label="Cerrar" onPress={onClose} /> : null}
       </View>
       <Text style={[s.p, { marginBottom: 14 }]}>
         {first
-          ? 'Tienes un club, y es solo tuyo: ponle nombre y diseña su escudo. Lo llevarás a todas tus partidas, en este dispositivo y en línea.'
+          ? 'Te hemos preparado uno al azar. Cámbiale el nombre o el escudo si quieres (también más tarde, desde el menú) y a jugar.'
           : 'Puedes cambiar el nombre y el escudo cuando quieras.'}
         {inGame ? ' Los cambios se verán a partir de tu próxima partida.' : ''}
       </Text>
 
       <View style={{ alignItems: 'center', marginBottom: 14 }}>
-        <Crest name={name.trim() || 'Mi club'} color={crest.primary} size={148} design={crest} />
+        <Crest name={name.trim() || 'Mi club'} color={crest.primary} size={112} design={crest} />
         <Text numberOfLines={1} style={{ color: C.text, fontSize: 22, fontWeight: '900', marginTop: 8 }}>{name.trim() || 'Tu club'}</Text>
       </View>
 
@@ -95,7 +97,6 @@ export function ClubScreen({ initial, first, inGame, onClose }: { initial: MyClu
           <Text style={{ fontSize: 22 }}>🎲</Text>
         </Pressable>
       </View>
-      {warn ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{warn}</Text> : null}
 
       <View style={[s.row, { marginBottom: 4 }]}>
         <Text style={[s.h2, { flex: 1 }]}>Escudo</Text>
@@ -113,7 +114,18 @@ export function ClubScreen({ initial, first, inGame, onClose }: { initial: MyClu
       <Overline>COLOR SECUNDARIO</Overline>
       <Swatches label="Color secundario" value={crest.secondary} onPick={(c) => patch({ secondary: c })} />
 
-      <Btn label={first ? 'Fundar mi club' : 'Guardar cambios'} onPress={saveClub} style={{ marginTop: 6 }} />
     </ScrollView>
+    <View style={{ padding: 16, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.line }}>
+      {warn ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>{warn}</Text> : null}
+      <Btn label={first ? 'Fundar mi club y jugar' : 'Guardar cambios'} onPress={saveClub} />
+      {first && onLogin ? (
+        <Pressable accessibilityRole="button" onPress={onLogin} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
+          <Text style={{ color: C.dim, fontWeight: '700' }}>
+            ¿Ya tienes cuenta? <Text style={{ color: C.accent }}>Entra y recupera tu club</Text>
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+    </View>
   );
 }
