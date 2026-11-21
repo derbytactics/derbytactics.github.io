@@ -53,6 +53,8 @@ export default function App() {
   const [game, setGame] = useState<GameState | null>(null);
   const [help, setHelp] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  /** Ha pedido entrar con su cuenta (desde el menú, al crear sala…): se abre la portada encima. */
+  const [loginOpen, setLoginOpen] = useState(false);
   const [legal, setLegal] = useState<LegalTab | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [clubOpen, setClubOpen] = useState(false);
@@ -100,7 +102,10 @@ export default function App() {
           setJustSignedOut(true);
         }
       }
-      if (has) setJustSignedOut(false);
+      if (has) {
+        setJustSignedOut(false);
+        setLoginOpen(false);
+      }
       had = has;
     });
   }, []);
@@ -134,6 +139,7 @@ export default function App() {
     { open: historyOpen, close: () => setHistoryOpen(false) },
     { open: clubOpen, close: () => setClubOpen(false) },
     { open: accountOpen, close: () => setAccountOpen(false) },
+    { open: loginOpen, close: () => setLoginOpen(false) },
   ];
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -190,6 +196,8 @@ export default function App() {
     setMode({ kind: 'menu' });
   };
   const onHelp = () => setHelp(true);
+  // Con sesión, «Mi cuenta» (perfil, salas, ranking, cerrar sesión); sin ella, la portada para entrar.
+  const openAccount = () => (getAccount().session ? setAccountOpen(true) : setLoginOpen(true));
 
   let body: React.ReactNode;
   if (!booted || !fontsReady) {
@@ -206,7 +214,7 @@ export default function App() {
     body = <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: C.dim, fontWeight: '700' }}>Cargando tu club…</Text></View>;
   } else if (!club) {
     // Cada persona tiene un club: se crea antes de jugar la primera vez.
-    body = <ClubScreen first initial={null} onClose={() => {}} onLogin={backendEnabled() && !account.session ? () => setAccountOpen(true) : undefined} />;
+    body = <ClubScreen first initial={null} onClose={() => {}} onLogin={backendEnabled() && !account.session ? () => setLoginOpen(true) : undefined} />;
   } else {
     const savedHost = load<RoomState>(HOST_KEY);
     const savedGuest = load<{ code: string; name: string }>(GUEST_KEY);
@@ -235,7 +243,7 @@ export default function App() {
         hostGate={async () => {
           if (!backendEnabled()) return null;
           if (!getAccount().session) {
-            setAccountOpen(true);
+            setLoginOpen(true);
             return 'Entra con tu cuenta para crear una sala.';
           }
           const p = await refreshProfile();
@@ -247,7 +255,7 @@ export default function App() {
 
   return (
     <BackContext.Provider value={registerBack}>
-    <NavContext.Provider value={{ onHelp, onAccount: () => setAccountOpen(true), onMenu: () => setMenuOpen(true), onLegal: setLegal }}>
+    <NavContext.Provider value={{ onHelp, onAccount: openAccount, onMenu: () => setMenuOpen(true), onLegal: setLegal }}>
     <ErrorBoundary onReset={toMenu}>
     <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: TOP_INSET }}>
       <View style={{ flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' }}>
@@ -263,7 +271,12 @@ export default function App() {
             <HistoryScreen onClose={() => setHistoryOpen(false)} />
           </View>
         ) : null}
-        {accountOpen ? (
+        {loginOpen && !account.session ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
+            <WelcomeScreen onGuest={() => setLoginOpen(false)} guestLabel="Volver sin entrar" />
+          </View>
+        ) : null}
+        {accountOpen && account.session ? (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
             <AccountScreen onClose={() => setAccountOpen(false)} />
           </View>
@@ -288,7 +301,7 @@ export default function App() {
             onClose={() => setMenuOpen(false)}
             onClub={() => setClubOpen(true)}
             onHistory={() => setHistoryOpen(true)}
-            onAccount={() => setAccountOpen(true)}
+            onAccount={openAccount}
             onHelp={onHelp}
             onLegal={setLegal}
           />
