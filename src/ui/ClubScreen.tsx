@@ -96,13 +96,13 @@ export function ClubScreen({ initial, first, inGame, onClose }: { initial: MyClu
           style={{ flex: 1, minWidth: 0, color: C.text, fontSize: 18, fontWeight: '700', paddingVertical: 8 }}
         />
         <Pressable accessibilityRole="button" accessibilityLabel="Nombre al azar" onPress={() => setName(randomClubName(rnd))} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name={I.dice} size={24} color={C.dim} />
+          <Icon name={I.shuffle} size={24} color={C.dim} />
         </Pressable>
       </View>
 
       <View style={[s.row, { marginBottom: 4 }]}>
         <Text style={[s.h2, { flex: 1 }]}>Escudo</Text>
-        <Btn small kind="ghost" icon={I.dice} label="Sorpréndeme" onPress={() => setCrest(randomCrest(rnd))} />
+        <Btn small kind="ghost" icon={I.shuffle} label="Sorpréndeme" onPress={() => setCrest(randomCrest(rnd))} />
       </View>
 
       <Overline>FORMA</Overline>

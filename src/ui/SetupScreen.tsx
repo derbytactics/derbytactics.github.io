@@ -198,7 +198,7 @@ export function SetupScreen(props: {
                     placeholder={`Club ${i + 2}`}
                   />
                   <Pressable accessibilityRole="button" accessibilityLabel="Otro nombre y escudo al azar" onPress={() => reroll(i)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name={I.dice} size={24} color={C.dim} />
+                    <Icon name={I.shuffle} size={24} color={C.dim} />
                   </Pressable>
                   <WhoPlays bot={p.isBot} club={p.name || `Club ${i + 2}`} onPick={(isBot) => patch(i, { isBot })} />
                 </View>
