@@ -46,7 +46,7 @@ const deletion: LegalSection[] = [
   {
     title: 'Desde el juego',
     body: [
-      'Entra con tu cuenta, abre el menú (☰) y entra en «Mi cuenta» y pulsa «Borrar mi cuenta». Confirma y la cuenta se borra en el momento.',
+      'Entra con tu cuenta, abre el menú (☰), toca «Mi cuenta» y pulsa «Borrar mi cuenta». Confirma y la cuenta se borra en el momento.',
     ],
   },
   {
