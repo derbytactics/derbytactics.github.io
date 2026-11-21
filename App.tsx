@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler, Platform, Text, View } from 'react-native';
-import { backendEnabled, getAccount, initAccount, refreshProfile, subscribeAccount } from './src/account/api';
+import { backendEnabled, getAccount, initAccount, refreshProfile, signOut, subscribeAccount } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
 import { Action, BOT_STYLES, CrestDesign, GameState, apply, botAction, check, createGame, currentPlayer } from './src/engine';
 import { RoomState } from './src/net/room';
@@ -25,7 +25,7 @@ import { OnlineGuest, OnlineHost } from './src/ui/Online';
 import { SetupScreen } from './src/ui/SetupScreen';
 import { SideMenu } from './src/ui/SideMenu';
 import { WelcomeScreen } from './src/ui/WelcomeScreen';
-import { BackContext, NavContext } from './src/ui/components';
+import { BackContext, Btn, NavContext, Popup, s } from './src/ui/components';
 import { C, TOP_INSET } from './src/ui/theme';
 
 type Mode =
@@ -36,6 +36,8 @@ type Mode =
 
 /** Partida de un solo dispositivo guardada para poder continuarla. */
 const LOCAL_KEY = 'futcards.local.v3';
+/** Ha elegido jugar sin cuenta en la portada. */
+const GUEST_MODE_KEY = 'futcards.guestMode';
 installGlobalErrorHandlers();
 
 /** Código de sala que llega en el enlace de invitación (?sala=ABCDE). */
@@ -53,17 +55,15 @@ export default function App() {
   const [game, setGame] = useState<GameState | null>(null);
   const [help, setHelp] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  /** Ha pedido entrar con su cuenta (desde el menú, al crear sala…): se abre la portada encima. */
-  const [loginOpen, setLoginOpen] = useState(false);
   const [legal, setLegal] = useState<LegalTab | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [clubOpen, setClubOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const club = useMyClub();
-  /** Ha elegido jugar sin cuenta (la portada no vuelve a salir hasta que cierre sesión). */
-  const [guestChosen, setGuestChosen] = useState(false);
-  /** Acaba de cerrar sesión: la portada lo confirma. */
-  const [justSignedOut, setJustSignedOut] = useState(false);
+  /** Juega sin cuenta: lo eligió en la portada y se recuerda hasta que pulse «Salir». */
+  const [guestMode, setGuestMode] = useState(false);
+  /** Pregunta de «¿Cerrar sesión?» abierta. */
+  const [leaving, setLeaving] = useState(false);
   const clubSyncing = useClubSyncing();
   /** En la app nativa hay que cargar lo guardado antes de pintar nada. */
   const [booted, setBooted] = useState(Platform.OS === 'web');
@@ -98,13 +98,7 @@ export default function App() {
           for (const k of [LOCAL_KEY, HOST_KEY, GUEST_KEY]) remove(k);
           setGame(null);
           setMode({ kind: 'menu' });
-          setGuestChosen(false);
-          setJustSignedOut(true);
         }
-      }
-      if (has) {
-        setJustSignedOut(false);
-        setLoginOpen(false);
       }
       had = has;
     });
@@ -116,11 +110,12 @@ export default function App() {
       .then(() => {
         // Restos de una cuenta sin sesión abierta (p. ej. cerrada con una versión anterior o caducada):
         // se limpian como al cerrar sesión, y se vuelve a la portada.
-        if (backendEnabled() && !getAccount().session && belongsToAccount()) {
+        if (backendEnabled() && !getAccount().session && belongsToAccount() && !load<boolean>(GUEST_MODE_KEY)) {
           forgetLocalClub();
           for (const k of [LOCAL_KEY, HOST_KEY, GUEST_KEY]) remove(k);
         }
       })
+      .then(() => setGuestMode(!!load<boolean>(GUEST_MODE_KEY)))
       .finally(() => setBooted(true));
   }, []);
   // Botón «atrás» de Android: primero cierra la ventana que esté encima; si no hay, lo atiende la pantalla.
@@ -139,7 +134,6 @@ export default function App() {
     { open: historyOpen, close: () => setHistoryOpen(false) },
     { open: clubOpen, close: () => setClubOpen(false) },
     { open: accountOpen, close: () => setAccountOpen(false) },
-    { open: loginOpen, close: () => setLoginOpen(false) },
   ];
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -196,8 +190,29 @@ export default function App() {
     setMode({ kind: 'menu' });
   };
   const onHelp = () => setHelp(true);
-  // Con sesión, «Mi cuenta» (perfil, salas, ranking, cerrar sesión); sin ella, la portada para entrar.
-  const openAccount = () => (getAccount().session ? setAccountOpen(true) : setLoginOpen(true));
+  const enterAsGuest = () => {
+    // Sin cuenta no se usa nada de una cuenta que se quedara en el dispositivo.
+    if (belongsToAccount()) {
+      forgetLocalClub();
+      for (const k of [LOCAL_KEY, HOST_KEY, GUEST_KEY]) remove(k);
+    }
+    save(GUEST_MODE_KEY, true);
+    setGuestMode(true);
+  };
+  /** «Salir» (sin cuenta) o «Cerrar sesión»: de vuelta a la portada. */
+  const leave = async () => {
+    setLeaving(false);
+    if (getAccount().session) {
+      // Antes de salir se sube lo pendiente; al cerrarse la sesión se borra lo de la cuenta del dispositivo.
+      await Promise.race([syncClub(), new Promise((r) => setTimeout(r, 4000))]);
+      await signOut();
+    } else {
+      remove(GUEST_MODE_KEY);
+      setGuestMode(false);
+      setGame(null);
+      setMode({ kind: 'menu' });
+    }
+  };
 
   let body: React.ReactNode;
   if (!booted || !fontsReady) {
@@ -208,13 +223,14 @@ export default function App() {
     body = <OnlineGuest code={mode.code} name={mode.name} crest={mode.crest} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'local' && game) {
     body = <GameView game={game} seat={null} dispatch={dispatch} onHelp={onHelp} onExit={toMenu} exitText="La partida queda guardada en este dispositivo: podrás continuarla desde el menú." />;
-  } else if (backendEnabled() && !account.session && !club && !guestChosen && mode.kind === 'menu') {
-    body = <WelcomeScreen signedOut={justSignedOut} onGuest={() => setGuestChosen(true)} />;
+  } else if (backendEnabled() && !account.session && !guestMode) {
+    // Portada: entrar con la cuenta o jugar sin ella.
+    body = <WelcomeScreen onGuest={enterAsGuest} />;
   } else if (!club && clubSyncing) {
     body = <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: C.dim, fontWeight: '700' }}>Cargando tu club…</Text></View>;
   } else if (!club) {
     // Cada persona tiene un club: se crea antes de jugar la primera vez.
-    body = <ClubScreen first initial={null} onClose={() => {}} onLogin={backendEnabled() && !account.session ? () => setLoginOpen(true) : undefined} />;
+    body = <ClubScreen first initial={null} onClose={() => {}} />;
   } else {
     const savedHost = load<RoomState>(HOST_KEY);
     const savedGuest = load<{ code: string; name: string }>(GUEST_KEY);
@@ -239,12 +255,10 @@ export default function App() {
         resumeCode={savedHost?.code ?? null}
         onResume={() => savedHost && setMode({ kind: 'host', name: savedHost.seats[0].name, crest: savedHost.seats[0].crest, resume: savedHost })}
         initialCode={codeFromLink() || savedGuest?.code || ''}
-        accountsOn={backendEnabled()}
         hostGate={async () => {
           if (!backendEnabled()) return null;
           if (!getAccount().session) {
-            setLoginOpen(true);
-            return 'Entra con tu cuenta para crear una sala.';
+            return 'Para crear salas hace falta una cuenta: pulsa «Salir» en el menú y entra con Google o Apple.';
           }
           const p = await refreshProfile();
           return p?.host_banned_until ? `Estás sancionado como anfitrión: no puedes crear salas hasta el ${formatDate(p.host_banned_until)}.` : null;
@@ -255,7 +269,7 @@ export default function App() {
 
   return (
     <BackContext.Provider value={registerBack}>
-    <NavContext.Provider value={{ onHelp, onAccount: openAccount, onMenu: () => setMenuOpen(true), onLegal: setLegal }}>
+    <NavContext.Provider value={{ onHelp, onAccount: () => setAccountOpen(true), onMenu: () => setMenuOpen(true), onLegal: setLegal }}>
     <ErrorBoundary onReset={toMenu}>
     <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: TOP_INSET }}>
       <View style={{ flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' }}>
@@ -269,11 +283,6 @@ export default function App() {
         {historyOpen ? (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
             <HistoryScreen onClose={() => setHistoryOpen(false)} />
-          </View>
-        ) : null}
-        {loginOpen && !account.session ? (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
-            <WelcomeScreen onGuest={() => setLoginOpen(false)} guestLabel="Volver sin entrar" />
           </View>
         ) : null}
         {accountOpen && account.session ? (
@@ -301,10 +310,19 @@ export default function App() {
             onClose={() => setMenuOpen(false)}
             onClub={() => setClubOpen(true)}
             onHistory={() => setHistoryOpen(true)}
-            onAccount={openAccount}
+            onAccount={() => setAccountOpen(true)}
             onHelp={onHelp}
             onLegal={setLegal}
+            onLeave={backendEnabled() ? () => (getAccount().session ? setLeaving(true) : leave()) : undefined}
           />
+        ) : null}
+        {leaving ? (
+          <Popup overline="CERRAR SESIÓN" title="¿Cerrar sesión?" button="Cancelar" onClose={() => setLeaving(false)}>
+            <Text style={[s.p, { textAlign: 'center', marginBottom: 12 }]}>
+              Tu club y tu historial quedan guardados en tu cuenta. Una partida a medias en este dispositivo se perdería.
+            </Text>
+            <Btn kind="danger" icon="logout" label="Cerrar sesión" onPress={leave} style={{ marginBottom: 4 }} />
+          </Popup>
         ) : null}
       </View>
       <StatusBar style="light" />
