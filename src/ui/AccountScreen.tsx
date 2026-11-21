@@ -294,9 +294,24 @@ function HistoryTab() {
 }
 
 function RankingTab() {
-  const { profile } = useAccount();
+  const { profile, session } = useAccount();
   const [rows, setRows] = useState<RankingRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Nombre que se va a denunciar y el resultado de la última denuncia. */
+  const [reporting, setReporting] = useState<string | null>(null);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const report = (name: string) =>
+    rpc<string>('report_name', { p_username: name }).then(
+      (r) => {
+        setReporting(null);
+        setNote({ ok: true, text: r === 'retirado' ? `Gracias. El nombre «${name}» se ha retirado.` : `Gracias. Revisaremos el nombre «${name}».` });
+        if (r === 'retirado') rpc<RankingRow[]>('ranking', {}, false).then(setRows, () => {});
+      },
+      (e: Error) => {
+        setReporting(null);
+        setNote({ ok: false, text: e.message });
+      },
+    );
   useEffect(() => {
     rpc<RankingRow[]>('ranking', {}, false).then(setRows, (e: Error) => setError(e.message));
   }, []);
@@ -314,13 +329,31 @@ function RankingTab() {
       {rows.map((r, i) => (
         <View key={r.username} style={[s.row, s.tr, r.username === profile?.username && { backgroundColor: C.panelAlt }]}>
           <Text style={{ color: i < 3 ? C.accent : C.faint, width: 26, fontWeight: '800' }}>{i + 1}</Text>
-          <Text numberOfLines={1} style={{ color: C.text, flex: 1, fontWeight: '700' }}>{r.username}</Text>
+          {session && r.username !== profile?.username ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={`Opciones de ${r.username}`} onPress={() => { setNote(null); setReporting(r.username); }} style={{ flex: 1 }}>
+              <Text numberOfLines={1} style={{ color: C.text, fontWeight: '700' }}>{r.username}</Text>
+            </Pressable>
+          ) : (
+            <Text numberOfLines={1} style={{ color: C.text, flex: 1, fontWeight: '700' }}>{r.username}</Text>
+          )}
           <Text style={[s.td, { width: 44, color: C.accent, fontWeight: '900', fontSize: 15 }]}>{r.wins}</Text>
           <Text style={[s.td, { width: 44 }]}>{r.games}</Text>
           <Text style={[s.td, { width: 48 }]}>{Math.round((100 * r.wins) / r.games)}%</Text>
         </View>
       ))}
-      <Text style={[s.p, { fontSize: 12, marginTop: 8 }]}>Cuentan las partidas en línea terminadas con al menos dos usuarios registrados.</Text>
+      {reporting ? (
+        <View style={[s.panel, { borderColor: C.danger, marginTop: 10 }]}>
+          <Text style={{ color: C.text, fontWeight: '700', marginBottom: 10 }}>¿Denunciar el nombre «{reporting}» por ofensivo? Si tres personas lo denuncian, se retira y tendrá que elegir otro.</Text>
+          <View style={[s.row, { gap: 8 }]}>
+            <Btn small kind="danger" label="Denunciar" onPress={() => report(reporting)} style={{ flex: 1 }} />
+            <Btn small kind="ghost" label="Cancelar" onPress={() => setReporting(null)} style={{ flex: 1 }} />
+          </View>
+        </View>
+      ) : null}
+      {note ? <Text style={{ color: note.ok ? C.good : C.danger, fontWeight: '700', marginTop: 10 }}>{note.text}</Text> : null}
+      <Text style={[s.p, { fontSize: 12, marginTop: 8 }]}>
+        Cuentan las partidas en línea terminadas con al menos dos usuarios registrados.{session ? ' Toca un nombre para denunciarlo si es ofensivo.' : ''}
+      </Text>
     </View>
   );
 }

@@ -4,6 +4,7 @@
  *
  * Si no hay servidor configurado, `backendEnabled()` es false y el juego funciona sin cuentas.
  */
+import { isOffensive } from '../engine/moderation';
 import { load, remove, save } from '../net/storage';
 
 interface Backend {
@@ -270,6 +271,7 @@ async function signInWithAppleNative(): Promise<void> {
 
 /** Elige el nombre de usuario (la primera vez tras entrar con Google o Apple, o para cambiarlo). */
 export async function chooseUsername(name: string): Promise<void> {
+  if (isOffensive(name)) throw new Error('Ese nombre no está permitido. Elige otro.');
   if (!(await rpc<boolean>('username_available', { p_username: name }, false))) {
     throw new Error('Ese nombre no está disponible: usa de 3 a 16 letras, números o espacios.');
   }

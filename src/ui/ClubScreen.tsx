@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { CREST_COLORS, CREST_EMBLEMS, CREST_PATTERNS, CREST_SHAPES, CrestDesign, randomClubName, randomCrest } from '../engine';
+import { CREST_COLORS, CREST_EMBLEMS, CREST_PATTERNS, CREST_SHAPES, CrestDesign, isOffensive, randomClubName, randomCrest } from '../engine';
 import { Crest } from './art';
 import { MyClub, setMyClub } from '../account/club';
 import { EMBLEM_NAMES, PATTERN_NAMES, SHAPE_NAMES } from './crest';
@@ -56,6 +56,7 @@ export function ClubScreen({ initial, first, inGame, onClose }: { initial: MyClu
   const saveClub = () => {
     const n = name.trim();
     if (n.length < 3) return setWarn('El nombre del club necesita al menos 3 letras.');
+    if (isOffensive(n)) return setWarn('Ese nombre no está permitido. Elige otro.');
     setMyClub({ name: n, crest });
     onClose();
   };

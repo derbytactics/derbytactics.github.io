@@ -3,7 +3,7 @@
  * Los invitados mandan mensajes; el anfitrión los valida, aplica la acción
  * con el motor y difunde el estado completo de la sala.
  */
-import { Action, BOT_STYLES, CONFIG, CrestDesign, GameState, League, SeasonLength, apply, botAction, check, createGame, currentRoller, makeRand, randomClubName, sanitizeCrest } from '../engine';
+import { Action, BOT_STYLES, CONFIG, CrestDesign, GameState, League, SeasonLength, apply, botAction, check, createGame, currentRoller, isOffensive, makeRand, randomClubName, sanitizeCrest } from '../engine';
 
 export interface Seat {
   name: string;
@@ -29,6 +29,8 @@ export interface RoomState {
   /** Cuenta del anfitrión e identificador de la partida en el servidor, si hay cuentas. */
   hostUserId?: string | null;
   gameId?: string | null;
+  /** Dispositivos que el anfitrión ha expulsado de la sala de espera: no pueden volver a entrar. */
+  kicked?: string[];
 }
 
 export type ClientMsg =
@@ -51,7 +53,12 @@ function codeSeed(code: string): number {
 
 export const seatOf = (room: RoomState, clientId: string) => room.seats.findIndex((s) => s.clientId === clientId);
 const bump = (room: RoomState, patch: Partial<RoomState>): RoomState => ({ ...room, ...patch, seq: room.seq + 1 });
-const cleanName = (name: string, fallback: string) => name.trim().slice(0, 20) || fallback;
+/** Nombre de club de un invitado: recortado y, si es ofensivo, cambiado por uno al azar. */
+function cleanName(room: RoomState, name: string, fallback: string): string {
+  const n = name.trim().slice(0, 20) || fallback;
+  if (!isOffensive(n)) return n;
+  return randomClubName(makeRand(codeSeed(room.code) + room.seq), room.seats.map((s) => s.name));
+}
 
 /** Asientos humanos que aún no han pulsado «Listo» tras el reparto. */
 export function pendingReady(room: RoomState): number[] {
@@ -72,12 +79,12 @@ export function hostReduce(room: RoomState, msg: ClientMsg): RoomState {
       if (seat >= 0) {
         // Reconexión: en la sala de espera puede corregir el nombre y el escudo.
         const cur = room.seats[seat];
-        const name = cleanName(msg.name, cur.name);
+        const name = cleanName(room, msg.name, cur.name);
         if (room.game || (cur.name === name && JSON.stringify(cur.crest) === JSON.stringify(crest ?? cur.crest))) return room;
         return bump(room, { seats: room.seats.map((s, i) => (i === seat ? { ...s, name, ...(crest ? { crest } : {}) } : s)) });
       }
-      if (room.game || room.seats.length >= room.clubs) return room;
-      return bump(room, { seats: [...room.seats, { name: cleanName(msg.name, `Club ${room.seats.length + 1}`), clientId: msg.clientId, ...(crest ? { crest } : {}) }] });
+      if (room.game || room.seats.length >= room.clubs || room.kicked?.includes(msg.clientId)) return room;
+      return bump(room, { seats: [...room.seats, { name: cleanName(room, msg.name, `Club ${room.seats.length + 1}`), clientId: msg.clientId, ...(crest ? { crest } : {}) }] });
     }
     case 'leave': {
       if (seat <= 0) return room;
@@ -106,10 +113,17 @@ export function hostReduce(room: RoomState, msg: ClientMsg): RoomState {
 
 // ---------------------------------------------------------------- Acciones del anfitrión
 
+/** El anfitrión expulsa a un invitado de la sala de espera; ese dispositivo ya no puede volver. */
+export function kickSeat(room: RoomState, seat: number): RoomState {
+  const target = room.seats[seat];
+  if (room.game || seat <= 0 || !target?.clientId) return room;
+  return bump(room, { seats: room.seats.filter((_, i) => i !== seat), kicked: [...(room.kicked ?? []), target.clientId] });
+}
+
 export function setLobby(room: RoomState, patch: { clubs?: number; season?: SeasonLength; hostName?: string; league?: League }): RoomState {
   if (room.game) return room;
   const clubs = Math.max(Math.max(CONFIG.minPlayers, room.seats.length), Math.min(CONFIG.maxPlayers, patch.clubs ?? room.clubs));
-  const seats = patch.hostName === undefined ? room.seats : room.seats.map((s, i) => (i === 0 ? { ...s, name: cleanName(patch.hostName!, s.name) } : s));
+  const seats = patch.hostName === undefined ? room.seats : room.seats.map((s, i) => (i === 0 ? { ...s, name: cleanName(room, patch.hostName!, s.name) } : s));
   return bump(room, { clubs, season: patch.season ?? room.season, seats, league: patch.league ?? room.league });
 }
 

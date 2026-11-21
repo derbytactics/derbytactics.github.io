@@ -27,6 +27,7 @@ export const privacy = (): LegalSection[] => [
       'Si juegas como invitado no se te pide ningún dato personal. En tu dispositivo se guardan el avatar elegido, un identificador aleatorio del dispositivo para recuperar tu asiento en una sala, el nombre y el escudo de tu club, el historial de tus temporadas terminadas y, si la hay, la partida en curso.',
       'Si creas una cuenta se guardan además tu correo electrónico, tu nombre de usuario, tu avatar, el nombre y el escudo de tu club, el historial de tus temporadas terminadas (resultado y clasificación), las partidas en línea que juegas con su resultado, tus victorias, y las valoraciones que das y recibes como anfitrión.',
       'Se entra con Google o con Apple, sin contraseña: ese servicio confirma quién eres y nos envía tu correo. Google envía también tu nombre y tu foto, y el sistema de cuentas los conserva junto a tu acceso, pero el juego no los muestra ni los usa: eliges un nombre de usuario propio. Apple puede darnos un correo anónimo de reenvío en lugar del tuyo, si así lo eliges.',
+      'Si denuncias el nombre de otro jugador, o alguien denuncia el tuyo, se guarda quién denuncia, a quién y qué nombre, para retirar los nombres ofensivos.',
       'Si la aplicación falla, puede enviarse un informe técnico con el mensaje de error, sin datos personales más allá de tu identificador de cuenta si has iniciado sesión.',
     ],
   },
@@ -48,7 +49,7 @@ export const privacy = (): LegalSection[] => [
 
 export const terms = (): LegalSection[] => [
   { title: 'Qué es DerbyTactics', body: [`DerbyTactics es un juego de cartas de fútbol ofrecido por ${owner()}. Los futbolistas y clubes que aparecen son ficticios; cualquier parecido con personas o entidades reales es casual.`] },
-  { title: 'Tu cuenta', body: ['Eres responsable de lo que se haga con tu cuenta y de proteger el acceso a tu cuenta de Google o Apple. Elige un nombre de usuario y un nombre de club que no sean ofensivos ni suplanten a nadie.'] },
+  { title: 'Tu cuenta', body: ['Eres responsable de lo que se haga con tu cuenta y de proteger el acceso a tu cuenta de Google o Apple. Elige un nombre de usuario y un nombre de club que no sean ofensivos ni suplanten a nadie. Los nombres ofensivos se rechazan o se retiran, y el anfitrión de una sala puede expulsar a quien quiera de la sala de espera.'] },
   {
     title: 'Juego limpio',
     body: [

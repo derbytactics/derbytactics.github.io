@@ -34,6 +34,43 @@ select pg_temp.ok((my_profile() ->> 'needs_username')::boolean, 'el perfil avisa
 select set_username('Goleador');
 select pg_temp.ok(not (my_profile() ->> 'needs_username')::boolean and (my_profile() ->> 'username') = 'Goleador', 'al elegir nombre deja de pedirse');
 select pg_temp.login(null);
+
+-- Nombres ofensivos: los mismos ejemplos que src/engine/moderation.test.ts.
+select pg_temp.ok(bool_and(is_offensive(n)), 'el filtro bloquea insultos, también disfrazados')
+  from unnest(array['Culo FC', 'ElCulo', 'Real Mierdas', 'Puuuta Madre', 'GILIPOLLAS', 'gili pollas united', 'H1j0put4', 'C@br0n FC', 'Atlético Maricón', 'Hitler 88', 'Fuck You', 'Polla', 'KKK Club', 'Real XXX']) n;
+select pg_temp.ok(not bool_or(is_offensive(n)), 'el filtro deja pasar nombres normales que se parecen')
+  from unnest(array['Penedès FC', 'Vergara', 'Conocidos', 'Calculo', 'Disputa', 'Computadora', 'Dickens', 'Pollos Hermanos', 'Culombio', 'Atlético Ribera', 'Nazareno', 'Rapidos', 'Kofi Traoré', 'Club X']) n;
+select pg_temp.ok(not username_available('Gilipollas'), 'un nombre de usuario ofensivo no está disponible');
+insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-0000-0000-00000000000f', 'f@test', '{"username":"Puta Madre"}');
+select pg_temp.ok((select username from profiles where id = '00000000-0000-0000-0000-00000000000f') like 'Jugador%'
+  and (select needs_username from profiles where id = '00000000-0000-0000-0000-00000000000f'), 'un alta con nombre ofensivo recibe uno provisional');
+select pg_temp.login('00000000-0000-0000-0000-00000000000e');
+do $$ begin
+  perform set_my_club('Real Mierda', '{"shape":1,"pattern":0,"emblem":2,"primary":"#112233","secondary":"#445566"}');
+  raise exception 'FALLA: aceptó un club ofensivo';
+exception when others then
+  if sqlerrm like 'FALLA%' then raise; end if;
+  raise notice 'ok · un nombre de club ofensivo se rechaza';
+end $$;
+
+-- Denuncias: con tres personas distintas, el nombre se retira y se pide otro.
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select pg_temp.ok(report_name('Goleador') = 'recibida', 'primera denuncia recibida');
+select pg_temp.ok(report_name('Goleador') = 'recibida', 'repetir la denuncia no suma');
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.ok(report_name('goleador') = 'recibida', 'segunda denuncia recibida');
+do $$ begin
+  perform report_name('Luis');
+  raise exception 'FALLA: se denunció a sí mismo';
+exception when others then
+  if sqlerrm like 'FALLA%' then raise; end if;
+  raise notice 'ok · nadie se denuncia a sí mismo';
+end $$;
+select pg_temp.login('00000000-0000-0000-0000-00000000000c');
+select pg_temp.ok(report_name('Goleador') = 'retirado', 'la tercera persona distinta retira el nombre');
+select pg_temp.ok((select username from profiles where id = '00000000-0000-0000-0000-00000000000e') like 'Jugador%'
+  and (select needs_username from profiles where id = '00000000-0000-0000-0000-00000000000e'), 'tras retirarlo, se le pide un nombre nuevo');
+select pg_temp.login(null);
 select pg_temp.ok(not username_available('ANA') and username_available('Pepe') and not username_available('ab'), 'disponibilidad de nombre');
 
 -- Sin sesión no se puede crear partida.

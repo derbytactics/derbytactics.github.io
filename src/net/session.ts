@@ -202,6 +202,11 @@ export class GuestSession {
     return this.room ? seatOf(this.room, this.clientId) : -1;
   }
 
+  /** El anfitrión ha expulsado a este dispositivo de la sala. */
+  get kicked(): boolean {
+    return !!this.room?.kicked?.includes(this.clientId);
+  }
+
   private send(msg: ClientMsg) {
     this.client.publish(topic(this.code, 'c'), JSON.stringify(msg));
   }

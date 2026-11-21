@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { HostCard, backendEnabled, getAccount, refreshProfile, rpc } from '../account/api';
 import { useAccount } from '../account/useAccount';
 import { CONFIG, CrestDesign, SeasonLength, standings } from '../engine';
-import { RoomState, botStep, finalSeats, hostAct, hostReady, pendingReady, playTurnForAbsent, setLobby, startGame } from '../net/room';
+import { RoomState, botStep, finalSeats, hostAct, hostReady, kickSeat, pendingReady, playTurnForAbsent, setLobby, startGame } from '../net/room';
 import { GuestSession, HostSession } from '../net/session';
 import { deviceId } from '../net/storage';
 import { Stars } from './AccountScreen';
@@ -32,7 +32,8 @@ function Offline({ connected }: { connected: boolean }) {
   );
 }
 
-function Seats({ room, mine }: { room: RoomState; mine: number }) {
+/** Asientos de la sala de espera. Con `onKick`, el anfitrión puede expulsar a un invitado. */
+function Seats({ room, mine, onKick }: { room: RoomState; mine: number; onKick?: (seat: number) => void }) {
   return (
     <>
       {Array.from({ length: room.clubs }, (_, i) => {
@@ -46,6 +47,7 @@ function Seats({ room, mine }: { room: RoomState; mine: number }) {
             <Text style={{ color: i === mine ? C.accent : C.faint, fontSize: 12, fontWeight: '700' }}>
               {!seat ? 'IA si nadie entra' : i === mine ? 'TÚ' : i === 0 ? 'ANFITRIÓN' : 'CONECTADO'}
             </Text>
+            {onKick && seat && i > 0 ? <Btn small kind="ghost" label="Expulsar" onPress={() => onKick(i)} style={{ marginLeft: 8 }} /> : null}
           </View>
         );
       })}
@@ -216,7 +218,7 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
             <Btn label="−" small kind="ghost" onPress={() => ses.update((r) => setLobby(r, { clubs: r.clubs - 1 }))} style={{ width: 44 }} />
             <Btn label="+" small kind="ghost" onPress={() => ses.update((r) => setLobby(r, { clubs: r.clubs + 1 }))} style={{ width: 44, marginLeft: 8 }} />
           </View>
-          <Seats room={room} mine={0} />
+          <Seats room={room} mine={0} onKick={(i) => ses.update((r) => kickSeat(r, i))} />
 
           <LeaguePicker value={room.league ?? 'masculina'} onPick={(league) => ses.update((r) => setLobby(r, { league }))} />
           <View style={{ marginTop: 6, marginBottom: 20 }}>
@@ -343,7 +345,7 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
   }
   const seat = ses.seat;
   if (seat < 0) {
-    return <Connecting text={room.game ? 'La partida ya ha empezado sin ti.' : 'La sala está llena. Pide al anfitrión que añada un club.'} onExit={props.onExit} />;
+    return <Connecting text={ses.kicked ? 'El anfitrión te ha sacado de la sala.' : room.game ? 'La partida ya ha empezado sin ti.' : 'La sala está llena. Pide al anfitrión que añada un club.'} onExit={props.onExit} />;
   }
 
   if (!room.game) {
