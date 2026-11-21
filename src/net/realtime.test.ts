@@ -95,6 +95,22 @@ describe('salas por Supabase Realtime', () => {
     for (const s of [guest, late, watcher]) s.close(false);
   });
 
+  it('se recupera si la conexión se corta (por ejemplo, en segundo plano)', async () => {
+    const host = await HostSession.create('host', 'Anfitrión FC', null, { onChange: () => {}, onStatus: () => {} });
+    let guestRoom: RoomState | null = null;
+    const guest = GuestSession.join(host.room.code, 'ana', 'Ana United', { onChange: (r) => (guestRoom = r), onStatus: () => {} })!;
+    await waitFor(() => guestRoom?.seats.length === 2);
+    // El servidor corta todas las conexiones; al volver, el invitado sigue viendo los cambios.
+    for (const c of server.clients) c.terminate();
+    guest.wake();
+    host.wake();
+    await new Promise((r) => setTimeout(r, 2500));
+    host.update((r) => ({ ...r, seq: r.seq + 1, clubs: 5 }));
+    await waitFor(() => guestRoom?.clubs === 5, 6000);
+    host.close(true);
+    guest.close(false);
+  }, 15000);
+
   it('si Supabase rechaza la sala y no hay servidores públicos, avisa del error', async () => {
     failJoins = true;
     await expect(HostSession.create('host', 'Anfitrión FC', null, { onChange: () => {}, onStatus: () => {} })).rejects.toThrow(/No se ha podido conectar/);

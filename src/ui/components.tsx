@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import {
   GameState,
@@ -6,7 +6,6 @@ import {
   SquadEntry,
   activeNumbers,
   basePrice,
-  cardName,
   footballer,
   isBooked,
   isOut,
@@ -159,7 +158,7 @@ export function FootballerCard(props: { cardId: string; entry?: SquadEntry; stat
 
 /** Aparición con rebote; se repite cada vez que cambia `trigger`. */
 export function Pop({ trigger, children, style }: { trigger?: unknown; children: React.ReactNode; style?: ViewStyle }) {
-  const v = useRef(new Animated.Value(0.6)).current;
+  const [v] = useState(() => new Animated.Value(0.6));
   useEffect(() => {
     v.setValue(0.6);
     Animated.spring(v, { toValue: 1, friction: 5, tension: 150, useNativeDriver: NATIVE_DRIVER }).start();
@@ -281,7 +280,9 @@ export const BackContext = React.createContext<(handler: () => boolean) => () =>
 export function useBack(handler: () => boolean, active = true) {
   const register = React.useContext(BackContext);
   const ref = React.useRef(handler);
-  ref.current = handler;
+  React.useEffect(() => {
+    ref.current = handler;
+  });
   React.useEffect(() => (active ? register(() => ref.current()) : undefined), [register, active]);
 }
 

@@ -7,7 +7,7 @@ import { Btn, FootballerCard, Overline, PhaseStepper, Pop, RosterContext, Standi
 import { News, NewsKind, rollNews, rollScore } from './narrative';
 import { Sfx, play } from './sound';
 import { Tip } from './Tip';
-import { C, NATIVE_DRIVER, POS_COLOR, DISPLAY } from './theme';
+import { C, DISPLAY, NATIVE_DRIVER } from './theme';
 import { useClubColor } from './clubColors';
 import { I, Icon, IconName } from './icons';
 
@@ -25,8 +25,7 @@ const TICK_MS = 1000 / SPEED;
 function useCountUp(target: number, run: boolean): number {
   const [v, setV] = useState(0);
   useEffect(() => {
-    if (!run) return;
-    if (target <= 0) return setV(target);
+    if (!run || target <= 0) return;
     let cur = 0;
     const t = setInterval(() => {
       cur += 1;
@@ -35,7 +34,8 @@ function useCountUp(target: number, run: boolean): number {
     }, Math.max(40, 700 / target));
     return () => clearInterval(t);
   }, [target, run]);
-  return v;
+  // Sin nada que contar (cero o negativo), se enseña el valor tal cual.
+  return run && target <= 0 ? target : v;
 }
 
 function Stat({ label, value, color, big }: { label: string; value: string; color?: string; big?: boolean }) {
@@ -143,7 +143,7 @@ function NewsCard({ news, big }: { news: News; big: boolean }) {
 
 /** Barra que se llena mientras se lee la jugada; al completarse se puede seguir. */
 function ReadingBar({ duration, token }: { duration: number; token: string }) {
-  const v = useRef(new Animated.Value(0)).current;
+  const [v] = useState(() => new Animated.Value(0));
   useEffect(() => {
     v.setValue(0);
     Animated.timing(v, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: NATIVE_DRIVER }).start();
@@ -162,10 +162,15 @@ function ReadingBar({ duration, token }: { duration: number; token: string }) {
  */
 function RefereeButton({ label, icon, seconds, token, auto, onGo }: { label: string; icon?: IconName; seconds: number; token: string; auto: boolean; onGo: (forced: boolean) => void }) {
   const [left, setLeft] = useState(seconds);
+  // Al cambiar lo que se espera, la cuenta vuelve a empezar (estado derivado del render anterior).
+  const [counting, setCounting] = useState(token);
+  if (counting !== token) {
+    setCounting(token);
+    setLeft(seconds);
+  }
   const fired = useRef(false);
   useEffect(() => {
     fired.current = false;
-    setLeft(seconds);
     if (!auto) return;
     const t = setInterval(() => setLeft((x) => x - 1), TICK_MS);
     return () => clearInterval(t);
@@ -289,7 +294,7 @@ export function MatchScreen(props: {
     if (reparto) return;
     let t: ReturnType<typeof setTimeout> | undefined;
     if (awaiting && ready && cur < rolls.length - 1) {
-      advance(forcedRoll === -2);
+      t = setTimeout(() => advance(forcedRoll === -2), 0);
     } else if (rolling) {
       t = setTimeout(() => {
         setRolling(false);

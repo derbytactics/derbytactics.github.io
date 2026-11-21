@@ -70,6 +70,16 @@ create table if not exists public.season_history (
 );
 create index if not exists season_history_user_idx on public.season_history (user_id, finished_at desc);
 
+-- Denuncias de nombres ofensivos. Con 3 personas distintas contra el mismo nombre, se retira solo.
+create table if not exists public.name_reports (
+  reporter uuid not null references public.profiles (id) on delete cascade,
+  target uuid not null references public.profiles (id) on delete cascade,
+  name text not null,
+  created_at timestamptz not null default now(),
+  primary key (reporter, target, name)
+);
+create index if not exists name_reports_target_idx on public.name_reports (target, name);
+
 -- Informes de error enviados por la app (sin datos personales más allá de la cuenta, si la hay).
 create table if not exists public.client_errors (
   id bigint generated always as identity primary key,
@@ -86,6 +96,7 @@ alter table public.games enable row level security;
 alter table public.game_players enable row level security;
 alter table public.host_ratings enable row level security;
 alter table public.season_history enable row level security;
+alter table public.name_reports enable row level security;
 
 -- ---------------------------------------------------------------- Alta de usuario
 
@@ -93,6 +104,57 @@ create or replace function public.clean_username(p text) returns text
 language sql immutable as $$
   select left(btrim(regexp_replace(coalesce(p, ''), '[^[:alnum:]_ ]', '', 'g')), 16)
 $$;
+
+-- ---------------------------------------------------------------- Nombres ofensivos
+-- La misma lista y la misma lógica que src/engine/moderation.ts (un test comprueba que coinciden).
+
+-- Minúsculas, sin tildes, sin trucos de números (0→o, 1→i…) y sin letras repetidas.
+create or replace function public.norm_word(w text) returns text
+language sql immutable as $$
+  select regexp_replace(
+           regexp_replace(
+             translate(lower(translate(coalesce(w, ''), 'ÁÉÍÓÚÜÑÀÈÌÒÙÂÊÎÔÛÇ', 'AEIOUUNAEIOUAEIOUC')), 'áéíóúüñàèìòùâêîôûç013457@$', 'aeiouunaeiouaeioucoieastas'),
+             '[^a-z]', '', 'g'),
+           '(.)\1+', '\1', 'g')
+$$;
+
+create or replace function public.is_offensive(p text) returns boolean
+language plpgsql immutable as $$
+declare
+  blocked_exact text[] := array['puta', 'puto', 'culo', 'cono', 'pene', 'polla', 'verga', 'chocho', 'ojete', 'zorra', 'marica', 'nazi', 'idiota', 'dick', 'cock', 'mamon'];
+  blocked_prefix text[] := array['mierd', 'joder', 'follar', 'imbecil', 'sudaca', 'travelo', 'bollera', 'porno', 'hdp', 'heil', 'fuck', 'shit', 'bitch', 'cunt', 'whore', 'slut', 'nigga'];
+  blocked_anywhere text[] := array['hijoputa', 'hijodeputa', 'putamadre', 'gilipollas', 'maricon', 'cabron', 'subnormal', 'retrasado', 'mongolo', 'pedofilo', 'violador', 'negrata', 'hitler', 'siegheil', 'nigger', 'faggot', 'motherfucker'];
+  blocked_repeated text[] := array['kkk', 'xxx'];
+  words text[] := '{}';
+  raw text;
+  w text;
+  r text;
+  joined text;
+begin
+  if p is null then return false; end if;
+  foreach r in array blocked_repeated loop
+    if position(r in regexp_replace(lower(p), '[^a-z]', '', 'g')) > 0 then return true; end if;
+  end loop;
+  -- Palabras: por espacios, signos y mayúsculas internas ("ElCulo" → "El Culo").
+  foreach raw in array regexp_split_to_array(regexp_replace(p, '([a-záéíóúüñ])([A-ZÁÉÍÓÚÜÑ])', '\1 \2', 'g'), '[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9@$]+') loop
+    w := norm_word(raw);
+    if w <> '' then words := words || w; end if;
+  end loop;
+  joined := array_to_string(words, '');
+  foreach w in array words loop
+    foreach r in array blocked_exact loop
+      r := norm_word(r);
+      if w in (r, r || 's', r || 'es') then return true; end if;
+    end loop;
+    foreach r in array blocked_prefix loop
+      if left(w, length(norm_word(r))) = norm_word(r) then return true; end if;
+    end loop;
+  end loop;
+  foreach r in array blocked_anywhere loop
+    if position(norm_word(r) in joined) > 0 then return true; end if;
+  end loop;
+  return false;
+end $$;
 
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
@@ -102,14 +164,14 @@ declare
   n int := 0;
 begin
   -- Con Google o Apple no llega nombre de usuario (el nombre real no se copia): uno provisional.
-  if length(base) < 3 then base := 'Jugador'; end if;
+  if length(base) < 3 or is_offensive(base) then base := 'Jugador'; end if;
   candidate := base;
   while exists (select 1 from profiles where lower(username) = lower(candidate)) loop
     n := n + 1;
     candidate := left(base, 12) || n::text;
   end loop;
   insert into profiles (id, username, needs_username)
-  values (new.id, candidate, length(clean_username(new.raw_user_meta_data ->> 'username')) < 3);
+  values (new.id, candidate, base = 'Jugador');
   return new;
 end $$;
 
@@ -121,6 +183,7 @@ create or replace function public.username_available(p_username text) returns bo
 language sql stable security definer set search_path = public as $$
   select length(clean_username(p_username)) >= 3
      and clean_username(p_username) = btrim(p_username)
+     and not is_offensive(p_username)
      and not exists (select 1 from profiles where lower(username) = lower(btrim(p_username)))
 $$;
 
@@ -238,6 +301,7 @@ begin
   if auth.uid() is null then raise exception 'Inicia sesión.'; end if;
   if length(n) < 3 or length(n) > 20 then raise exception 'El nombre del club debe tener entre 3 y 20 caracteres.'; end if;
   if not valid_crest(p_crest) then raise exception 'Escudo no válido.'; end if;
+  if is_offensive(n) then raise exception 'Ese nombre de club no está permitido.'; end if;
   update profiles
      set club_name = n,
          club_crest = jsonb_build_object('shape', (p_crest ->> 'shape')::int, 'pattern', (p_crest ->> 'pattern')::int,
@@ -441,11 +505,40 @@ begin
   values (auth.uid(), left(coalesce(p_message, ''), 500), left(p_stack, 4000), left(p_context, 300));
 end $$;
 
+-- Denuncia el nombre de usuario de otro jugador. Devuelve 'retirado' si con esta denuncia se retira.
+create or replace function public.report_name(p_username text) returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  me uuid := auth.uid();
+  t profiles%rowtype;
+  candidate text;
+  n int := 0;
+begin
+  if me is null then raise exception 'Inicia sesión.'; end if;
+  select * into t from profiles where lower(username) = lower(btrim(p_username));
+  if t.id is null then raise exception 'Ese usuario ya no existe.'; end if;
+  if t.id = me then raise exception 'No puedes denunciar tu propio nombre.'; end if;
+  if (select count(*) from name_reports where reporter = me and created_at > now() - interval '1 day') >= 20 then
+    raise exception 'Has enviado muchas denuncias hoy. Prueba mañana.';
+  end if;
+  insert into name_reports (reporter, target, name) values (me, t.id, t.username) on conflict do nothing;
+  if (select count(distinct reporter) from name_reports where target = t.id and name = t.username) < 3 then return 'recibida'; end if;
+  -- Tres personas distintas: se retira el nombre y se le pide otro al entrar.
+  candidate := 'Jugador';
+  while exists (select 1 from profiles where lower(username) = lower(candidate)) loop
+    n := n + 1;
+    candidate := 'Jugador' || n::text;
+  end loop;
+  update profiles set username = candidate, needs_username = true where id = t.id;
+  return 'retirado';
+end $$;
+
 -- ---------------------------------------------------------------- Permisos
 
 revoke all on function public.apply_host_penalty(uuid), public.sweep_host(uuid), public.handle_new_user(), public.valid_crest(jsonb) from public, anon, authenticated;
-revoke all on function public.set_my_club(text, jsonb), public.save_seasons(jsonb), public.my_seasons() from public, anon;
-grant execute on function public.set_my_club(text, jsonb), public.save_seasons(jsonb), public.my_seasons() to authenticated;
+revoke all on function public.set_my_club(text, jsonb), public.save_seasons(jsonb), public.my_seasons(), public.report_name(text) from public, anon;
+grant execute on function public.set_my_club(text, jsonb), public.save_seasons(jsonb), public.my_seasons(), public.report_name(text) to authenticated;
+grant execute on function public.is_offensive(text), public.norm_word(text) to anon, authenticated;
 revoke all on function public.my_profile(), public.set_avatar(text), public.set_username(text), public.start_game(text, text, int, jsonb), public.join_game(uuid, int),
   public.heartbeat(uuid), public.finish_game(uuid, jsonb), public.abandon_game(uuid), public.report_abandon(uuid),
   public.rate_host(uuid, int), public.my_history(int), public.delete_my_account() from public, anon;

@@ -26,10 +26,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      # El lint avisa pero no bloquea la publicación.
       - name: Lint
         run: npx expo lint
-        continue-on-error: true
       - name: Comprobar configuración de cuentas
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}

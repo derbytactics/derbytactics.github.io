@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { RoomState, botStep, finalSeats, hostAct, hostReady, hostReduce, newRoom, pendingReady, playTurnForAbsent, setLobby, startGame } from './room';
+import { RoomState, botStep, finalSeats, hostAct, hostReady, hostReduce, kickSeat, newRoom, pendingReady, playTurnForAbsent, setLobby, startGame } from './room';
+import { isOffensive } from '../engine';
 
 const lobby = () => {
   let r = newRoom('AKXRT', 'host', 'Anfitrión FC');
@@ -24,6 +25,23 @@ describe('sala de espera', () => {
     r = hostReduce(r, { t: 'leave', clientId: 'ana' });
     expect(r.seats).toHaveLength(2);
     expect(setLobby(r, { clubs: 1 }).clubs).toBe(2);
+  });
+  it('cambia por uno al azar el nombre ofensivo de un invitado', () => {
+    const r = hostReduce(lobby(), { t: 'join', clientId: 'troll', name: 'Real Mierda' });
+    const name = r.seats[3].name;
+    expect(isOffensive(name)).toBe(false);
+    expect(name).not.toBe('Real Mierda');
+    // Y tampoco puede ponérselo al reconectar.
+    const again = hostReduce(r, { t: 'join', clientId: 'ana', name: 'Gilipollas FC' });
+    expect(isOffensive(again.seats[1].name)).toBe(false);
+  });
+  it('el anfitrión expulsa a un invitado y ya no puede volver a entrar', () => {
+    let r = kickSeat(lobby(), 1);
+    expect(r.seats.map((s) => s.name)).toEqual(['Anfitrión FC', 'Luis City']);
+    expect(hostReduce(r, { t: 'join', clientId: 'ana', name: 'Ana United' })).toBe(r);
+    expect(kickSeat(r, 0)).toBe(r); // al anfitrión no se le expulsa
+    r = started();
+    expect(kickSeat(r, 1)).toBe(r); // con la partida empezada, no
   });
   it('al empezar, la IA ocupa los asientos libres', () => {
     const r = started();

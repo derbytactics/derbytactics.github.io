@@ -3,7 +3,7 @@ import { BarlowCondensed_800ExtraBold } from '@expo-google-fonts/barlow-condense
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler, Platform, Text, View } from 'react-native';
 import { backendEnabled, getAccount, initAccount, refreshProfile, subscribeAccount } from './src/account/api';
@@ -124,7 +124,10 @@ export default function App() {
     return () => sub.remove();
   }, []);
   const gameRef = useRef(game);
-  gameRef.current = game;
+  // La referencia sigue a la partida actual para los temporizadores de la IA y el despacho de jugadas.
+  useLayoutEffect(() => {
+    gameRef.current = game;
+  }, [game]);
 
   const dispatch = useCallback((a: Action): string | null => {
     const g = gameRef.current;

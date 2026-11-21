@@ -6,17 +6,21 @@ Estado de cada punto y qué queda por hacer. Lo marcado como **Tu parte** necesi
 
 | Punto | Qué hay |
 |---|---|
-| Textos legales | Política de privacidad y condiciones de uso en `src/legal/texts.ts`, enlazadas desde la pantalla de inicio, el menú, la ayuda y la cuenta. Salen marcadas como **borrador** hasta que se rellenen titular y contacto. |
+| Textos legales | Política de privacidad, condiciones de uso y borrado de cuenta, con titular y contacto, también como páginas públicas para las tiendas. |
 | Partida guardada | La partida de un solo dispositivo se guarda tras cada jugada y se continúa desde el menú. |
 | Sesión en la app nativa | El almacenamiento local funciona también fuera del navegador (sesión, avatar, partida guardada). |
 | Errores | Pantalla de error con salida al menú, y registro de errores en la tabla `client_errors` de Supabase. |
-| Integración continua | En cada subida: tipos, tests, lint (avisa, no bloquea), pruebas del esquema SQL contra PostgreSQL y publicación de la web. |
+| Integración continua | En cada subida: tipos, tests, lint (obligatorio), pruebas del esquema SQL contra PostgreSQL y publicación de la web. Cada día, una consulta mantiene Supabase despierto. |
 | IA | La IA ficha mirando los números de los rivales. |
 | Mesas de 2 | Derechos de TV (5M) y una carta especial por jornada. |
 | Primera partida | Consejos de primera vez en mercado, club, rivales y partido; se pueden volver a ver desde la ayuda. |
-| Sonido | Efectos sintetizados en navegador, con botón de silencio. |
+| Sonido | Los mismos efectos en navegador (sintetizados) y en la app nativa (WAV generados), con botón de silencio. En iPhone respeta el modo silencio y no corta la música. |
 | Icono y configuración de apps | Iconos, pantalla de arranque y favicon generados a partir del logotipo; `app.json` y `eas.json` preparados. |
-| Móvil | Probado en navegador emulando un iPhone: sin desbordes y con una temporada completa jugada. |
+| Móvil | Probado en navegador emulando un iPhone y en un iPhone real (compilado en local). |
+| Cuentas | Solo Google y Apple (en iPhone, Apple nativo). Sin contraseñas ni correos. |
+| Partidas en línea | Por Supabase Realtime, con reconexión al volver de segundo plano. |
+| Moderación | Filtro de nombres ofensivos (app y servidor), denuncias desde el ranking y expulsión en la sala de espera. |
+| Permisos | Sin micrófono ni audio en segundo plano; Android sin almacenamiento ni superposición de ventanas. |
 
 ## Costes: cómo publicar sin gastar
 
@@ -52,7 +56,11 @@ Tu nombre seguirá apareciendo como titular en los textos legales: la ley exige 
 
 ## Tu parte
 
-Ordenados por prioridad. Cada paso dice dónde se hace.
+### Ahora mismo (para lo último que se ha hecho)
+
+1. **Vuelve a ejecutar `supabase/schema.sql`** entero en el editor SQL. Añade el filtro de nombres, las denuncias y la petición de nombre a quien entra con Google o Apple. No borra datos.
+2. **Supabase → Authentication → Sign In / Providers → Apple → Client IDs:** deja tu Services ID primero y añade detrás, separado por coma, `com.derbytactics.app`. Es lo que permite el acceso nativo con Apple en iPhone.
+3. **Vuelve a compilar la app en el iPhone**: hay módulos nativos nuevos (Apple, sonido). En la carpeta del proyecto: `git pull`, `npm install`, `rm -rf ios` y `npx expo run:ios --device --configuration Release`.
 
 ### 1. Nombre
 
@@ -127,5 +135,4 @@ Si el juego se abre a desconocidos y aparecen trampas, el paso siguiente es que 
 ## Pendiente menor
 
 - Monitorización externa de errores (por ejemplo Sentry), si el registro propio se queda corto.
-- Sonido en la app nativa (hoy solo suena en navegador).
 - Temporadas o grupos de amigos en el ranking.

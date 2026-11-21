@@ -34,6 +34,7 @@ interface Transport {
   subscribe(topic: string): void;
   publish(topic: string, payload: string, retain?: boolean): boolean;
   close(): void;
+  nudge(): void;
 }
 
 /** El transporte que corresponde a un código de sala, o null si no hay ninguno disponible. */
@@ -140,6 +141,12 @@ export class HostSession {
     this.l.onChange(next);
   }
 
+  /** Al volver a primer plano: reconecta si hace falta y reenvía el estado. */
+  wake() {
+    this.client.nudge();
+    if (this.client.connected) this.publish();
+  }
+
   /** Con `end`, borra la sala del servidor y de este dispositivo. */
   close(end: boolean) {
     this.closed = true;
@@ -202,6 +209,11 @@ export class GuestSession {
     return this.room ? seatOf(this.room, this.clientId) : -1;
   }
 
+  /** El anfitrión ha expulsado a este dispositivo de la sala. */
+  get kicked(): boolean {
+    return !!this.room?.kicked?.includes(this.clientId);
+  }
+
   private send(msg: ClientMsg) {
     this.client.publish(topic(this.code, 'c'), JSON.stringify(msg));
   }
@@ -209,6 +221,12 @@ export class GuestSession {
     if (this.pending) clearInterval(this.pending.timer);
     this.pending = null;
   }
+  /** Al volver a primer plano: reconecta si hace falta y pide el estado al anfitrión. */
+  wake() {
+    this.client.nudge();
+    if (this.client.connected) this.send({ t: 'join', clientId: this.clientId, name: this.name, crest: this.crest });
+  }
+
   /** Envía y reintenta hasta que el anfitrión responda con un estado nuevo. */
   private sendReliable(msg: ClientMsg, seq: number) {
     this.clearPending();

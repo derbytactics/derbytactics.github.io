@@ -1,4 +1,5 @@
 import { Platform, StatusBar } from 'react-native';
+import { CLUB_COLORS } from './palette';
 
 export const C = {
   bg: '#07160F',
@@ -33,7 +34,6 @@ export const POS_COLOR: Record<string, string> = { POR: '#F5A742', DEF: '#5B9BFF
 
 /** Colores de club, por orden de asiento. */
 export { CLUB_COLORS } from './palette';
-import { CLUB_COLORS } from './palette';
 export const clubColor = (playerId: number) => CLUB_COLORS[playerId % CLUB_COLORS.length];
 
 export const TOP_INSET = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : Platform.OS === 'ios' ? 50 : 0;

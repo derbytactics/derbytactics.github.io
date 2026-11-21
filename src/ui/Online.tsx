@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { AppState, ScrollView, Text, View } from 'react-native';
 import { HostCard, backendEnabled, getAccount, refreshProfile, rpc } from '../account/api';
 import { useAccount } from '../account/useAccount';
 import { CONFIG, CrestDesign, SeasonLength, standings } from '../engine';
-import { RoomState, botStep, finalSeats, hostAct, hostReady, pendingReady, playTurnForAbsent, setLobby, startGame } from '../net/room';
+import { RoomState, botStep, finalSeats, hostAct, hostReady, kickSeat, pendingReady, playTurnForAbsent, seatOf, setLobby, startGame } from '../net/room';
 import { GuestSession, HostSession } from '../net/session';
 import { deviceId } from '../net/storage';
 import { Stars } from './AccountScreen';
@@ -32,7 +32,8 @@ function Offline({ connected }: { connected: boolean }) {
   );
 }
 
-function Seats({ room, mine }: { room: RoomState; mine: number }) {
+/** Asientos de la sala de espera. Con `onKick`, el anfitrión puede expulsar a un invitado. */
+function Seats({ room, mine, onKick }: { room: RoomState; mine: number; onKick?: (seat: number) => void }) {
   return (
     <>
       {Array.from({ length: room.clubs }, (_, i) => {
@@ -46,6 +47,7 @@ function Seats({ room, mine }: { room: RoomState; mine: number }) {
             <Text style={{ color: i === mine ? C.accent : C.faint, fontSize: 12, fontWeight: '700' }}>
               {!seat ? 'IA si nadie entra' : i === mine ? 'TÚ' : i === 0 ? 'ANFITRIÓN' : 'CONECTADO'}
             </Text>
+            {onKick && seat && i > 0 ? <Btn small kind="ghost" label="Expulsar" onPress={() => onKick(i)} style={{ marginLeft: 8 }} /> : null}
           </View>
         );
       })}
@@ -89,7 +91,9 @@ function Connecting({ text, error, onExit, children }: { text: string; error?: s
 // ---------------------------------------------------------------- Anfitrión
 
 export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: RoomState | null; onHelp: () => void; onExit: () => void }) {
+  /** La referencia es para cerrar la sesión al salir; la pantalla usa el estado `ses`. */
   const session = useRef<HostSession | null>(null);
+  const [ses, setSes] = useState<HostSession | null>(null);
   const [room, setRoom] = useState<RoomState | null>(props.resume);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,25 +106,35 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
   useEffect(() => {
     let alive = true;
     const l = { onChange: (r: RoomState) => alive && setRoom(r), onStatus: (ok: boolean) => alive && setConnected(ok) };
-    if (props.resume) {
-      session.current = HostSession.resume(props.resume, l);
-      if (!session.current) setError('No se ha podido reanudar la sala.');
-    } else {
-      HostSession.create(deviceId(), props.name, getAccount().session?.user.id ?? null, l, props.crest).then(
-        (s2) => {
-          if (!alive) return s2.close(true);
-          session.current = s2;
-          setRoom(s2.room);
-        },
-        (e: Error) => alive && setError(e.message),
-      );
-    }
+    const opened = props.resume
+      ? Promise.resolve().then(() => {
+          const s2 = HostSession.resume(props.resume!, l);
+          if (!s2) throw new Error('No se ha podido reanudar la sala.');
+          return s2;
+        })
+      : HostSession.create(deviceId(), props.name, getAccount().session?.user.id ?? null, l, props.crest);
+    opened.then(
+      (s2) => {
+        if (!alive) return s2.close(!props.resume);
+        session.current = s2;
+        setSes(s2);
+        setRoom(s2.room);
+      },
+      (e: Error) => alive && setError(e.message),
+    );
     return () => {
       alive = false;
       session.current?.close(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Al volver a primer plano (el móvil pudo cortar la conexión en segundo plano): reconecta y reenvía el estado.
+  useEffect(() => {
+    if (!ses) return;
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && ses.wake());
+    return () => sub.remove();
+  }, [ses]);
 
   // La IA de los clubes sin persona juega en el dispositivo del anfitrión.
   const g = room?.game;
@@ -158,12 +172,12 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
 
   const exit = () => {
     if (gameId && phase && phase !== 'finished') rpc('abandon_game', { p_game: gameId }).catch(() => {});
-    session.current?.close(true);
+    ses?.close(true);
     session.current = null;
     props.onExit();
   };
   const start = async () => {
-    const ses2 = session.current;
+    const ses2 = ses;
     if (!ses2) return;
     setStartError(null);
     let gid: string | null = null;
@@ -187,8 +201,7 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
     exit();
     return true;
   });
-  if (!room || !session.current) return <Connecting text="Creando la sala…" error={error} onExit={props.onExit} />;
-  const ses = session.current;
+  if (!room || !ses) return <Connecting text="Creando la sala…" error={error} onExit={props.onExit} />;
 
   if (!room.game) {
     const link = inviteLink(room.code);
@@ -221,7 +234,7 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
             <Btn label="−" small kind="ghost" onPress={() => ses.update((r) => setLobby(r, { clubs: r.clubs - 1 }))} style={{ width: 44 }} />
             <Btn label="+" small kind="ghost" onPress={() => ses.update((r) => setLobby(r, { clubs: r.clubs + 1 }))} style={{ width: 44, marginLeft: 8 }} />
           </View>
-          <Seats room={room} mine={0} />
+          <Seats room={room} mine={0} onKick={(i) => ses.update((r) => kickSeat(r, i))} />
 
           <LeaguePicker value={room.league ?? 'masculina'} onPick={(league) => ses.update((r) => setLobby(r, { league }))} />
           <View style={{ marginTop: 6, marginBottom: 20 }}>
@@ -280,7 +293,9 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
 // ---------------------------------------------------------------- Invitado
 
 export function OnlineGuest(props: { code: string; name: string; crest?: CrestDesign; onHelp: () => void; onExit: () => void }) {
+  /** La referencia es para cerrar la sesión al salir; la pantalla usa el estado `ses` ('invalid': código no válido). */
   const session = useRef<GuestSession | null>(null);
+  const [ses, setSes] = useState<GuestSession | 'invalid' | null>(null);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [connected, setConnected] = useState(false);
   const [closed, setClosed] = useState(false);
@@ -289,12 +304,19 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
   const [hostCard, setHostCard] = useState<HostCard | null>(null);
   const [reportMsg, setReportMsg] = useState<string | null>(null);
   /** Última sala vista, para poder valorar al anfitrión aunque la cierre. */
-  const lastRoom = useRef<RoomState | null>(null);
+  const [lastRoom, setLastRoom] = useState<RoomState | null>(null);
   const claimed = useRef(false);
-  if (room) lastRoom.current = room;
+  const me = deviceId();
   const gameId = room?.gameId ?? null;
   const hostUserId = room?.hostUserId ?? null;
-  const mySeat = session.current?.seat ?? -1;
+  const mySeat = room ? seatOf(room, me) : -1;
+
+  // Al volver a primer plano: reconecta si hace falta y pide el estado al anfitrión.
+  useEffect(() => {
+    if (!ses || ses === 'invalid') return;
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && ses.wake());
+    return () => sub.remove();
+  }, [ses]);
 
   // Reputación del anfitrión, para enseñarla en la sala de espera.
   useEffect(() => {
@@ -311,15 +333,21 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
 
   useEffect(() => {
     let alive = true;
-    session.current = GuestSession.join(props.code, deviceId(), props.name, {
-      onChange: (r) => {
-        if (!alive) return;
-        // Un estado vacío significa que el anfitrión ha cerrado la sala.
-        if (!r) setClosed(true);
-        setRoom(r);
-      },
-      onStatus: (ok) => alive && setConnected(ok),
-    }, props.crest);
+    Promise.resolve().then(() => {
+      if (!alive) return;
+      const s2 = GuestSession.join(props.code, me, props.name, {
+        onChange: (r) => {
+          if (!alive) return;
+          // Un estado vacío significa que el anfitrión ha cerrado la sala.
+          if (!r) setClosed(true);
+          else setLastRoom(r);
+          setRoom(r);
+        },
+        onStatus: (ok) => alive && setConnected(ok),
+      }, props.crest);
+      session.current = s2;
+      setSes(s2 ?? 'invalid');
+    });
     const t = setTimeout(() => alive && setSlow(true), 8000);
     return () => {
       alive = false;
@@ -329,18 +357,18 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const ses = session.current;
   const exit = () => {
-    ses?.close(true);
+    if (ses && ses !== 'invalid') ses.close(true);
     props.onExit();
   };
   useBack(() => {
     exit();
     return true;
   });
-  if (!ses) return <Connecting text="" error="Ese código de sala no es válido." onExit={props.onExit} />;
+  if (ses === 'invalid') return <Connecting text="" error="Ese código de sala no es válido." onExit={props.onExit} />;
+  if (!ses) return <Connecting text="Entrando en la sala…" onExit={props.onExit} />;
   if (closed) {
-    const prev = lastRoom.current;
+    const prev = lastRoom;
     return (
       <Connecting text="" error="El anfitrión ha cerrado la sala." onExit={props.onExit}>
         {prev?.gameId && account && prev.game ? <RateHost gameId={prev.gameId} hostName={prev.seats[0].name} /> : null}
@@ -350,9 +378,9 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
   if (!room) {
     return <Connecting text={slow ? `No encuentro la sala ${ses.code}. Comprueba el código y que el anfitrión la tenga abierta.` : `Entrando en la sala ${ses.code}…`} onExit={props.onExit} />;
   }
-  const seat = ses.seat;
+  const seat = mySeat;
   if (seat < 0) {
-    return <Connecting text={room.game ? 'La partida ya ha empezado sin ti.' : 'La sala está llena. Pide al anfitrión que añada un club.'} onExit={props.onExit} />;
+    return <Connecting text={room.kicked?.includes(me) ? 'El anfitrión te ha sacado de la sala.' : room.game ? 'La partida ya ha empezado sin ti.' : 'La sala está llena. Pide al anfitrión que añada un club.'} onExit={props.onExit} />;
   }
 
   if (!room.game) {

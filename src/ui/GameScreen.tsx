@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import {
   Action,
@@ -115,12 +115,12 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
   const [error, setError] = useState<string | null>(null);
   /** Carta especial pendiente de elegir objetivo. */
   const [pending, setPending] = useState<number | null>(null);
-  const logStart = useRef(state.logSeq);
+  const [logStart] = useState(state.logSeq);
   /** Lo que le ha pasado a este club desde su último turno: se enseña al empezar. */
   const [news, setNews] = useState(() => state.log.filter((l) => l.n > me.lastSeen && l.affects?.includes(me.id)));
   /** Carta recién comprada, para enseñarla. */
   const [drawn, setDrawn] = useState<string | null>(null);
-  const handSize = useRef(me.hand.length);
+  const [handSize, setHandSize] = useState(me.hand.length);
   const preseason = J_IS_PRESEASON(state);
   const J = state.jornada;
   const color = clubColor(me.id);
@@ -131,19 +131,17 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
     setPending(null);
   };
   // Al comprar una carta se roba boca abajo: en cuanto llega a la mano, se enseña.
-  if (me.hand.length !== handSize.current) {
-    const grew = me.hand.length > handSize.current;
-    handSize.current = me.hand.length;
-    if (grew && state.turn.boughtCard && !drawn) setDrawn(me.hand[me.hand.length - 1]);
+  // (Estado derivado del render anterior: el patrón que recomienda React en lugar de una referencia.)
+  if (me.hand.length !== handSize) {
+    setHandSize(me.hand.length);
+    if (me.hand.length > handSize && state.turn.boughtCard && !drawn) setDrawn(me.hand[me.hand.length - 1]);
   }
   const why = (a: Action) => check(state, a);
   const upCost = upgradeCost(me);
-  const lastAction = state.logSeq > logStart.current ? state.log[state.log.length - 1].text : null;
+  const lastAction = state.logSeq > logStart ? state.log[state.log.length - 1].text : null;
 
   /** Botón de acción: si no se puede, se atenúa y explica el motivo al pulsarlo. */
-  const ActionBtn = ({ label, action }: { label: string; action: Action }) => (
-    <Btn small kind={why(action) ? 'muted' : 'primary'} label={label} onPress={() => act(action)} />
-  );
+  const actionBtn = (label: string, action: Action) => <Btn small kind={why(action) ? 'muted' : 'primary'} label={label} onPress={() => act(action)} />;
 
   const tabs: { key: Tab; label: string; badge?: string }[] = [
     { key: 'mercado', label: 'Mercado' },
@@ -260,7 +258,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
             </Tip>
             {state.market.map((id) => (
               <FootballerCard key={id} cardId={id}>
-                <ActionBtn label={`Fichar · ${signPrice(state, id)}M`} action={{ type: 'sign', cardId: id }} />
+                {actionBtn(`Fichar · ${signPrice(state, id)}M`, { type: 'sign', cardId: id })}
                 {signPrice(state, id) > me.money ? <Text style={{ color: C.faint, fontSize: 12 }}>Te faltan {signPrice(state, id) - me.money}M</Text> : null}
               </FootballerCard>
             ))}
@@ -287,7 +285,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
               </View>
               {upCost !== null ? (
                 <View style={{ marginTop: 10, alignItems: 'flex-start' }}>
-                  <ActionBtn label={`Ampliar estadio · ${upCost}M`} action={{ type: 'upgradeStadium' }} />
+                  {actionBtn(`Ampliar estadio · ${upCost}M`, { type: 'upgradeStadium' })}
                 </View>
               ) : null}
             </View>
@@ -307,7 +305,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
             {me.squad.map((e) => (
               <FootballerCard key={e.cardId} cardId={e.cardId} entry={e} state={state} owner={me}>
                 <Btn small kind="ghost" label={`Vender · +${sellValue(e.cardId)}M`} onPress={() => act({ type: 'sell', cardId: e.cardId })} />
-                {!e.shielded ? <ActionBtn label={`Blindar · ${shieldCost(e.cardId)}M`} action={{ type: 'shield', cardId: e.cardId }} /> : null}
+                {!e.shielded ? actionBtn(`Blindar · ${shieldCost(e.cardId)}M`, { type: 'shield', cardId: e.cardId }) : null}
                 <Text style={{ color: C.faint, fontSize: 12 }}>Cláusula {clauseOf(e)}M</Text>
               </FootballerCard>
             ))}
@@ -334,7 +332,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
                 {r.squad.length === 0 ? <Text style={s.p}>Sin futbolistas.</Text> : null}
                 {r.squad.map((e) => (
                   <FootballerCard key={e.cardId} cardId={e.cardId} entry={e} state={state} owner={r}>
-                    <ActionBtn label={`Pagar cláusula · ${clauseOf(e)}M`} action={{ type: 'clause', ownerId: r.id, cardId: e.cardId }} />
+                    {actionBtn(`Pagar cláusula · ${clauseOf(e)}M`, { type: 'clause', ownerId: r.id, cardId: e.cardId })}
                   </FootballerCard>
                 ))}
               </View>

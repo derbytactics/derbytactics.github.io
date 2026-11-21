@@ -201,7 +201,6 @@ describe('partido', () => {
   it('un delantero marca a quien no tiene portero en ese número, y cobra taquilla y premio', () => {
     const { after, m, hits, r0, r1 } = play([entry(DEL68)], []);
     expect(hits).toBeGreaterThan(0);
-    const cardsWon = m.rolls.flatMap((r) => r.varDraws).length;
     expect(m.rolls).toHaveLength(12);
     expect([r0.goals, r0.against, r1.goals, r1.against]).toEqual([hits, 0, 0, hits]);
     expect(r0.rank).toBe(1);
