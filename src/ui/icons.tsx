@@ -15,6 +15,8 @@ export const I = {
   attack: 'sword',
   defense: 'shield',
   dice: 'dice-5',
+  /** Otro al azar (nombre, escudo…). */
+  shuffle: 'shuffle-variant',
   trophy: 'trophy',
   ball: 'soccer',
   goal: 'soccer-field',
