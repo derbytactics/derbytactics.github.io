@@ -7,6 +7,30 @@ import { Btn, LeaguePicker, Wordmark, LegalLinks, NavBar, Overline, s, useBack }
 import { C, clubColor, DISPLAY } from './theme';
 import { I, Icon } from './icons';
 
+/** Quién lleva un club rival: la IA (robot) o otra persona en este mismo móvil. */
+function WhoPlays({ bot, club, onPick }: { bot: boolean; club: string; onPick: (bot: boolean) => void }) {
+  const option = (isBot: boolean) => {
+    const on = bot === isBot;
+    return (
+      <Pressable
+        accessibilityRole="radio"
+        accessibilityState={{ checked: on }}
+        accessibilityLabel={`${club}: ${isBot ? 'lo juega la IA' : 'lo juega otra persona en este móvil'}`}
+        onPress={() => onPick(isBot)}
+        style={{ width: 44, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.sel : 'transparent', borderWidth: on ? 1 : 0, borderColor: C.selLine }}
+      >
+        <Icon name={isBot ? 'robot' : 'account'} size={22} color={on ? C.text : C.faint} />
+      </Pressable>
+    );
+  };
+  return (
+    <View accessibilityRole="radiogroup" style={[s.row, { padding: 2, borderRadius: 10, borderWidth: 1, borderColor: C.line, backgroundColor: C.bg }]}>
+      {option(true)}
+      {option(false)}
+    </View>
+  );
+}
+
 type Rival = { name: string; isBot: boolean; crest: CrestDesign };
 const rnd = () => Math.random();
 /** Rivales al azar: nombres y escudos nuevos cada vez. */
@@ -176,12 +200,15 @@ export function SetupScreen(props: {
                   <Pressable accessibilityRole="button" accessibilityLabel="Otro nombre y escudo al azar" onPress={() => reroll(i)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
                     <Icon name={I.dice} size={24} color={C.dim} />
                   </Pressable>
-                  <Btn small kind={p.isBot ? 'ghost' : 'selected'} label={p.isBot ? 'IA' : 'Persona'} onPress={() => patch(i, { isBot: !p.isBot })} style={{ width: 84 }} />
+                  <WhoPlays bot={p.isBot} club={p.name || `Club ${i + 2}`} onPick={(isBot) => patch(i, { isBot })} />
                 </View>
               ))}
-              {humans > 1 ? (
-                <Text style={[s.p, { fontSize: 13, marginBottom: 8 }]}>Los clubes de «Persona» se juegan pasándose el móvil. El historial se guarda para tu club.</Text>
-              ) : null}
+              <View style={[s.row, { flexWrap: 'wrap', gap: 4, marginBottom: 8 }]}>
+                <Icon name="robot" size={15} color={C.dim} />
+                <Text style={[s.p, { fontSize: 13, marginRight: 10 }]}>lo juega la IA</Text>
+                <Icon name="account" size={15} color={C.dim} />
+                <Text style={[s.p, { fontSize: 13 }]}>otra persona en este móvil</Text>
+              </View>
 
               <View style={{ height: 6 }} />
               <LeaguePicker value={league} onPick={setLeague} />
