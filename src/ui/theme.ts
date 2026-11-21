@@ -38,7 +38,7 @@ export const clubColor = (playerId: number) => CLUB_COLORS[playerId % CLUB_COLOR
 
 export const TOP_INSET = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : Platform.OS === 'ios' ? 50 : 0;
 /** Fuente de títulos, marcadores y cifras (Barlow Condensed): aire de marcador de estadio. */
-export const FONTS = { display: 'BarlowCondensed_800ExtraBold', displayBold: 'BarlowCondensed_700Bold' };
+export const FONTS = { display: 'BarlowCondensed_800ExtraBold', displayBold: 'BarlowCondensed_700Bold', wordmark: 'BarlowCondensed_800ExtraBold_Italic' };
 /** Estilo de texto de marcador; las cifras con ancho fijo para que no bailen al cambiar. */
 export const DISPLAY = { fontFamily: FONTS.display, fontWeight: 'normal', fontVariant: ['tabular-nums'] } as const;
 export const DISPLAY_BOLD = { fontFamily: FONTS.displayBold, fontWeight: 'normal', fontVariant: ['tabular-nums'] } as const;

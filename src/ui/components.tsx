@@ -20,7 +20,7 @@ import { useAccount } from '../account/useAccount';
 import { Avatar, Crest } from './art';
 import { useMyClub } from '../account/club';
 import { isMuted, setMuted, soundAvailable } from './sound';
-import { C, NATIVE_DRIVER, POS_COLOR, SHADOW, TIER_COLOR, DISPLAY, DISPLAY_BOLD } from './theme';
+import { C, NATIVE_DRIVER, POS_COLOR, SHADOW, TIER_COLOR, DISPLAY, DISPLAY_BOLD, FONTS } from './theme';
 import { useClubColor } from './clubColors';
 import { I, Icon, IconName } from './icons';
 
@@ -223,9 +223,7 @@ export function NavBar({ subtitle }: { subtitle?: string }) {
         {club ? <Crest name={club.name} color={club.crest.primary} design={club.crest} size={36} /> : null}
       </Pressable>
       <View style={{ flex: 1, marginLeft: 10 }}>
-        <Text style={{ color: C.text, fontSize: 21, ...DISPLAY, letterSpacing: 0.2 }}>
-          DERBY<Text style={{ color: C.accent }}>TACTICS</Text>
-        </Text>
+        <Wordmark size={22} />
         <Text numberOfLines={1} style={{ color: C.dim, fontSize: 12, fontWeight: '600' }}>{subtitle ?? club?.name ?? profile?.username ?? 'Invitado'}</Text>
       </View>
       {soundAvailable() ? (
@@ -424,5 +422,14 @@ export function LeaguePicker({ value, onPick }: { value: 'masculina' | 'femenina
         {value === 'femenina' ? 'Todas las futbolistas son jugadoras. Las reglas son las mismas.' : 'Todos los futbolistas son jugadores. Las reglas son las mismas.'}
       </Text>
     </View>
+  );
+}
+
+/** Nombre del juego en su letra: condensada, en cursiva y con «TACTICS» en dorado. */
+export function Wordmark({ size = 22 }: { size?: number }) {
+  return (
+    <Text accessibilityRole="header" style={{ color: C.text, fontSize: size, fontFamily: FONTS.wordmark, fontWeight: 'normal', letterSpacing: 0.3 }}>
+      DERBY<Text style={{ color: C.accent }}>TACTICS</Text>
+    </Text>
   );
 }

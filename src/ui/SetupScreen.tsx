@@ -4,7 +4,7 @@ import { CONFIG, CrestDesign, League, NewGameOptions, SeasonLength, randomClubNa
 import { Crest, Logo } from './art';
 import { MyClub } from '../account/club';
 import { useAccount } from '../account/useAccount';
-import { Btn, LeaguePicker, LegalLinks, NavBar, NavContext, Overline, s, useBack } from './components';
+import { Btn, LeaguePicker, Wordmark, LegalLinks, NavBar, NavContext, Overline, s, useBack } from './components';
 import { C, clubColor, DISPLAY } from './theme';
 import { I, Icon } from './icons';
 
@@ -87,10 +87,10 @@ export function SetupScreen(props: {
     <NavBar />
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
       <View style={{ alignItems: 'center', marginTop: 4, marginBottom: 16 }}>
-        <Logo size={84} />
-        <Text style={{ color: C.text, fontSize: 36, ...DISPLAY, letterSpacing: -1 }}>
-          DERBY<Text style={{ color: C.accent }}>TACTICS</Text>
-        </Text>
+        <Logo size={88} />
+        <View style={{ marginTop: 6 }}>
+          <Wordmark size={40} />
+        </View>
         <Text style={[s.p, { textAlign: 'center', marginTop: 2 }]}>Ficha, amplía tu estadio y gana la liga a golpe de dado.</Text>
       </View>
 

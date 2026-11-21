@@ -1,5 +1,6 @@
 import { BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed/700Bold';
 import { BarlowCondensed_800ExtraBold } from '@expo-google-fonts/barlow-condensed/800ExtraBold';
+import { BarlowCondensed_800ExtraBold_Italic } from '@expo-google-fonts/barlow-condensed/800ExtraBold_Italic';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
@@ -61,7 +62,7 @@ export default function App() {
   const [booted, setBooted] = useState(Platform.OS === 'web');
   const account = useAccount();
   // Fuentes de marcador e iconos: si tardan o fallan, se pinta igual con las del sistema.
-  const [fontsLoaded, fontError] = useFonts({ BarlowCondensed_700Bold, BarlowCondensed_800ExtraBold, ...MaterialCommunityIcons.font });
+  const [fontsLoaded, fontError] = useFonts({ BarlowCondensed_700Bold, BarlowCondensed_800ExtraBold, BarlowCondensed_800ExtraBold_Italic, ...MaterialCommunityIcons.font });
   const [fontTimeout, setFontTimeout] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setFontTimeout(true), 3000);
