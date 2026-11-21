@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Text, View } from 'react-native';
 import { backendEnabled, getAccount, initAccount, refreshProfile, subscribeAccount } from './src/account/api';
@@ -87,7 +87,10 @@ export default function App() {
       .finally(() => setBooted(true));
   }, []);
   const gameRef = useRef(game);
-  gameRef.current = game;
+  // La referencia sigue a la partida actual para los temporizadores de la IA y el despacho de jugadas.
+  useLayoutEffect(() => {
+    gameRef.current = game;
+  }, [game]);
 
   const dispatch = useCallback((a: Action): string | null => {
     const g = gameRef.current;

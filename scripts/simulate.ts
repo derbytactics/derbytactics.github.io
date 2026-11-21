@@ -54,7 +54,7 @@ for (const n of sizes) {
   const seats: Record<string, number> = {};
   let naiveWins = 0;
   let firstPickWins = 0, earlyLeaderWins = 0, clauses = 0, cards = 0;
-  let goals = 0, money = 0, stadium = 0, gap = 0, lastShare = 0, plays = 0, stopped = 0, scored = 0, squad = 0, keepers = 0;
+  let goals = 0, money = 0, stadium = 0, lastShare = 0, plays = 0, stopped = 0, scored = 0, squad = 0, keepers = 0;
   for (let g = 0; g < games; g++) {
     const r = playGame(n, g * 7919 + n);
     const champ = r.table[0];
@@ -73,7 +73,6 @@ for (const n of sizes) {
       money += p.money / n;
       stadium += p.stadium / n;
     }
-    gap += (champ.points - r.table[n - 1].points) / champ.points;
     lastShare += r.table[n - 1].points / champ.points;
   }
   console.log(`\n=== ${n} jugadores · ${games} partidas · temporada ${season} (${CONFIG.seasonLengths[season]} jornadas) ===`);

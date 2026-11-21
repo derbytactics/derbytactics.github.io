@@ -127,7 +127,10 @@ let state: AccountState = { session: load<Session>(SESSION_KEY), profile: null, 
 const listeners = new Set<() => void>();
 function set(patch: Partial<AccountState>) {
   state = { ...state, ...patch };
-  if ('session' in patch) patch.session ? save(SESSION_KEY, patch.session) : remove(SESSION_KEY);
+  if ('session' in patch) {
+    if (patch.session) save(SESSION_KEY, patch.session);
+    else remove(SESSION_KEY);
+  }
   listeners.forEach((l) => l());
 }
 export const getAccount = () => state;

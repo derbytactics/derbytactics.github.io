@@ -6,7 +6,6 @@ import {
   footballer,
   roleOf,
   specialCard,
-  totalPips,
 } from './cards';
 import { CONFIG, SeasonLength, marketSize } from './config';
 import { CrestDesign, Identity, League, generateRoster, makeRand, randomCrest, sanitizeCrest, words } from './identity';
