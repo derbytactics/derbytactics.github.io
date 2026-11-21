@@ -64,7 +64,7 @@ export function ClubScreen({ initial, first, inGame, onClose }: { initial: MyClu
   };
   return (
     <View style={{ flex: 1 }}>
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <View style={[s.row, { marginBottom: 6 }]}>
         <Text style={[s.h1, { flex: 1 }]}>{first ? 'Funda tu club' : 'Mi club'}</Text>
         {!first ? <Btn small kind="ghost" label="Cerrar" onPress={onClose} /> : null}
