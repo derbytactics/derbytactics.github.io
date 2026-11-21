@@ -110,6 +110,14 @@ async function call<T>(path: string, init: { method?: string; body?: unknown; to
   return data as T;
 }
 
+/**
+ * `location` del navegador, o null en la app nativa. Allí Expo crea uno de pega (con la dirección del
+ * servidor de desarrollo) cuyo `assign` lanza un error: no sirve para saber si estamos en la web.
+ */
+export function browserLocation(): Location | null {
+  return typeof document !== 'undefined' ? ((globalThis as { location?: Location }).location ?? null) : null;
+}
+
 // ---------------------------------------------------------------- Estado de la cuenta
 
 interface AccountState {
@@ -229,10 +237,19 @@ function oauthError(params: URLSearchParams): string | null {
  * En la app nativa se abre una sesión segura del sistema que vuelve a `derbytactics://auth`.
  */
 export async function signInWith(provider: Provider): Promise<void> {
+  try {
+    await startSignIn(provider);
+  } catch (e) {
+    // Nada de lo que pase al entrar debe tumbar la app: se enseña como aviso en la portada.
+    set({ linkError: `No se ha podido entrar: ${(e as Error).message}` });
+  }
+}
+
+async function startSignIn(provider: Provider): Promise<void> {
   const b = backend();
   if (!b) return;
-  const loc = (globalThis as { location?: Location }).location;
-  if (loc?.assign) {
+  const loc = browserLocation();
+  if (loc) {
     const back = loc.origin + loc.pathname + loc.search;
     loc.assign(`${b.url}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(back)}`);
     return;
@@ -321,7 +338,7 @@ export async function initAccount(): Promise<void> {
   // En la app nativa lo guardado se carga después de arrancar: se vuelve a leer aquí.
   set({ session: load<Session>(SESSION_KEY), avatar: load<string>(AVATAR_KEY) ?? state.avatar });
   if (!backendEnabled()) return;
-  const loc = (globalThis as { location?: Location }).location;
+  const loc = browserLocation();
   void loadProviders();
   const hash = new URLSearchParams((loc?.hash ?? '').replace(/^#/, ''));
   // Google o Apple pueden devolver un error en la consulta (?error=…) o en el fragmento.
