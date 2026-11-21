@@ -10,7 +10,7 @@ import { C } from './theme';
  * Portada: entrar con la cuenta o jugar sin ella. Aparece la primera vez y al cerrar sesión;
  * quien juega sin cuenta y ya tiene club entra directo.
  */
-export function WelcomeScreen({ onGuest, signedOut }: { onGuest: () => void; signedOut?: boolean }) {
+export function WelcomeScreen({ onGuest, signedOut, guestLabel }: { onGuest: () => void; signedOut?: boolean; guestLabel?: string }) {
   return (
     <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40, flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
       {signedOut ? (
@@ -31,10 +31,12 @@ export function WelcomeScreen({ onGuest, signedOut }: { onGuest: () => void; sig
       <Text style={[s.p, { fontSize: 13, textAlign: 'center', marginBottom: 20 }]}>
         Con cuenta guardas tu club y tu historial en cualquier dispositivo, creas salas y entras en el ranking.
       </Text>
-      <Btn kind="ghost" icon={I.ball} label="Jugar sin cuenta" onPress={onGuest} />
-      <Text style={[s.p, { fontSize: 13, textAlign: 'center', marginTop: 8 }]}>
-        Sin cuenta puedes jugar en este dispositivo y unirte a la sala de un amigo. Podrás entrar más tarde desde el menú.
-      </Text>
+      <Btn kind="ghost" icon={guestLabel ? 'arrow-left' : I.ball} label={guestLabel ?? 'Jugar sin cuenta'} onPress={onGuest} />
+      {guestLabel ? null : (
+        <Text style={[s.p, { fontSize: 13, textAlign: 'center', marginTop: 8 }]}>
+          Sin cuenta puedes jugar en este dispositivo y unirte a la sala de un amigo. Podrás entrar más tarde desde el menú.
+        </Text>
+      )}
       <LegalLinks />
     </ScrollView>
   );

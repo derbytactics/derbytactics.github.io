@@ -59,11 +59,11 @@ export function SideMenu(props: {
           {backendEnabled() ? (
             <Pressable accessibilityRole="button" onPress={go(props.onAccount)} style={({ pressed }) => [s.row, { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, backgroundColor: pressed ? C.panelAlt : 'transparent' }]}>
               <View style={{ width: 34 }}>
-                <UserAvatar id={avatar} size={26} />
+                {session ? <UserAvatar id={avatar} size={26} /> : <Icon name="login" size={22} color={C.accent} />}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: C.text, fontSize: 16, fontWeight: '800' }}>Mi cuenta</Text>
-                <Text style={{ color: C.dim, fontSize: 12, marginTop: 1 }}>{session ? (profile?.username ?? 'Conectado') : 'Entrar con Google o Apple · ranking'}</Text>
+                <Text style={{ color: C.text, fontSize: 16, fontWeight: '800' }}>{session ? 'Mi cuenta' : 'Entrar con tu cuenta'}</Text>
+                <Text style={{ color: C.dim, fontSize: 12, marginTop: 1 }}>{session ? `${profile?.username ?? 'Conectado'} · perfil, ranking y cerrar sesión` : 'Con Google o Apple: guarda tu club y crea salas'}</Text>
               </View>
             </Pressable>
           ) : null}
