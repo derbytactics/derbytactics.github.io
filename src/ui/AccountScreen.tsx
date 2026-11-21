@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import {
   HistoryRow,
@@ -80,13 +80,13 @@ export function ProviderButtons({ providers }: { providers: Provider[] }) {
   return (
     <View style={{ marginBottom: 6 }}>
       {providers.includes('apple') ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Continuar con Apple" onPress={() => signInWith('apple')} style={style(true)}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Continuar con Apple" onPress={() => signInWith('apple', Platform.OS)} style={style(true)}>
           <AppleMark />
           <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>Continuar con Apple</Text>
         </Pressable>
       ) : null}
       {providers.includes('google') ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Continuar con Google" onPress={() => signInWith('google')} style={style(false)}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Continuar con Google" onPress={() => signInWith('google', Platform.OS)} style={style(false)}>
           <GoogleMark />
           <Text style={{ color: '#1F1F1F', fontSize: 16, fontWeight: '700' }}>Continuar con Google</Text>
         </Pressable>

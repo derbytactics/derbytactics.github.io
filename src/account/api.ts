@@ -236,16 +236,20 @@ function oauthError(params: URLSearchParams): string | null {
  * la sesión llega en el fragmento y la recoge `initAccount`.
  * En la app nativa se abre una sesión segura del sistema que vuelve a `derbytactics://auth`.
  */
-export async function signInWith(provider: Provider): Promise<void> {
+/**
+ * `os` es `Platform.OS`, que pasa la pantalla: aquí no se importa React Native entero
+ * (en el iPhone eso carga también módulos retirados que fallan al arrancar).
+ */
+export async function signInWith(provider: Provider, os: string): Promise<void> {
   try {
-    await startSignIn(provider);
+    await startSignIn(provider, os);
   } catch (e) {
     // Nada de lo que pase al entrar debe tumbar la app: se enseña como aviso en la portada.
     set({ linkError: `No se ha podido entrar: ${(e as Error).message}` });
   }
 }
 
-async function startSignIn(provider: Provider): Promise<void> {
+async function startSignIn(provider: Provider, os: string): Promise<void> {
   const b = backend();
   if (!b) return;
   const loc = browserLocation();
@@ -255,7 +259,7 @@ async function startSignIn(provider: Provider): Promise<void> {
     return;
   }
   // iPhone: ventana nativa de Apple (sin web ni clave que caduque); el token se canjea en Supabase.
-  if (provider === 'apple' && (await import('react-native')).Platform.OS === 'ios') return signInWithAppleNative();
+  if (provider === 'apple' && os === 'ios') return signInWithAppleNative();
   const WebBrowser = await import('expo-web-browser');
   const r = await WebBrowser.openAuthSessionAsync(`${b.url}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(NATIVE_RETURN)}`, NATIVE_RETURN);
   if (r.type !== 'success') return; // Cerrado por el usuario.
