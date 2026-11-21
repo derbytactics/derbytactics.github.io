@@ -13,6 +13,7 @@ import {
   setAvatar,
   signOut,
 } from '../account/api';
+import { syncClub } from '../account/club';
 import { useAccount } from '../account/useAccount';
 import { Trophy, USER_AVATARS, UserAvatar } from './art';
 import { Btn, LegalLinks, Overline, s } from './components';
@@ -118,8 +119,33 @@ export function UsernamePrompt() {
       <Field label="Nombre de usuario" value={name} onChange={setName} max={16} />
       {error ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{error}</Text> : null}
       <Btn kind={busy || name.trim().length < 3 ? 'muted' : 'primary'} label={busy ? 'Un momento…' : 'Guardar'} onPress={() => !busy && name.trim().length >= 3 && save()} />
-      <Btn small kind="ghost" label="Cerrar sesión" onPress={() => signOut()} style={{ marginTop: 10 }} />
+      <SignOutButton />
     </ScrollView>
+  );
+}
+
+/**
+ * Cerrar sesión, con confirmación. Antes se sube lo que falte (club e historial) para no perder nada;
+ * después la app borra de este dispositivo todo lo de la cuenta y vuelve a la portada.
+ */
+function SignOutButton() {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const go = async () => {
+    setBusy(true);
+    await Promise.race([syncClub(), new Promise((r) => setTimeout(r, 4000))]);
+    await signOut();
+  };
+  if (!asking) return <Btn kind="ghost" icon="logout" label="Cerrar sesión" onPress={() => setAsking(true)} style={{ marginTop: 10 }} />;
+  return (
+    <View style={[s.panel, { borderColor: C.accent, marginTop: 10 }]}>
+      <Text style={{ color: C.text, fontWeight: '800', marginBottom: 4 }}>¿Cerrar sesión en este dispositivo?</Text>
+      <Text style={[s.p, { marginBottom: 12 }]}>Se quitarán de este dispositivo tu club, tu historial y cualquier partida a medias. El club y el historial siguen en tu cuenta y vuelven al entrar; la partida a medias de este dispositivo se pierde.</Text>
+      <View style={[s.row, { gap: 8 }]}>
+        <Btn small kind="ghost" label="Cancelar" onPress={() => setAsking(false)} style={{ flex: 1 }} />
+        <Btn small kind="primary" icon="logout" label={busy ? 'Cerrando…' : 'Cerrar sesión'} onPress={() => !busy && go()} style={{ flex: 1 }} />
+      </View>
+    </View>
   );
 }
 
@@ -224,7 +250,7 @@ function ProfileTab() {
         )}
       </View>
 
-      <Btn kind="ghost" label="Cerrar sesión" onPress={() => signOut()} />
+      <SignOutButton />
       {error ? <Text style={{ color: C.danger, fontWeight: '700', marginTop: 10 }}>{error}</Text> : null}
       {confirm ? (
         <View style={[s.panel, { borderColor: C.danger, marginTop: 12 }]}>

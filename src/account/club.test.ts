@@ -17,7 +17,7 @@ vi.mock('./api', () => ({
   },
 }));
 
-const { getHistory, getMyClub, reloadClub, setMyClub, syncClub } = await import('./club');
+const { forgetLocalClub, getHistory, getMyClub, reloadClub, setMyClub, syncClub } = await import('./club');
 const { save, remove } = await import('../net/storage');
 
 const crest = (primary: string) => ({ shape: 1, pattern: 2, emblem: 3, primary, secondary: '#FFFFFF' });
@@ -73,5 +73,18 @@ describe('club e historial con la cuenta', () => {
     expect(getMyClub()).toBeNull();
     expect(getHistory()).toEqual([]);
     expect(server.ana.seasons).toEqual([]);
+  });
+
+  it('al cerrar sesión no queda nada de la cuenta en el dispositivo, pero la cuenta lo conserva', async () => {
+    user = 'luis';
+    await syncClub();
+    forgetLocalClub();
+    reloadClub();
+    expect(getMyClub()).toBeNull();
+    expect(getHistory()).toEqual([]);
+    expect(server.luis.club?.name).toBe('Luis City');
+    // Al volver a entrar, se recupera.
+    await syncClub();
+    expect(getMyClub()?.name).toBe('Luis City');
   });
 });

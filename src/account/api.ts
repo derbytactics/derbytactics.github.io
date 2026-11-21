@@ -121,9 +121,11 @@ interface AccountState {
   avatar: string;
   /** Proveedores externos activados en Supabase (solo en el navegador). */
   providers: Provider[];
+  /** La sesión se ha cerrado a propósito (cerrar sesión o borrar la cuenta), no por caducar. */
+  signedOut: boolean;
 }
 const AVATAR_KEY = 'futcards.avatar';
-let state: AccountState = { session: load<Session>(SESSION_KEY), profile: null, linkError: null, avatar: load<string>(AVATAR_KEY) ?? 'a1', providers: [] };
+let state: AccountState = { session: load<Session>(SESSION_KEY), profile: null, linkError: null, avatar: load<string>(AVATAR_KEY) ?? 'a1', providers: [], signedOut: false };
 const listeners = new Set<() => void>();
 function set(patch: Partial<AccountState>) {
   state = { ...state, ...patch };
@@ -265,7 +267,7 @@ async function signInWithAppleNative(): Promise<void> {
   try {
     const session = toSession(await call<AuthResponse>('/auth/v1/token?grant_type=id_token', { body: { provider: 'apple', id_token: token } }));
     if (!session) throw new Error('Sin sesión.');
-    set({ session, linkError: null });
+    set({ session, linkError: null, signedOut: false });
     await refreshProfile();
   } catch (e) {
     set({ linkError: `No se ha podido entrar con Apple: ${(e as Error).message}` });
@@ -289,9 +291,11 @@ async function loadProviders(): Promise<void> {
   } catch {}
 }
 
+/** Cierra la sesión en este dispositivo; quien escuche `signedOut` borra lo que queda de la cuenta. */
 export async function signOut(): Promise<void> {
   const t = state.session?.access_token;
-  set({ session: null, profile: null });
+  remove(AVATAR_KEY);
+  set({ session: null, profile: null, avatar: 'a1', signedOut: true });
   if (t) await call('/auth/v1/logout', { token: t }).catch(() => {});
 }
 
@@ -306,7 +310,8 @@ export function setAvatar(id: string) {
 
 export async function deleteAccount(): Promise<void> {
   await rpc('delete_my_account');
-  set({ session: null, profile: null });
+  remove(AVATAR_KEY);
+  set({ session: null, profile: null, avatar: 'a1', signedOut: true });
 }
 
 /**
