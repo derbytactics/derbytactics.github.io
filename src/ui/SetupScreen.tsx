@@ -101,7 +101,8 @@ export function SetupScreen(props: {
   return (
     <View style={{ flex: 1 }}>
     <NavBar />
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+    {/* En iPhone, al abrirse el teclado la lista deja sitio y sube la casilla activa a la vista. */}
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <View style={{ alignItems: 'center', marginTop: 4, marginBottom: 16 }}>
         <Logo size={88} />
         <View style={{ marginTop: 6 }}>

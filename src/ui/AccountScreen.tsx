@@ -111,7 +111,7 @@ export function UsernamePrompt() {
     setBusy(false);
   };
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 32 }}>
+    <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <Text style={s.h1}>Elige tu nombre de usuario</Text>
       <Text style={[s.p, { marginBottom: 16 }]}>
         Es el que verán los demás en las salas y en el ranking. No usamos tu nombre real.
@@ -387,7 +387,7 @@ export function AccountScreen({ onClose, initialTab }: { onClose: () => void; in
   const { session } = useAccount();
   const [tab, setTab] = useState<Tab>(initialTab ?? 'perfil');
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <View style={[s.row, { marginBottom: 14 }]}>
         <Text style={[s.h1, { flex: 1 }]}>{session ? 'Mi cuenta' : 'Tu cuenta'}</Text>
         <Btn small kind="ghost" label="Cerrar" onPress={onClose} />
