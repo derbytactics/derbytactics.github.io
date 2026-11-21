@@ -14,7 +14,7 @@ import { RoomState } from './src/net/room';
 import { GUEST_KEY, HOST_KEY, normalizeCode } from './src/net/session';
 import { hydrateStorage, load, remove, save } from './src/net/storage';
 import { AccountScreen, UsernamePrompt, formatDate } from './src/ui/AccountScreen';
-import { reloadClub, syncClub, useClubSyncing, useMyClub } from './src/account/club';
+import { forgetLocalClub, reloadClub, syncClub, useClubSyncing, useMyClub } from './src/account/club';
 import { ClubScreen } from './src/ui/ClubScreen';
 import { ErrorBoundary, installGlobalErrorHandlers } from './src/ui/ErrorBoundary';
 import { GameView } from './src/ui/GameView';
@@ -24,6 +24,7 @@ import { LegalScreen, LegalTab } from './src/ui/LegalScreen';
 import { OnlineGuest, OnlineHost } from './src/ui/Online';
 import { SetupScreen } from './src/ui/SetupScreen';
 import { SideMenu } from './src/ui/SideMenu';
+import { WelcomeScreen } from './src/ui/WelcomeScreen';
 import { BackContext, NavContext } from './src/ui/components';
 import { C, TOP_INSET } from './src/ui/theme';
 
@@ -57,6 +58,10 @@ export default function App() {
   const [clubOpen, setClubOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const club = useMyClub();
+  /** Ha elegido jugar sin cuenta (la portada no vuelve a salir hasta que cierre sesión). */
+  const [guestChosen, setGuestChosen] = useState(false);
+  /** Acaba de cerrar sesión: la portada lo confirma. */
+  const [justSignedOut, setJustSignedOut] = useState(false);
   const clubSyncing = useClubSyncing();
   /** En la app nativa hay que cargar lo guardado antes de pintar nada. */
   const [booted, setBooted] = useState(Platform.OS === 'web');
@@ -85,7 +90,17 @@ export default function App() {
         setMenuOpen(false);
         setClubOpen(false);
         setHistoryOpen(false);
+        if (getAccount().signedOut) {
+          // Cerrar sesión desconecta todo: fuera de la partida, y nada de la cuenta queda a la vista.
+          forgetLocalClub();
+          for (const k of [LOCAL_KEY, HOST_KEY, GUEST_KEY]) remove(k);
+          setGame(null);
+          setMode({ kind: 'menu' });
+          setGuestChosen(false);
+          setJustSignedOut(true);
+        }
       }
+      if (has) setJustSignedOut(false);
       had = has;
     });
   }, []);
@@ -177,6 +192,8 @@ export default function App() {
     body = <OnlineGuest code={mode.code} name={mode.name} crest={mode.crest} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'local' && game) {
     body = <GameView game={game} seat={null} dispatch={dispatch} onHelp={onHelp} onExit={toMenu} exitText="La partida queda guardada en este dispositivo: podrás continuarla desde el menú." />;
+  } else if (backendEnabled() && !account.session && !club && !guestChosen && mode.kind === 'menu') {
+    body = <WelcomeScreen signedOut={justSignedOut} onGuest={() => setGuestChosen(true)} />;
   } else if (!club && clubSyncing) {
     body = <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: C.dim, fontWeight: '700' }}>Cargando tu club…</Text></View>;
   } else if (!club) {

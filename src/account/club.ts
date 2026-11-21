@@ -80,6 +80,13 @@ export function reloadClub() {
   listeners.forEach((l) => l());
 }
 
+/** Olvida el club y el historial guardados en este dispositivo (al cerrar sesión). */
+export function forgetLocalClub() {
+  for (const k of [CLUB_KEY, HISTORY_KEY, OWNER_KEY, DIRTY_KEY]) remove(k);
+  store = { club: null, history: [], syncing: false };
+  listeners.forEach((l) => l());
+}
+
 export const getMyClub = () => read().club;
 export function setMyClub(club: MyClub) {
   const next = { name: club.name.trim().slice(0, 20), crest: club.crest };
