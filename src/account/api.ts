@@ -10,7 +10,7 @@ interface Backend {
   url: string;
   key: string;
 }
-function backend(): Backend | null {
+export function backend(): Backend | null {
   const injected = (globalThis as { __FUTCARDS_BACKEND__?: Backend }).__FUTCARDS_BACKEND__;
   if (injected) return injected;
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;

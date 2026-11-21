@@ -25,7 +25,7 @@ Estado de cada punto y qué queda por hacer. Lo marcado como **Tu parte** necesi
 | Web en GitHub Pages | Gratis | Sin límite práctico para este juego. |
 | Instalar en el móvil desde la web (PWA) | Gratis | Icono en la pantalla de inicio y pantalla completa, sin tiendas. Instrucciones en la ayuda del juego. |
 | Cuentas en Supabase (plan gratuito) | Gratis | Hasta 50.000 usuarios activos al mes y 500 MB de base de datos, de sobra. **El proyecto se pausa tras 7 días sin uso**: se reactiva a mano desde el panel. |
-| Partidas en línea (servidores públicos de mensajería) | Gratis | Sin garantía de disponibilidad. |
+| Partidas en línea (Supabase Realtime) | Gratis | Hasta 200 conexiones a la vez (unas 25 salas de 8) y 100 mensajes por segundo. Si Supabase no responde, se usan servidores públicos. |
 | Servidor propio con funciones de Supabase | Gratis dentro del plan gratuito | Solo hace falta si se abre a desconocidos con ranking. |
 | Correo de confirmación | Gratis | Desactivando la confirmación por correo. Un SMTP gratuito (Brevo, Resend) necesita dominio propio. |
 | Dominio propio | ~10 €/año | Opcional. Sin él, la dirección es `juanrafernandez.github.io/DerbyTactics`. |
@@ -115,20 +115,14 @@ Mesas de 2, 4 y 8. Lo que más me interesa saber: si las partidas de 2 se hacen 
 
 Hoy son doce retratos dibujados por código. Si quieres otros, pásame las imágenes (cuadradas, 512×512, PNG) y los integro.
 
-## Pendiente de decisión: servidor propio para las partidas en línea
+## Partidas en línea
 
-Es lo único grande que falta, y no se puede resolver sin decidir dónde se aloja.
+Los mensajes de las salas pasan por **Supabase Realtime** (gratis en el plan actual), con los servidores públicos como reserva. El móvil del anfitrión sigue dirigiendo la partida. Lo que queda abierto:
 
-Hoy el móvil del anfitrión dirige la partida y los mensajes pasan por servidores públicos gratuitos. Eso implica:
-
-- Sin garantía de disponibilidad, y el estado de la sala no va cifrado.
 - Cada móvil recibe las cartas de todos (la pantalla solo enseña las propias).
-- El resultado lo comunica el anfitrión, así que puede falsearse.
+- El resultado lo comunica el anfitrión, así que en teoría puede falsearse. El ranking ya solo cuenta partidas con al menos dos usuarios registrados.
 
-Para un juego entre amigos es aceptable. Para abrirlo a desconocidos con ranking, lo correcto es que la partida se juegue en un servidor que guarde el estado, valide cada jugada y envíe a cada jugador solo lo suyo. El motor (`src/engine`) ya es puro y determinista, pensado para ejecutarse también en servidor. Opciones:
-
-- **Funciones de Supabase** (mismo proveedor que las cuentas): menos piezas nuevas; hay que desplegarlas desde tu cuenta.
-- **Un servidor pequeño propio** con WebSocket: más control, y un coste mensual bajo.
+Si el juego se abre a desconocidos y aparecen trampas, el paso siguiente es que una función de Supabase juegue la partida con el mismo motor (`src/engine`, puro y determinista) y valide cada jugada. Hay que desplegarla desde tu cuenta.
 
 ## Pendiente menor
 
