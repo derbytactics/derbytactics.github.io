@@ -3,7 +3,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Crest, Trophy } from './art';
 import { HistoryEntry, useHistory } from '../account/club';
 import { Btn, Overline, s } from './components';
-import { C, clubColor } from './theme';
+import { C, clubColor, DISPLAY } from './theme';
+import { I, Icon } from './icons';
 
 function when(iso: string): string {
   try {
@@ -16,8 +17,8 @@ function when(iso: string): string {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
-      <Text style={{ color: C.accent, fontSize: 22, fontWeight: '900' }}>{value}</Text>
-      <Text style={{ color: C.dim, fontSize: 11, fontWeight: '700' }}>{label}</Text>
+      <Text style={{ color: C.accent, fontSize: 25, ...DISPLAY }}>{value}</Text>
+      <Text style={{ color: C.dim, fontSize: 12, fontWeight: '700' }}>{label}</Text>
     </View>
   );
 }
@@ -33,8 +34,9 @@ function Game({ g }: { g: HistoryEntry }) {
           <Overline>
             {when(g.date)} · {g.online ? 'EN LÍNEA' : 'UN DISPOSITIVO'}{g.league === 'femenina' ? ' · FEMENINA' : ''} · {g.jornadas} JORNADAS
           </Overline>
-          <Text style={{ color: won ? C.accent : C.text, fontSize: 18, fontWeight: '900', marginTop: 2 }}>
-            {won ? (g.league === 'femenina' ? '🏆 Campeonas' : '🏆 Campeón') : `${g.position}.º de ${g.clubs}`}
+          <Text style={{ color: won ? C.accent : C.text, fontSize: 20, ...DISPLAY, marginTop: 2 }}>
+            {won ? <Icon name={I.trophy} size={18} color={C.accent} /> : null}
+            {won ? (g.league === 'femenina' ? ' Campeonas' : ' Campeón') : `${g.position}.º de ${g.clubs}`}
           </Text>
           <Text style={[s.p, { fontSize: 12 }]}>
             {g.points} pts · {g.goals} goles a favor, {g.against} en contra{won ? '' : ` · Campeón: ${g.champion}`}

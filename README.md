@@ -24,9 +24,9 @@ Eres el presidente de un club recién ascendido. Con 80M en caja tienes que mont
 
 ## Jugar en línea con amigos
 
-1. Una persona abre el juego, elige **En línea** y pulsa **Crear una sala**: juega con su club.
+1. Una persona abre el juego, elige **Con amigos en línea** y pulsa **Crear una sala** (hace falta entrar con la cuenta): juega con su club.
 2. Comparte el código de 5 letras o el enlace de invitación.
-3. Los demás abren el enlace (o eligen **En línea** y escriben el código) y entran con su club.
+3. Los demás abren el enlace (o eligen **Con amigos en línea** y escriben el código) y entran con su club.
 4. El anfitrión elige cuántos clubes hay y pulsa **Empezar**. Los asientos libres los lleva la IA.
 
 Cómo funciona y qué límites tiene:

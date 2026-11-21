@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Action, GameState, currentPlayer, currentRoller } from '../engine';
 import { Crest } from './art';
 import { recordGame } from '../account/club';
-import { Btn, Chronicle, ExitContext, NavBar, RosterContext, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
+import { Btn, Chronicle, ExitContext, NavBar, RosterContext, useBack, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
 import { EndScreen } from './EndScreen';
 import { GameScreen } from './GameScreen';
 import { MatchScreen } from './MatchScreen';
-import { C, clubColor } from './theme';
+import { C } from './theme';
+import { ClubColorsContext, clubPalette, useClubColor } from './clubColors';
+import { I } from './icons';
 
 export interface OnlineInfo {
   isHost: boolean;
@@ -37,7 +39,15 @@ export function GameView(props: {
   /** Contenido extra en la pantalla final (valoración del anfitrión, si puntúa…). */
   endExtra?: React.ReactNode;
 }) {
+  const crestKey = JSON.stringify(props.game.players.map((p) => p.crest ?? null));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const palette = useMemo(() => clubPalette(props.game.players.map((p) => p.crest)), [crestKey]);
   const [leaving, setLeaving] = useState(false);
+  // «Atrás» en Android: pregunta antes de salir de la partida (o cierra la pregunta).
+  useBack(() => {
+    setLeaving((x) => !x);
+    return true;
+  });
   const finished = props.game.phase === 'finished';
   // Al acabar la temporada, se apunta en el historial del club de este dispositivo.
   useEffect(() => {
@@ -45,6 +55,7 @@ export function GameView(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished]);
   return (
+    <ClubColorsContext.Provider value={palette}>
     <RosterContext.Provider value={props.game.roster}>
     <ExitContext.Provider value={() => setLeaving(true)}>
       <View style={{ flex: 1 }}>
@@ -60,10 +71,12 @@ export function GameView(props: {
       </View>
     </ExitContext.Provider>
     </RosterContext.Provider>
+    </ClubColorsContext.Provider>
   );
 }
 
 function GameBody(props: Parameters<typeof GameView>[0]) {
+  const clubColor = useClubColor();
   const { game, seat, dispatch, online } = props;
   /** Turno que la persona ya ha confirmado tener en la mano (solo al compartir dispositivo). */
   const [handoff, setHandoff] = useState('');
@@ -75,7 +88,7 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
   if (game.phase === 'finished') return <EndScreen state={game} onRestart={props.onExit} extra={props.endExtra} />;
   if (game.phase === 'match' || game.phase === 'summary') {
     const footer = !online ? undefined : !online.iAmReady ? (
-      <Btn label={last ? '🏆 Listo: ver el final' : '✓ Listo para la siguiente jornada'} onPress={online.onReady} />
+      <Btn icon={last ? I.trophy : 'check'} label={last ? 'Listo: ver el final' : 'Listo para la siguiente jornada'} onPress={online.onReady} />
     ) : (
       <View style={[s.panel, { alignItems: 'center' }]}>
         <Text style={{ color: C.text, fontWeight: '800' }}>✓ Estás listo</Text>
@@ -98,6 +111,8 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
         footer={footer}
         waitingExtra={online?.onBotTurn && absent ? <Btn small kind="ghost" label="¿No responde? Tirar por él" onPress={online.onBotTurn} style={{ marginTop: 10 }} /> : undefined}
         onForceAbsent={online?.onBotTurn && absent ? online.onBotTurn : undefined}
+        online={!!online}
+        onSkip={online ? undefined : () => dispatch({ type: 'playMatch' })}
       />
     );
   }

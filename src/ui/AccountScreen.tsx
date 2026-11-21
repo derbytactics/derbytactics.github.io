@@ -16,7 +16,7 @@ import {
 import { useAccount } from '../account/useAccount';
 import { Trophy, USER_AVATARS, UserAvatar } from './art';
 import { Btn, LegalLinks, Overline, s } from './components';
-import { C } from './theme';
+import { C, DISPLAY } from './theme';
 
 type Tab = 'perfil' | 'historial' | 'ranking';
 
@@ -177,7 +177,7 @@ export function AuthForm() {
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
-      <Text style={{ color: C.text, fontSize: 26, fontWeight: '900' }}>{value}</Text>
+      <Text style={{ color: C.text, fontSize: 29, ...DISPLAY }}>{value}</Text>
       <Text style={s.overline}>{label}</Text>
     </View>
   );
@@ -263,11 +263,11 @@ function HistoryTab() {
               <Overline>
                 {formatDate(g.started_at)} · SALA {g.code}
               </Overline>
-              <Text style={{ color: C.text, fontSize: 18, fontWeight: '900', marginTop: 2 }}>
-                {g.status === 'finished' && g.position ? (g.position === 1 ? '🏆 Campeón' : `${g.position}.º puesto`) : STATUS[g.status]}
+              <Text style={{ color: C.text, fontSize: 20, ...DISPLAY, marginTop: 2 }}>
+                {g.status === 'finished' && g.position ? (g.position === 1 ? 'Campeón' : `${g.position}.º puesto`) : STATUS[g.status]}
               </Text>
             </View>
-            <Text style={{ color: g.ranked ? C.accent : C.faint, fontSize: 11, fontWeight: '800' }}>{g.ranked ? 'PUNTUABLE' : g.status === 'finished' ? 'AMISTOSA' : ''}</Text>
+            <Text style={{ color: g.ranked ? C.accent : C.faint, fontSize: 12, fontWeight: '800' }}>{g.ranked ? 'PUNTUABLE' : g.status === 'finished' ? 'AMISTOSA' : ''}</Text>
           </View>
           <View style={{ marginTop: 8 }}>
             {g.players.map((p, i) => (
@@ -370,9 +370,9 @@ export function AccountScreen({ onClose, initialTab }: { onClose: () => void; in
       <>
           <AvatarPicker />
           <View style={[s.row, { gap: 8, marginBottom: 14 }]}>
-            <Btn small kind={tab === 'perfil' ? 'primary' : 'ghost'} label={session ? 'Perfil' : 'Entrar'} onPress={() => setTab('perfil')} style={{ flex: 1 }} />
-            <Btn small kind={tab === 'historial' ? 'primary' : 'ghost'} label="Salas" onPress={() => setTab('historial')} style={{ flex: 1 }} />
-            <Btn small kind={tab === 'ranking' ? 'primary' : 'ghost'} label="Ranking" onPress={() => setTab('ranking')} style={{ flex: 1 }} />
+            <Btn small kind={tab === 'perfil' ? 'selected' : 'ghost'} label={session ? 'Perfil' : 'Entrar'} onPress={() => setTab('perfil')} style={{ flex: 1 }} />
+            <Btn small kind={tab === 'historial' ? 'selected' : 'ghost'} label="Salas" onPress={() => setTab('historial')} style={{ flex: 1 }} />
+            <Btn small kind={tab === 'ranking' ? 'selected' : 'ghost'} label="Ranking" onPress={() => setTab('ranking')} style={{ flex: 1 }} />
           </View>
           {tab === 'ranking' ? (
             <RankingTab />

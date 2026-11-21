@@ -15,7 +15,7 @@ Estado de cada punto y qué queda por hacer. Lo marcado como **Tu parte** necesi
 | Mesas de 2 | Derechos de TV (5M) y una carta especial por jornada. |
 | Primera partida | Consejos de primera vez en mercado, club, rivales y partido; se pueden volver a ver desde la ayuda. |
 | Sonido | Los mismos efectos en navegador (sintetizados) y en la app nativa (WAV generados), con botón de silencio. En iPhone respeta el modo silencio y no corta la música. |
-| Icono y configuración de apps | Iconos, pantalla de arranque y favicon generados a partir del logotipo; `app.json` y `eas.json` preparados. |
+| Icono y configuración de apps | Logotipo «escudo del derbi» (escudo partido con un dado). Iconos de iOS, Android (adaptativo y monocromo), web, PWA y pantalla de arranque generados a partir de él; `app.json` y `eas.json` preparados. |
 | Móvil | Probado en navegador emulando un iPhone y en un iPhone real (compilado en local). |
 | Cuentas | Solo Google y Apple (en iPhone, Apple nativo). Sin contraseñas ni correos. |
 | Partidas en línea | Por Supabase Realtime, con reconexión al volver de segundo plano. |

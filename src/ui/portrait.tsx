@@ -6,25 +6,14 @@
 import React from 'react';
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg';
 import { ETHNICITIES, Ethnicity, makeRand } from '../engine';
+import { darken, lighten, lumaOf, mix } from './palette';
+
+export { darken, lighten, lumaOf, mix };
 
 export function hash(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return h >>> 0;
-}
-
-/** Mezcla dos colores #RRGGBB (t = 0 → a, t = 1 → b). */
-export function mix(a: string, b: string, t: number): string {
-  const pa = parseInt(a.slice(1), 16);
-  const pb = parseInt(b.slice(1), 16);
-  const ch = (sh: number) => Math.round(((pa >> sh) & 255) * (1 - t) + ((pb >> sh) & 255) * t);
-  return `#${((1 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).slice(1)}`;
-}
-export const darken = (c: string, t: number) => mix(c, '#000000', t);
-export const lighten = (c: string, t: number) => mix(c, '#FFFFFF', t);
-export function lumaOf(hex: string): number {
-  const n = parseInt(hex.slice(1), 16);
-  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
 }
 
 /** Diez tonos de piel, de muy claro a muy oscuro. */

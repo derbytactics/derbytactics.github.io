@@ -1,7 +1,12 @@
+import { BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed/700Bold';
+import { BarlowCondensed_800ExtraBold } from '@expo-google-fonts/barlow-condensed/800ExtraBold';
+import { BarlowCondensed_800ExtraBold_Italic } from '@expo-google-fonts/barlow-condensed/800ExtraBold_Italic';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform, Text, View } from 'react-native';
+import { BackHandler, Platform, Text, View } from 'react-native';
 import { backendEnabled, getAccount, initAccount, refreshProfile, subscribeAccount } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
 import { Action, BOT_STYLES, CrestDesign, GameState, apply, botAction, check, createGame, currentPlayer } from './src/engine';
@@ -19,8 +24,7 @@ import { LegalScreen, LegalTab } from './src/ui/LegalScreen';
 import { OnlineGuest, OnlineHost } from './src/ui/Online';
 import { SetupScreen } from './src/ui/SetupScreen';
 import { SideMenu } from './src/ui/SideMenu';
-import { WelcomeScreen } from './src/ui/WelcomeScreen';
-import { NavContext } from './src/ui/components';
+import { BackContext, NavContext } from './src/ui/components';
 import { C, TOP_INSET } from './src/ui/theme';
 
 type Mode =
@@ -48,8 +52,6 @@ export default function App() {
   const [game, setGame] = useState<GameState | null>(null);
   const [help, setHelp] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  /** Ha elegido jugar sin cuenta en esta visita. */
-  const [guest, setGuest] = useState(false);
   const [legal, setLegal] = useState<LegalTab | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [clubOpen, setClubOpen] = useState(false);
@@ -59,12 +61,20 @@ export default function App() {
   /** En la app nativa hay que cargar lo guardado antes de pintar nada. */
   const [booted, setBooted] = useState(Platform.OS === 'web');
   const account = useAccount();
+  // Fuentes de marcador e iconos: si tardan o fallan, se pinta igual con las del sistema.
+  const [fontsLoaded, fontError] = useFonts({ BarlowCondensed_700Bold, BarlowCondensed_800ExtraBold, BarlowCondensed_800ExtraBold_Italic, ...MaterialCommunityIcons.font });
+  const [fontTimeout, setFontTimeout] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setFontTimeout(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+  const fontsReady = fontsLoaded || !!fontError || fontTimeout;
   const userId = account.session?.user.id;
   // Con cuenta, el club y el historial se sincronizan al entrar.
   useEffect(() => {
     if (booted && userId) syncClub();
   }, [booted, userId]);
-  // Al cerrar sesión o borrar la cuenta (desde donde sea): se cierran las ventanas y se vuelve a la bienvenida.
+  // Al cerrar sesión o borrar la cuenta (desde donde sea): se cierran las ventanas y se vuelve al inicio.
   // Si había una partida en marcha, sigue; la bienvenida aparece al volver al menú.
   useEffect(() => {
     let had = !!getAccount().session;
@@ -75,7 +85,6 @@ export default function App() {
         setMenuOpen(false);
         setClubOpen(false);
         setHistoryOpen(false);
-        setGuest(false);
       }
       had = has;
     });
@@ -85,6 +94,35 @@ export default function App() {
       .then(() => reloadClub())
       .then(() => initAccount())
       .finally(() => setBooted(true));
+  }, []);
+  // Botón «atrás» de Android: primero cierra la ventana que esté encima; si no hay, lo atiende la pantalla.
+  const backStack = useRef<(() => boolean)[]>([]);
+  const registerBack = useCallback((h: () => boolean) => {
+    backStack.current.push(h);
+    return () => {
+      backStack.current = backStack.current.filter((x) => x !== h);
+    };
+  }, []);
+  const overlays = useRef<{ open: boolean; close: () => void }[]>([]);
+  overlays.current = [
+    { open: menuOpen, close: () => setMenuOpen(false) },
+    { open: !!legal, close: () => setLegal(null) },
+    { open: help, close: () => setHelp(false) },
+    { open: historyOpen, close: () => setHistoryOpen(false) },
+    { open: clubOpen, close: () => setClubOpen(false) },
+    { open: accountOpen, close: () => setAccountOpen(false) },
+  ];
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      const top = overlays.current.find((o) => o.open);
+      if (top) {
+        top.close();
+        return true;
+      }
+      for (let i = backStack.current.length - 1; i >= 0; i--) if (backStack.current[i]()) return true;
+      return false;
+    });
+    return () => sub.remove();
   }, []);
   const gameRef = useRef(game);
   // La referencia sigue a la partida actual para los temporizadores de la IA y el despacho de jugadas.
@@ -131,10 +169,8 @@ export default function App() {
   const onHelp = () => setHelp(true);
 
   let body: React.ReactNode;
-  if (!booted) {
+  if (!booted || !fontsReady) {
     body = null;
-  } else if (backendEnabled() && !account.session && !guest && mode.kind === 'menu') {
-    body = <WelcomeScreen onGuest={() => setGuest(true)} />;
   } else if (mode.kind === 'host') {
     body = <OnlineHost name={mode.name} crest={mode.crest} resume={mode.resume} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'guest') {
@@ -145,7 +181,7 @@ export default function App() {
     body = <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: C.dim, fontWeight: '700' }}>Cargando tu club…</Text></View>;
   } else if (!club) {
     // Cada persona tiene un club: se crea antes de jugar la primera vez.
-    body = <ClubScreen first initial={null} onClose={() => {}} />;
+    body = <ClubScreen first initial={null} onClose={() => {}} onLogin={backendEnabled() && !account.session ? () => setAccountOpen(true) : undefined} />;
   } else {
     const savedHost = load<RoomState>(HOST_KEY);
     const savedGuest = load<{ code: string; name: string }>(GUEST_KEY);
@@ -185,6 +221,7 @@ export default function App() {
   }
 
   return (
+    <BackContext.Provider value={registerBack}>
     <NavContext.Provider value={{ onHelp, onAccount: () => setAccountOpen(true), onMenu: () => setMenuOpen(true), onLegal: setLegal }}>
     <ErrorBoundary onReset={toMenu}>
     <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: TOP_INSET }}>
@@ -236,5 +273,6 @@ export default function App() {
     </View>
     </ErrorBoundary>
     </NavContext.Provider>
+    </BackContext.Provider>
   );
 }

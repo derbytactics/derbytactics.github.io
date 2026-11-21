@@ -3,8 +3,10 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { CONFIG, CrestDesign, League, NewGameOptions, SeasonLength, randomClubName, randomCrest } from '../engine';
 import { Crest, Logo } from './art';
 import { MyClub } from '../account/club';
-import { Btn, LeaguePicker, LegalLinks, NavBar, Overline, s } from './components';
-import { C, clubColor } from './theme';
+import { useAccount } from '../account/useAccount';
+import { Btn, LeaguePicker, Wordmark, LegalLinks, NavBar, NavContext, Overline, s, useBack } from './components';
+import { C, clubColor, DISPLAY } from './theme';
+import { I, Icon } from './icons';
 
 type Rival = { name: string; isBot: boolean; crest: CrestDesign };
 const rnd = () => Math.random();
@@ -43,7 +45,7 @@ export function SetupScreen(props: {
   /** Comprueba si esta persona puede crear salas; devuelve el motivo si no. */
   hostGate: () => Promise<string | null>;
 }) {
-  const { onStart, onHelp } = props;
+  const { onStart } = props;
   const [mode, setMode] = useState<'local' | 'online'>(props.initialCode ? 'online' : 'local');
   const { club } = props;
   const [code, setCode] = useState(props.initialCode);
@@ -52,36 +54,61 @@ export function SetupScreen(props: {
   const [season, setSeason] = useState<SeasonLength>('estandar');
   const [league, setLeague] = useState<League>('masculina');
   const [rivals, setRivals] = useState(() => randomRivals(club.name));
+  const [options, setOptions] = useState(false);
+  const nav = React.useContext(NavContext);
+  const { session } = useAccount();
   const patch = (i: number, p: Partial<Rival>) => setRivals((all) => all.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const reroll = (i: number) =>
     patch(i, { name: randomClubName(rnd, [club.name, ...rivals.filter((_, j) => j !== i).map((r) => r.name)]), crest: randomCrest(rnd) });
   const myClubCard = (
     <View style={[s.panel, s.row, { borderColor: C.accent }]}>
-      <Crest name={club.name} color={club.crest.primary} design={club.crest} size={46} />
+      <Crest name={club.name} color={club.crest.primary} design={club.crest} size={42} />
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Overline>TU CLUB</Overline>
-        <Text numberOfLines={1} style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>{club.name}</Text>
+        <Text numberOfLines={1} style={{ color: C.text, fontSize: 20, ...DISPLAY }}>{club.name}</Text>
       </View>
       <Btn small kind="ghost" label="Cambiar" onPress={props.onEditClub} />
     </View>
   );
 
+  const humans = 1 + rivals.slice(0, count - 1).filter((r) => !r.isBot).length;
+  const seasonInfo = SEASONS.find((x) => x.key === season)!;
+  const start = () =>
+    onStart({ players: [{ name: club.name, isBot: false, crest: club.crest }, ...rivals.slice(0, count - 1).map((r, i) => ({ ...r, name: r.name.trim() || `Club ${i + 2}` }))], season, league });
+  // «Atrás» en Android: vuelve a jugar aquí o pliega las opciones antes de salir de la app.
+  useBack(() => {
+    if (mode === 'online') return setMode('local'), true;
+    if (options) return setOptions(false), true;
+    return false;
+  });
+
   return (
     <View style={{ flex: 1 }}>
     <NavBar />
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-      <View style={{ alignItems: 'center', marginTop: 8, marginBottom: 18 }}>
-        <Logo size={128} />
-        <Text style={{ color: C.text, fontSize: 40, fontWeight: '900', letterSpacing: -1 }}>
-          DERBY<Text style={{ color: C.accent }}>TACTICS</Text>
-        </Text>
-        <Text style={[s.p, { textAlign: 'center', marginTop: 4 }]}>Ficha, amplía tu estadio y gana la liga a golpe de dado.</Text>
-        <Btn small kind="ghost" label="¿Cómo se juega?" onPress={onHelp} style={{ marginTop: 12 }} />
+      <View style={{ alignItems: 'center', marginTop: 4, marginBottom: 16 }}>
+        <Logo size={88} />
+        <View style={{ marginTop: 6 }}>
+          <Wordmark size={40} />
+        </View>
+        <Text style={[s.p, { textAlign: 'center', marginTop: 2 }]}>Ficha, amplía tu estadio y gana la liga a golpe de dado.</Text>
       </View>
 
-      <View style={[s.row, { gap: 8, marginBottom: 18 }]}>
-        <Btn kind={mode === 'local' ? 'primary' : 'ghost'} label="Un dispositivo" onPress={() => setMode('local')} style={{ flex: 1 }} />
-        <Btn kind={mode === 'online' ? 'primary' : 'ghost'} label="En línea" onPress={() => setMode('online')} style={{ flex: 1 }} />
+      <View accessibilityRole="tablist" style={[s.row, { marginBottom: 16, backgroundColor: C.panel, borderRadius: 12, padding: 3, borderWidth: 1, borderColor: C.line }]}>
+        {(['local', 'online'] as const).map((m) => (
+          <Pressable
+            key={m}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: mode === m }}
+            onPress={() => {
+              setMode(m);
+              setWarn(null);
+            }}
+            style={{ flex: 1, minHeight: 44, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: mode === m ? C.sel : 'transparent', borderWidth: 1, borderColor: mode === m ? C.selLine : 'transparent' }}
+          >
+            <Text style={{ color: C.text, fontWeight: '800', fontSize: 15 }}>{m === 'local' ? 'Jugar aquí' : 'Con amigos en línea'}</Text>
+          </Pressable>
+        ))}
       </View>
 
       {mode === 'online' ? (
@@ -90,8 +117,8 @@ export function SetupScreen(props: {
           {myClubCard}
           {warn ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{warn}</Text> : null}
 
-          <Btn label="Crear una sala" onPress={() => props.hostGate().then((why) => (why ? setWarn(why) : props.onHost()))} />
-          {props.accountsOn ? <Text style={[s.p, { fontSize: 12, marginTop: 6 }]}>Para crear salas necesitas una cuenta. Para unirte, no.</Text> : null}
+          {props.accountsOn && !session ? <Text style={[s.p, { fontSize: 13, marginBottom: 8 }]}>Para crear una sala hace falta entrar con tu cuenta. Para unirte a la de un amigo, no.</Text> : null}
+          <Btn label={props.accountsOn && !session ? 'Entrar y crear una sala' : 'Crear una sala'} onPress={() => props.hostGate().then((why) => (why ? setWarn(why) : props.onHost()))} />
           {props.resumeCode ? <Btn kind="ghost" label={`Reanudar mi sala ${props.resumeCode}`} onPress={props.onResume} style={{ marginTop: 8 }} /> : null}
 
           <View style={[s.row, { marginVertical: 18 }]}>
@@ -111,7 +138,7 @@ export function SetupScreen(props: {
               accessibilityLabel="Código de sala"
               placeholder="ABCDE"
               placeholderTextColor={C.faint}
-              style={{ color: C.accent, fontSize: 30, fontWeight: '900', letterSpacing: 8, textAlign: 'center', paddingVertical: 6 }}
+              style={{ color: C.accent, fontSize: 34, ...DISPLAY, letterSpacing: 8, textAlign: 'center', paddingVertical: 6 }}
             />
           </View>
           <Btn
@@ -124,66 +151,97 @@ export function SetupScreen(props: {
         <>
           {props.savedLocal ? (
             <View style={[s.panel, { borderColor: C.accent }]}>
-              <Overline>PARTIDA GUARDADA</Overline>
+              <Overline>PARTIDA A MEDIAS</Overline>
               <Text style={{ color: C.text, fontWeight: '700', marginVertical: 6 }}>{props.savedLocal}</Text>
               <Btn label="Continuar la partida" onPress={props.onContinueLocal} />
-              <Text style={[s.p, { fontSize: 12, marginTop: 6 }]}>Si empiezas una nueva, esta se sustituye.</Text>
             </View>
           ) : null}
-      <View style={[s.row, { marginBottom: 10 }]}>
-            <View style={{ flex: 1 }}>
-              <Overline>CLUBES EN LA LIGA</Overline>
-              <Text style={{ color: C.text, fontSize: 22, fontWeight: '900' }}>{count} clubes</Text>
-            </View>
-            <Btn label="−" small kind="ghost" onPress={() => setCount((c) => Math.max(CONFIG.minPlayers, c - 1))} style={{ width: 44 }} />
-            <Btn label="+" small kind="ghost" onPress={() => setCount((c) => Math.min(CONFIG.maxPlayers, c + 1))} style={{ width: 44, marginLeft: 8 }} />
-          </View>
-
           {myClubCard}
-          <Overline>RIVALES</Overline>
-          <View style={{ height: 6 }} />
-          {rivals.slice(0, count - 1).map((p, i) => (
-            <View key={i} style={[s.panel, s.row, { paddingVertical: 8, marginBottom: 8 }]}>
-              <Crest name={p.name || `Club ${i + 2}`} color={clubColor(i + 1)} design={p.crest} size={34} />
-              <TextInput
-                value={p.name}
-                onChangeText={(name) => patch(i, { name })}
-                maxLength={20}
-                accessibilityLabel={`Nombre del club rival ${i + 1}`}
-                style={{ flex: 1, minWidth: 0, color: C.text, fontSize: 16, fontWeight: '700', paddingVertical: 6, marginHorizontal: 10 }}
-                placeholderTextColor={C.faint}
-                placeholder={`Club ${i + 2}`}
-              />
-              <Pressable accessibilityRole="button" accessibilityLabel="Otro nombre y escudo al azar" onPress={() => reroll(i)} hitSlop={6} style={{ marginRight: 8 }}>
-                <Text style={{ fontSize: 20 }}>🎲</Text>
-              </Pressable>
-              <Btn small kind={p.isBot ? 'ghost' : 'primary'} label={p.isBot ? 'IA' : 'Persona'} onPress={() => patch(i, { isBot: !p.isBot })} style={{ width: 84 }} />
-            </View>
-          ))}
-          {rivals.slice(0, count - 1).some((r) => !r.isBot) ? (
-            <Text style={[s.p, { fontSize: 12, marginBottom: 8 }]}>Los clubes de «Persona» se juegan pasándose el dispositivo. El historial se guarda para tu club.</Text>
-          ) : null}
-
-          <View style={{ height: 10 }} />
-          <LeaguePicker value={league} onPick={setLeague} />
-          <View style={{ marginBottom: 22 }}>
-            <Overline>DURACIÓN DE LA TEMPORADA</Overline>
-            <View style={[s.row, { gap: 8, marginTop: 8 }]}>
-              {SEASONS.map((x) => (
-                <View key={x.key} style={{ flex: 1 }}>
-                  <Btn small kind={season === x.key ? 'primary' : 'ghost'} label={x.label} onPress={() => setSeason(x.key)} />
-                  <Text style={{ color: C.faint, fontSize: 11, textAlign: 'center', marginTop: 4 }}>{x.note}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
 
           <Btn
-            label="Empezar la pretemporada"
-            onPress={() => onStart({ players: [{ name: club.name, isBot: false, crest: club.crest }, ...rivals.slice(0, count - 1).map((r, i) => ({ ...r, name: r.name.trim() || `Club ${i + 2}` }))], season, league })}
+            kind={props.savedLocal ? 'ghost' : 'primary'}
+            icon={I.ball}
+            label={humans > 1 ? 'Empezar la partida' : 'Jugar contra la IA'}
+            onPress={start}
+            style={{ paddingVertical: 16 }}
           />
+          {props.savedLocal ? <Text style={[s.p, { fontSize: 13, marginTop: 6, textAlign: 'center' }]}>Empezar una nueva sustituye a la partida a medias.</Text> : null}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: options }}
+            onPress={() => setOptions((x) => !x)}
+            style={[s.row, { minHeight: 48, marginTop: 8, marginBottom: 8, justifyContent: 'center' }]}
+          >
+            <Text style={{ color: C.dim, fontWeight: '700', fontSize: 14 }}>
+              {count} clubes · {league} · {seasonInfo.note}
+            </Text>
+            <Text style={{ color: C.accent, fontWeight: '800', fontSize: 14, marginLeft: 8 }}>{options ? 'Ocultar ▴' : 'Cambiar ▾'}</Text>
+          </Pressable>
+
+          {options ? (
+            <View style={[s.panel, { paddingBottom: 4 }]}>
+              <View style={[s.row, { marginBottom: 10 }]}>
+                <View style={{ flex: 1 }}>
+                  <Overline>CLUBES EN LA LIGA</Overline>
+                  <Text style={{ color: C.text, fontSize: 22, ...DISPLAY }}>{count} clubes</Text>
+                </View>
+                <Btn label="−" small kind="ghost" onPress={() => setCount((c) => Math.max(CONFIG.minPlayers, c - 1))} style={{ width: 48 }} />
+                <Btn label="+" small kind="ghost" onPress={() => setCount((c) => Math.min(CONFIG.maxPlayers, c + 1))} style={{ width: 48, marginLeft: 8 }} />
+              </View>
+
+              <Overline>RIVALES</Overline>
+              <View style={{ height: 6 }} />
+              {rivals.slice(0, count - 1).map((p, i) => (
+                <View key={i} style={[s.row, { paddingVertical: 4, marginBottom: 6, borderBottomWidth: 1, borderBottomColor: C.line }]}>
+                  <Crest name={p.name || `Club ${i + 2}`} color={clubColor(i + 1)} design={p.crest} size={32} />
+                  <TextInput
+                    value={p.name}
+                    onChangeText={(name) => patch(i, { name })}
+                    maxLength={20}
+                    accessibilityLabel={`Nombre del club rival ${i + 1}`}
+                    style={{ flex: 1, minWidth: 0, color: C.text, fontSize: 16, fontWeight: '700', paddingVertical: 10, marginHorizontal: 10 }}
+                    placeholderTextColor={C.faint}
+                    placeholder={`Club ${i + 2}`}
+                  />
+                  <Pressable accessibilityRole="button" accessibilityLabel="Otro nombre y escudo al azar" onPress={() => reroll(i)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name={I.dice} size={24} color={C.dim} />
+                  </Pressable>
+                  <Btn small kind={p.isBot ? 'ghost' : 'selected'} label={p.isBot ? 'IA' : 'Persona'} onPress={() => patch(i, { isBot: !p.isBot })} style={{ width: 84 }} />
+                </View>
+              ))}
+              {humans > 1 ? (
+                <Text style={[s.p, { fontSize: 13, marginBottom: 8 }]}>Los clubes de «Persona» se juegan pasándose el móvil. El historial se guarda para tu club.</Text>
+              ) : null}
+
+              <View style={{ height: 6 }} />
+              <LeaguePicker value={league} onPick={setLeague} />
+              <View style={{ marginBottom: 12 }}>
+                <Overline>DURACIÓN DE LA TEMPORADA</Overline>
+                <View style={[s.row, { gap: 8, marginTop: 8 }]}>
+                  {SEASONS.map((x) => (
+                    <View key={x.key} style={{ flex: 1 }}>
+                      <Btn small kind={season === x.key ? 'selected' : 'ghost'} label={x.label} onPress={() => setSeason(x.key)} />
+                      <Text style={{ color: C.dim, fontSize: 12, textAlign: 'center', marginTop: 4 }}>{x.note}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </View>
+          ) : null}
         </>
       )}
+
+      {props.accountsOn && !session && mode === 'local' ? (
+        <Pressable accessibilityRole="button" onPress={nav.onAccount} style={[s.panel, s.row, { marginTop: 14 }]}>
+          <Icon name={I.cloud} size={26} color={C.accent} style={{ marginRight: 10 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: C.text, fontWeight: '800' }}>Guarda tu club en tu cuenta</Text>
+            <Text style={[s.p, { fontSize: 13 }]}>Entra con Google o Apple para no perder tu club ni tu historial y para crear salas.</Text>
+          </View>
+          <Text style={{ color: C.accent, fontWeight: '800' }}>Entrar ›</Text>
+        </Pressable>
+      ) : null}
       <LegalLinks />
     </ScrollView>
     </View>

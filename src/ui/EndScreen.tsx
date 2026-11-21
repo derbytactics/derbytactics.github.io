@@ -3,9 +3,11 @@ import { ScrollView, Text, View } from 'react-native';
 import { CONFIG, GameState, financeBonus, standings } from '../engine';
 import { Crest, Trophy } from './art';
 import { Btn, Chronicle, Overline, StandingsTable, s } from './components';
-import { C, clubColor } from './theme';
+import { C, DISPLAY } from './theme';
+import { useClubColor } from './clubColors';
 
 export function EndScreen({ state, onRestart, extra }: { state: GameState; onRestart: () => void; extra?: React.ReactNode }) {
+  const clubColor = useClubColor();
   const table = standings(state);
   const champ = table[0];
   // Podio: 2.º, 1.º, 3.º
@@ -30,8 +32,8 @@ export function EndScreen({ state, onRestart, extra }: { state: GameState; onRes
               <Crest name={p.name} color={clubColor(p.id)} design={p.crest} size={pos === 1 ? 52 : 40} />
               <Text numberOfLines={1} style={{ color: C.text, fontWeight: '800', fontSize: 12, marginVertical: 4 }}>{p.name}</Text>
               <View style={{ width: '100%', height: heights.get(p.id), backgroundColor: pos === 1 ? C.accent : C.panelAlt, borderTopLeftRadius: 10, borderTopRightRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ color: pos === 1 ? C.accentText : C.text, fontSize: 26, fontWeight: '900' }}>{pos}</Text>
-                <Text style={{ color: pos === 1 ? C.accentText : C.dim, fontSize: 11, fontWeight: '700' }}>{p.points} pts</Text>
+                <Text style={{ color: pos === 1 ? C.accentText : C.text, fontSize: 29, ...DISPLAY }}>{pos}</Text>
+                <Text style={{ color: pos === 1 ? C.accentText : C.dim, fontSize: 12, fontWeight: '700' }}>{p.points} pts</Text>
               </View>
             </View>
           );

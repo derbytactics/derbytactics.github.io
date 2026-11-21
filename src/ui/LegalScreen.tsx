@@ -16,8 +16,8 @@ export function LegalScreen({ initial, onClose }: { initial: LegalTab; onClose: 
         <Btn small kind="ghost" label="Cerrar" onPress={onClose} />
       </View>
       <View style={[s.row, { gap: 8, marginBottom: 14 }]}>
-        <Btn small kind={tab === 'privacidad' ? 'primary' : 'ghost'} label="Privacidad" onPress={() => setTab('privacidad')} style={{ flex: 1 }} />
-        <Btn small kind={tab === 'condiciones' ? 'primary' : 'ghost'} label="Condiciones" onPress={() => setTab('condiciones')} style={{ flex: 1 }} />
+        <Btn small kind={tab === 'privacidad' ? 'selected' : 'ghost'} label="Privacidad" onPress={() => setTab('privacidad')} style={{ flex: 1 }} />
+        <Btn small kind={tab === 'condiciones' ? 'selected' : 'ghost'} label="Condiciones" onPress={() => setTab('condiciones')} style={{ flex: 1 }} />
       </View>
       {!legalReady() ? (
         <View style={[s.panel, { borderColor: C.danger }]}>

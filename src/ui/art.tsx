@@ -1,7 +1,7 @@
 /** Ilustraciones vectoriales del juego. Todo se dibuja por código: no hay imágenes que cargar. */
 import React from 'react';
 import { View } from 'react-native';
-import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path, Rect } from 'react-native-svg';
 import { Face, Portrait, faceFromSeed } from './portrait';
 import { C } from './theme';
 
@@ -129,25 +129,34 @@ export function StadiumArt({ level, color, width = 220 }: { level: number; color
   );
 }
 
-/** Logotipo: abanico de cartas con balón. */
+const LOGO_SHIELD = 'M50 10 L84 19.5 V47 C84 70 69 84 50 91 C31 84 16 70 16 47 V19.5 Z';
+
+/** Logotipo: escudo partido por los colores de dos rivales (el derbi) con un dado en el centro. */
 export function Logo({ size = 120 }: { size?: number }) {
-  const card = (rot: number, fill: string, dx: number) => (
-    <G transform={`rotate(${rot} 60 96) translate(${dx} 0)`}>
-      <Rect x="38" y="22" width="44" height="62" rx="7" fill={fill} stroke="#07160F" strokeWidth="2.5" />
-      <Rect x="44" y="28" width="32" height="26" rx="4" fill="#07160F" opacity="0.22" />
-      <Rect x="44" y="60" width="20" height="4" rx="2" fill="#07160F" opacity="0.3" />
-      <Rect x="44" y="68" width="28" height="4" rx="2" fill="#07160F" opacity="0.3" />
-    </G>
-  );
+  const id = React.useId().replace(/[^a-zA-Z0-9]/g, '');
   return (
-    <Svg width={size} height={size} viewBox="0 0 120 120">
-      {card(-22, '#3E8BFF', -6)}
-      {card(0, '#F5C542', 0)}
-      {card(22, '#E5484D', 6)}
-      <G transform="translate(42 62) scale(1.5)">
-        <Circle cx="12" cy="12" r="11" fill="#FFFFFF" stroke="#07160F" strokeWidth="1.8" />
-        <Path d="M12 7.2 L16.5 10.5 L14.8 15.8 H9.2 L7.5 10.5 Z" fill="#07160F" />
-        <Path d="M12 7.2 V2 M16.5 10.5 L21.5 8.6 M14.8 15.8 L18 20.3 M9.2 15.8 L6 20.3 M7.5 10.5 L2.5 8.6" stroke="#07160F" strokeWidth="1.4" />
+    <Svg width={size} height={size} viewBox="0 0 100 100" accessibilityLabel="DerbyTactics">
+      <Defs>
+        <ClipPath id={`${id}s`}>
+          <Path d={LOGO_SHIELD} />
+        </ClipPath>
+      </Defs>
+      <G clipPath={`url(#${id}s)`}>
+        <Rect width="100" height="100" fill="#2E9E5B" />
+        <Path d="M0 0 H100 L0 100 Z" fill="#F5C542" />
+        <Path d="M0 0 H100 L0 100 Z" fill="#FFFFFF" opacity="0.12" />
+        <Path d="M100 100 L0 100 L100 0 Z" fill="#000000" opacity="0.12" />
+      </G>
+      <Path d={LOGO_SHIELD} fill="none" stroke="#07160F" strokeWidth="7" strokeLinejoin="round" opacity="0.55" />
+      <Path d={LOGO_SHIELD} fill="none" stroke="#F4F7F2" strokeWidth="3.5" strokeLinejoin="round" />
+      <G transform="rotate(-12 50 50)">
+        <Rect x="35.5" y="36.5" width="32" height="32" rx="7" fill="#07160F" opacity="0.35" />
+        <Rect x="34" y="34" width="32" height="32" rx="7" fill="#FBF6E4" stroke="#07160F" strokeWidth="2.5" />
+        <Circle cx="42" cy="42" r="3.4" fill="#0B1F15" />
+        <Circle cx="58" cy="42" r="3.4" fill="#0B1F15" />
+        <Circle cx="50" cy="50" r="3.4" fill="#C8102E" />
+        <Circle cx="42" cy="58" r="3.4" fill="#0B1F15" />
+        <Circle cx="58" cy="58" r="3.4" fill="#0B1F15" />
       </G>
     </Svg>
   );

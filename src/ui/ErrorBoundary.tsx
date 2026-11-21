@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { backendEnabled, rpc } from '../account/api';
 import { Btn, s } from './components';
 import { C } from './theme';
+import { I, Icon } from './icons';
 
 let reported = 0;
 /** Envía un informe de error al servidor (si hay cuentas configuradas). Nunca lanza. */
@@ -33,7 +34,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode; 
     if (!this.state.error) return this.props.children;
     return (
       <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center', backgroundColor: C.bg }}>
-        <Text style={{ fontSize: 44 }}>🤕</Text>
+        <Icon name={I.error} size={52} color={C.dim} />
         <Text style={[s.h1, { textAlign: 'center', marginTop: 8 }]}>Algo ha fallado</Text>
         <Text style={[s.p, { textAlign: 'center', marginVertical: 12 }]}>
           Ha habido un error inesperado. Si tenías una partida en este dispositivo, sigue guardada: vuelve al menú y continúala.
