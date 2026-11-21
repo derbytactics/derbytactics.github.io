@@ -76,11 +76,6 @@ export interface HistoryRow {
 
 const SESSION_KEY = 'futcards.session';
 const MESSAGES: [RegExp, string][] = [
-  [/invalid login credentials/i, 'Correo o contraseña incorrectos.'],
-  [/already registered|already been registered/i, 'Ya hay una cuenta con ese correo.'],
-  [/email not confirmed/i, 'Confirma tu correo con el enlace que te hemos enviado.'],
-  [/password should be at least|weak password/i, 'La contraseña debe tener al menos 6 caracteres.'],
-  [/valid email|invalid format|invalid email/i, 'Ese correo no parece válido.'],
   [/rate limit|too many/i, 'Demasiados intentos. Espera un momento.'],
   [/failed to fetch|network/i, 'No hay conexión con el servidor.'],
 ];
@@ -119,9 +114,7 @@ async function call<T>(path: string, init: { method?: string; body?: unknown; to
 interface AccountState {
   session: Session | null;
   profile: Profile | null;
-  /** Ha llegado por un enlace de «olvidé mi contraseña» y debe elegir una nueva. */
-  recovering: boolean;
-  /** El enlace del correo (confirmación o contraseña) ha fallado: motivo para enseñar. */
+  /** Entrar con Google o Apple ha fallado o se ha cancelado: motivo para enseñar. */
   linkError: string | null;
   /** Avatar elegido (se guarda en el dispositivo y, con cuenta, también en el perfil). */
   avatar: string;
@@ -129,7 +122,7 @@ interface AccountState {
   providers: Provider[];
 }
 const AVATAR_KEY = 'futcards.avatar';
-let state: AccountState = { session: load<Session>(SESSION_KEY), profile: null, recovering: false, linkError: null, avatar: load<string>(AVATAR_KEY) ?? 'a1', providers: [] };
+let state: AccountState = { session: load<Session>(SESSION_KEY), profile: null, linkError: null, avatar: load<string>(AVATAR_KEY) ?? 'a1', providers: [] };
 const listeners = new Set<() => void>();
 function set(patch: Partial<AccountState>) {
   state = { ...state, ...patch };
@@ -179,11 +172,6 @@ export async function rpc<T>(fn: string, args: Record<string, unknown> = {}, aut
   return call<T>(`/rest/v1/rpc/${fn}`, { body: args, token: t });
 }
 
-const here = () => {
-  const loc = (globalThis as { location?: Location }).location;
-  return loc?.origin ? loc.origin + loc.pathname : undefined;
-};
-const redirect = () => (here() ? `?redirect_to=${encodeURIComponent(here()!)}` : '');
 
 export async function refreshProfile(): Promise<Profile | null> {
   if (!state.session) return null;
@@ -199,35 +187,62 @@ export async function refreshProfile(): Promise<Profile | null> {
   }
 }
 
-/** Devuelve true si la cuenta queda iniciada; false si falta confirmar el correo. */
-export async function signUp(email: string, password: string, username: string): Promise<boolean> {
-  if (!(await rpc<boolean>('username_available', { p_username: username }, false))) {
-    throw new Error('Ese nombre no está disponible: usa de 3 a 16 letras, números o espacios.');
+
+
+/** Dirección a la que vuelve la app nativa tras entrar (esquema `scheme` de app.json). */
+const NATIVE_RETURN = 'derbytactics://auth';
+
+/** Crea la sesión con los datos que devuelve Supabase al volver de Google o Apple. */
+async function acceptTokens(params: URLSearchParams): Promise<boolean> {
+  const access = params.get('access_token');
+  const refresh = params.get('refresh_token');
+  if (!access || !refresh) return false;
+  try {
+    const user = await call<{ id: string; email: string }>('/auth/v1/user', { method: 'GET', token: access });
+    set({
+      session: { access_token: access, refresh_token: refresh, expires_at: Math.floor(Date.now() / 1000) + Number(params.get('expires_in') ?? 3600), user: { id: user.id, email: user.email } },
+    });
+    return true;
+  } catch {
+    return false;
   }
-  const r = await call<AuthResponse>(`/auth/v1/signup${redirect()}`, { body: { email: email.trim(), password, data: { username: username.trim() } } });
-  const session = toSession(r);
-  if (!session) return false;
-  set({ session });
-  await refreshProfile();
-  return true;
 }
 
-export async function signIn(email: string, password: string): Promise<void> {
-  const r = await call<AuthResponse>('/auth/v1/token?grant_type=password', { body: { email: email.trim(), password } });
-  set({ session: toSession(r) });
-  await refreshProfile();
+/** Mensaje para un error devuelto por Google o Apple, o null si no lo hay. */
+function oauthError(params: URLSearchParams): string | null {
+  if (!params.get('error') && !params.get('error_code')) return null;
+  const detail = `${params.get('error')} ${params.get('error_code')} ${params.get('error_description')}`;
+  if (/access_denied|cancel/i.test(detail)) return 'Has cancelado el acceso. Puedes intentarlo de nuevo cuando quieras.';
+  return `No se ha podido entrar: ${params.get('error_description') ?? params.get('error')}`;
 }
 
 /**
- * Entra con Google o Apple: el navegador va a su pantalla y vuelve a esta misma dirección
- * (con la sala, si la hay) con la sesión en el fragmento, que recoge `initAccount`.
+ * Entra con Google o Apple.
+ * En el navegador, la página va a su pantalla y vuelve a esta misma dirección (con la sala, si la hay);
+ * la sesión llega en el fragmento y la recoge `initAccount`.
+ * En la app nativa se abre una sesión segura del sistema que vuelve a `derbytactics://auth`.
  */
-export function signInWith(provider: Provider): void {
+export async function signInWith(provider: Provider): Promise<void> {
   const b = backend();
+  if (!b) return;
   const loc = (globalThis as { location?: Location }).location;
-  if (!b || !loc) return;
-  const back = loc.origin + loc.pathname + loc.search;
-  loc.assign(`${b.url}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(back)}`);
+  if (loc?.assign) {
+    const back = loc.origin + loc.pathname + loc.search;
+    loc.assign(`${b.url}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(back)}`);
+    return;
+  }
+  const WebBrowser = await import('expo-web-browser');
+  const r = await WebBrowser.openAuthSessionAsync(`${b.url}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(NATIVE_RETURN)}`, NATIVE_RETURN);
+  if (r.type !== 'success') return; // Cerrado por el usuario.
+  const [beforeHash, fragment = ''] = r.url.split('#');
+  const params = new URLSearchParams(fragment);
+  const error = oauthError(new URLSearchParams(beforeHash.split('?')[1] ?? '')) ?? oauthError(params);
+  if (error) {
+    set({ linkError: error });
+    return;
+  }
+  set({ linkError: null });
+  if (await acceptTokens(params)) await refreshProfile();
 }
 
 /** Elige el nombre de usuario (la primera vez tras entrar con Google o Apple, o para cambiarlo). */
@@ -240,7 +255,6 @@ export async function chooseUsername(name: string): Promise<void> {
 }
 
 async function loadProviders(): Promise<void> {
-  if (!(globalThis as { location?: Location }).location) return; // App nativa: de momento, solo correo.
   try {
     const st = await call<{ external?: Record<string, boolean> }>('/auth/v1/settings', { method: 'GET' });
     set({ providers: (['google', 'apple'] as Provider[]).filter((p) => st.external?.[p]) });
@@ -249,7 +263,7 @@ async function loadProviders(): Promise<void> {
 
 export async function signOut(): Promise<void> {
   const t = state.session?.access_token;
-  set({ session: null, profile: null, recovering: false });
+  set({ session: null, profile: null });
   if (t) await call('/auth/v1/logout', { token: t }).catch(() => {});
 }
 
@@ -259,20 +273,8 @@ export function setAvatar(id: string) {
   if (state.session) rpc('set_avatar', { p_avatar: id }).catch(() => {});
 }
 
-/** Vuelve a enviar el correo de confirmación de una cuenta recién creada. */
-export async function resendConfirmation(email: string): Promise<void> {
-  await call(`/auth/v1/resend${redirect()}`, { body: { type: 'signup', email: email.trim() } });
-}
-export const clearLinkError = () => set({ linkError: null });
 
-export async function requestPasswordReset(email: string): Promise<void> {
-  await call(`/auth/v1/recover${redirect()}`, { body: { email: email.trim() } });
-}
 
-export async function setNewPassword(password: string): Promise<void> {
-  await call('/auth/v1/user', { method: 'PUT', body: { password }, token: await token() });
-  set({ recovering: false });
-}
 
 export async function deleteAccount(): Promise<void> {
   await rpc('delete_my_account');
@@ -280,8 +282,7 @@ export async function deleteAccount(): Promise<void> {
 }
 
 /**
- * Al abrir la app: recoge la sesión que llega en el enlace de confirmación de correo
- * o de cambio de contraseña, y carga el perfil.
+ * Al abrir la app: recoge la sesión (o el error) que devuelven Google o Apple al volver, y carga el perfil.
  */
 export async function initAccount(): Promise<void> {
   // En la app nativa lo guardado se carga después de arrancar: se vuelve a leer aquí.
@@ -290,38 +291,19 @@ export async function initAccount(): Promise<void> {
   const loc = (globalThis as { location?: Location }).location;
   void loadProviders();
   const hash = new URLSearchParams((loc?.hash ?? '').replace(/^#/, ''));
-  // Google o Apple devuelven los errores en la consulta (?error=…); se limpian sin perder la sala.
+  // Google o Apple pueden devolver un error en la consulta (?error=…) o en el fragmento.
   const query = new URLSearchParams(loc?.search ?? '');
-  if (query.get('error')) {
-    const cancelled = /access_denied|cancel/i.test(`${query.get('error')} ${query.get('error_description')}`);
-    set({ linkError: cancelled ? 'Has cancelado el acceso. Puedes intentarlo de nuevo cuando quieras.' : `No se ha podido entrar: ${query.get('error_description') ?? query.get('error')}` });
+  const error = oauthError(query) ?? oauthError(hash);
+  if (error) {
+    set({ linkError: error });
     for (const k of ['error', 'error_code', 'error_description']) query.delete(k);
     try {
       const q = query.toString();
       (globalThis as { history?: History }).history?.replaceState(null, '', loc!.pathname + (q ? `?${q}` : ''));
     } catch {}
   }
-  if (hash.get('error') || hash.get('error_code')) {
-    const expired = /expired|invalid/i.test(`${hash.get('error_code')} ${hash.get('error_description')}`);
-    set({
-      linkError: expired
-        ? 'Ese enlace ya se ha usado o ha caducado. Si tu cuenta ya quedó confirmada, entra con tu correo y contraseña; si no, pide que te reenviemos el correo.'
-        : `El enlace no ha funcionado: ${hash.get('error_description') ?? hash.get('error')}`,
-    });
-    try {
-      (globalThis as { history?: History }).history?.replaceState(null, '', loc!.pathname + loc!.search);
-    } catch {}
-  }
-  const access = hash.get('access_token');
-  const refresh = hash.get('refresh_token');
-  if (access && refresh) {
-    try {
-      const user = await call<{ id: string; email: string }>('/auth/v1/user', { method: 'GET', token: access });
-      set({
-        session: { access_token: access, refresh_token: refresh, expires_at: Math.floor(Date.now() / 1000) + Number(hash.get('expires_in') ?? 3600), user: { id: user.id, email: user.email } },
-        recovering: hash.get('type') === 'recovery',
-      });
-    } catch {}
+  if (hash.get('access_token')) {
+    await acceptTokens(hash);
     try {
       (globalThis as { history?: History }).history?.replaceState(null, '', loc!.pathname + loc!.search);
     } catch {}

@@ -46,13 +46,13 @@ const deletion: LegalSection[] = [
   {
     title: 'Desde el juego',
     body: [
-      'Entra con tu cuenta, abre «Mi cuenta» tocando tu avatar en la barra superior y pulsa «Borrar mi cuenta». Confirma y la cuenta se borra en el momento.',
+      'Entra con tu cuenta, abre el menú (☰) y entra en «Mi cuenta» y pulsa «Borrar mi cuenta». Confirma y la cuenta se borra en el momento.',
     ],
   },
   {
     title: 'Qué se borra',
     body: [
-      'Tu correo, tu contraseña, tu nombre de usuario, tu avatar, tus victorias, las valoraciones que has dado y recibido, las partidas que organizaste como anfitrión y los informes de error ligados a tu cuenta.',
+      'Tu correo, tu nombre de usuario, tu avatar, tus victorias, las valoraciones que has dado y recibido, las partidas que organizaste como anfitrión y los informes de error ligados a tu cuenta.',
       'En las partidas de otros anfitriones en las que jugaste, los demás siguen viendo el resultado y el nombre de club que usaste, pero ya no está vinculado a ninguna cuenta.',
     ],
   },

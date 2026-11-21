@@ -60,7 +60,7 @@ export function SideMenu(props: {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: C.text, fontSize: 16, fontWeight: '800' }}>Mi cuenta</Text>
-                <Text style={{ color: C.dim, fontSize: 12, marginTop: 1 }}>{session ? (profile?.username ?? 'Conectado') : 'Entrar o registrarse · ranking'}</Text>
+                <Text style={{ color: C.dim, fontSize: 12, marginTop: 1 }}>{session ? (profile?.username ?? 'Conectado') : 'Entrar con Google o Apple · ranking'}</Text>
               </View>
             </Pressable>
           ) : null}

@@ -2,6 +2,7 @@
   "expo": {
     "name": "DerbyTactics",
     "slug": "derbytactics",
+    "scheme": "derbytactics",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

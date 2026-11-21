@@ -10,17 +10,19 @@ Las cuentas son opcionales: si el juego se compila sin los datos del servidor, f
   - Dos o más partidas abandonadas en 7 días: 24 horas por cada abandono a partir del segundo (máximo 7 días).
   - Media inferior a 2,5 estrellas en sus 5 últimas valoraciones, con al menos 3: 24 horas.
 - **Qué cuenta como abandono:** que el anfitrión salga con la partida a medias, que pase 30 minutos sin dar señales, o que un invitado avise tras 10 minutos sin señales.
-- Recuperación de contraseña por correo y borrado de cuenta desde el perfil.
+- **Se entra con Google o con Apple**, sin contraseñas ni correos de confirmación. La primera vez se elige un nombre de usuario. La cuenta se borra desde el perfil.
 - **Club e historial de temporadas:** el club (nombre y escudo) y las temporadas terminadas, en línea o en un dispositivo, se guardan en la cuenta (`set_my_club`, `save_seasons`, `my_seasons`). Al entrar se juntan con lo del dispositivo: se sube lo que falte y, si la cuenta ya tenía club, se usa ese salvo que se haya cambiado en este dispositivo con la misma cuenta. Lo guardado por otra cuenta en el mismo dispositivo no se mezcla.
 - **Avatar** a elegir entre un conjunto de retratos; con cuenta se guarda en el perfil y, como invitado, en el dispositivo.
-- Al abrir el juego se elige entre **entrar con tu cuenta** o **jugar como invitado**.
+- Al abrir el juego se elige entre **entrar con Google o Apple** o **jugar como invitado**.
 
 ## Puesta en marcha (unos 10 minutos, gratis)
 
 1. Crea una cuenta y un proyecto en [supabase.com](https://supabase.com) (plan gratuito).
 2. En el **editor SQL** del proyecto, pega el contenido de [`supabase/schema.sql`](../supabase/schema.sql) y ejecútalo.
-3. En **Authentication → URL Configuration**, pon como *Site URL* la dirección del juego (`https://juanrafernandez.github.io/DerbyTactics/`) y añade `https://juanrafernandez.github.io/DerbyTactics/**` en *Redirect URLs*. Si no, los enlaces de los correos llevan a `localhost:3000` y no funcionan.
-4. Decide si quieres confirmación por correo (**Authentication → Providers → Email → Confirm email**). El envío de correos incluido en el plan gratuito está muy limitado: para probar con amigos es más cómodo desactivarla. Con ella activada, y para recuperar contraseñas, conviene configurar un servidor de correo propio.
+3. En **Authentication → URL Configuration**, pon como *Site URL* la dirección del juego (`https://derbytactics.github.io/`) y añade en *Redirect URLs*:
+   - `https://derbytactics.github.io/**` (la web)
+   - `derbytactics://**` (la app de iPhone y Android)
+4. Configura Google y Apple (apartado siguiente) y, en **Authentication → Sign In / Providers → Email**, desactiva el acceso con correo: el juego ya no lo ofrece.
 5. En **Project Settings → API**, copia la *Project URL* y la clave pública (*anon* / *publishable*).
 6. En GitHub, en **Settings → Secrets and variables → Actions → Variables** del repositorio, crea:
    - `SUPABASE_URL` con la Project URL.
@@ -35,7 +37,9 @@ Para desarrollo local, exporta `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABAS
 
 ## Entrar con Google y con Apple
 
-Los botones aparecen solos en el juego en cuanto activas cada proveedor en Supabase. Hasta entonces solo se ve el acceso con correo. De momento funcionan en la web y en la versión instalada desde el navegador; en la app nativa, Apple se añadirá con su acceso nativo cuando se compile para la App Store.
+Los botones aparecen solos en el juego en cuanto activas cada proveedor en Supabase. Funcionan en la web, en la versión instalada desde el navegador y en la app nativa (que abre una ventana segura del sistema y vuelve con `derbytactics://auth`).
+
+Las cuentas creadas antes con correo y contraseña siguen existiendo. Si su dueño entra con Google usando **el mismo correo**, Supabase la reconoce y conserva su historial. Con Apple solo pasa si comparte su correo real (no el anónimo de reenvío).
 
 Quien entra por primera vez con Google o Apple elige un nombre de usuario: el nombre real no se copia al perfil.
 

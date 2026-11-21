@@ -7,17 +7,11 @@ import {
   chooseUsername,
   signInWith,
   RankingRow,
-  clearLinkError,
   deleteAccount,
   refreshProfile,
-  requestPasswordReset,
-  resendConfirmation,
   rpc,
   setAvatar,
-  setNewPassword,
-  signIn,
   signOut,
-  signUp,
 } from '../account/api';
 import { useAccount } from '../account/useAccount';
 import { Trophy, USER_AVATARS, UserAvatar } from './art';
@@ -96,7 +90,6 @@ export function ProviderButtons({ providers }: { providers: Provider[] }) {
           <Text style={{ color: '#1F1F1F', fontSize: 16, fontWeight: '700' }}>Continuar con Google</Text>
         </Pressable>
       ) : null}
-      <Text style={{ color: C.dim, fontSize: 13, fontWeight: '600', textAlign: 'center', marginVertical: 8 }}>o con tu correo</Text>
     </View>
   );
 }
@@ -166,88 +159,20 @@ export function AvatarPicker() {
 }
 
 export function AuthForm() {
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
   const { linkError, providers } = useAccount();
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-  /** Se ofrece reenviar el correo cuando la cuenta está creada pero sin confirmar. */
-  const [canResend, setCanResend] = useState(false);
-  const resend = () =>
-    resendConfirmation(email).then(
-      () => setMsg({ ok: true, text: 'Correo reenviado. Abre el enlace más reciente; los anteriores dejan de valer.' }),
-      (e: Error) => setMsg({ ok: false, text: e.message }),
-    );
-
-  const submit = async () => {
-    setBusy(true);
-    setMsg(null);
-    clearLinkError();
-    try {
-      if (mode === 'login') await signIn(email, password);
-      else if (mode === 'register') {
-        if (password.length < 6) throw new Error('La contraseña debe tener al menos 6 caracteres.');
-        const inside = await signUp(email, password, username);
-        if (!inside) {
-          setCanResend(true);
-          setMsg({ ok: true, text: 'Cuenta creada. Te hemos enviado un correo: abre el enlace para confirmarla y entra.' });
-        }
-      } else {
-        await requestPasswordReset(email);
-        setMsg({ ok: true, text: 'Si ese correo tiene cuenta, recibirás un enlace para elegir una contraseña nueva.' });
-      }
-    } catch (e) {
-      const text = (e as Error).message;
-      if (/confirma tu correo/i.test(text)) setCanResend(true);
-      setMsg({ ok: false, text });
-    }
-    setBusy(false);
-  };
-
   return (
     <>
-      {mode !== 'forgot' ? <ProviderButtons providers={providers} /> : null}
-      <View style={[s.row, { gap: 8, marginBottom: 16 }]}>
-        <Btn small kind={mode === 'login' ? 'primary' : 'ghost'} label="Entrar" onPress={() => { setMode('login'); setMsg(null); }} style={{ flex: 1 }} />
-        <Btn small kind={mode === 'register' ? 'primary' : 'ghost'} label="Crear cuenta" onPress={() => { setMode('register'); setMsg(null); }} style={{ flex: 1 }} />
-      </View>
-      {mode === 'register' ? <Field label="Nombre de usuario" value={username} onChange={setUsername} max={16} /> : null}
-      <Field label="Correo" value={email} onChange={setEmail} email />
-      {mode !== 'forgot' ? <Field label="Contraseña" value={password} onChange={setPassword} secure /> : null}
-      {linkError && !msg ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{linkError}</Text> : null}
-      {msg ? <Text style={{ color: msg.ok ? C.good : C.danger, fontWeight: '700', marginBottom: 10 }}>{msg.text}</Text> : null}
-      {(canResend || linkError) && mode !== 'forgot' ? (
-        <Btn small kind="ghost" label="Reenviar el correo de confirmación" onPress={() => (email.trim() ? resend() : setMsg({ ok: false, text: 'Escribe tu correo para reenviarlo.' }))} style={{ marginBottom: 10 }} />
-      ) : null}
-      <Btn
-        kind={busy ? 'muted' : 'primary'}
-        label={busy ? 'Un momento…' : mode === 'login' ? 'Entrar' : mode === 'register' ? 'Crear mi cuenta' : 'Enviarme el enlace'}
-        onPress={() => !busy && submit()}
-      />
-      {mode === 'login' ? <Btn small kind="ghost" label="He olvidado mi contraseña" onPress={() => { setMode('forgot'); setMsg(null); }} style={{ marginTop: 10 }} /> : null}
-      {mode === 'register' ? (
-        <Text style={[s.p, { fontSize: 12, marginTop: 12 }]}>
-          Al crear la cuenta aceptas las condiciones de uso y la política de privacidad (enlaces abajo). Guardamos tu correo (solo para entrar y recuperar la contraseña), tu nombre de usuario y tus partidas. Puedes borrar la cuenta cuando quieras desde tu perfil.
+      <ProviderButtons providers={providers} />
+      {!providers.length ? (
+        <Text style={[s.p, { textAlign: 'center', marginBottom: 10 }]}>
+          Ahora mismo no se puede entrar con cuenta. Comprueba tu conexión o juega como invitado.
         </Text>
       ) : null}
+      {linkError ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{linkError}</Text> : null}
     </>
   );
 }
 
-function NewPassword() {
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <>
-      <Text style={[s.p, { marginBottom: 12 }]}>Elige una contraseña nueva para tu cuenta.</Text>
-      <Field label="Contraseña nueva" value={password} onChange={setPassword} secure />
-      {error ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{error}</Text> : null}
-      <Btn label="Guardar contraseña" onPress={() => setNewPassword(password).catch((e: Error) => setError(e.message))} />
-    </>
-  );
-}
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
@@ -401,18 +326,15 @@ function RankingTab() {
 }
 
 export function AccountScreen({ onClose, initialTab }: { onClose: () => void; initialTab?: Tab }) {
-  const { session, recovering } = useAccount();
+  const { session } = useAccount();
   const [tab, setTab] = useState<Tab>(initialTab ?? 'perfil');
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
       <View style={[s.row, { marginBottom: 14 }]}>
-        <Text style={[s.h1, { flex: 1 }]}>{recovering ? 'Nueva contraseña' : session ? 'Mi cuenta' : 'Tu cuenta'}</Text>
+        <Text style={[s.h1, { flex: 1 }]}>{session ? 'Mi cuenta' : 'Tu cuenta'}</Text>
         <Btn small kind="ghost" label="Cerrar" onPress={onClose} />
       </View>
-      {recovering ? (
-        <NewPassword />
-      ) : (
-        <>
+      <>
           <AvatarPicker />
           <View style={[s.row, { gap: 8, marginBottom: 14 }]}>
             <Btn small kind={tab === 'perfil' ? 'primary' : 'ghost'} label={session ? 'Perfil' : 'Entrar'} onPress={() => setTab('perfil')} style={{ flex: 1 }} />
@@ -436,8 +358,7 @@ export function AccountScreen({ onClose, initialTab }: { onClose: () => void; in
           ) : (
             <HistoryTab />
           )}
-        </>
-      )}
+      </>
       <LegalLinks />
     </ScrollView>
   );

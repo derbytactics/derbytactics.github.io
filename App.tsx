@@ -84,7 +84,6 @@ export default function App() {
     hydrateStorage(Platform.OS === 'web' ? null : AsyncStorage)
       .then(() => reloadClub())
       .then(() => initAccount())
-      .then(() => getAccount().recovering && setAccountOpen(true))
       .finally(() => setBooted(true));
   }, []);
   const gameRef = useRef(game);
@@ -132,7 +131,7 @@ export default function App() {
   if (!booted) {
     body = null;
   } else if (backendEnabled() && !account.session && !guest && mode.kind === 'menu') {
-    body = <WelcomeScreen onGuest={() => setGuest(true)} startWithLogin={!!account.linkError} />;
+    body = <WelcomeScreen onGuest={() => setGuest(true)} />;
   } else if (mode.kind === 'host') {
     body = <OnlineHost name={mode.name} crest={mode.crest} resume={mode.resume} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'guest') {
