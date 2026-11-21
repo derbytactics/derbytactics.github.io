@@ -14,7 +14,7 @@ import { RoomState } from './src/net/room';
 import { GUEST_KEY, HOST_KEY, normalizeCode } from './src/net/session';
 import { hydrateStorage, load, remove, save } from './src/net/storage';
 import { AccountScreen, UsernamePrompt, formatDate } from './src/ui/AccountScreen';
-import { forgetLocalClub, reloadClub, syncClub, useClubSyncing, useMyClub } from './src/account/club';
+import { belongsToAccount, forgetLocalClub, reloadClub, syncClub, useClubSyncing, useMyClub } from './src/account/club';
 import { ClubScreen } from './src/ui/ClubScreen';
 import { ErrorBoundary, installGlobalErrorHandlers } from './src/ui/ErrorBoundary';
 import { GameView } from './src/ui/GameView';
@@ -108,6 +108,14 @@ export default function App() {
     hydrateStorage(Platform.OS === 'web' ? null : AsyncStorage)
       .then(() => reloadClub())
       .then(() => initAccount())
+      .then(() => {
+        // Restos de una cuenta sin sesión abierta (p. ej. cerrada con una versión anterior o caducada):
+        // se limpian como al cerrar sesión, y se vuelve a la portada.
+        if (backendEnabled() && !getAccount().session && belongsToAccount()) {
+          forgetLocalClub();
+          for (const k of [LOCAL_KEY, HOST_KEY, GUEST_KEY]) remove(k);
+        }
+      })
       .finally(() => setBooted(true));
   }, []);
   // Botón «atrás» de Android: primero cierra la ventana que esté encima; si no hay, lo atiende la pantalla.
