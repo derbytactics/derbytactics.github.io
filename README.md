@@ -33,7 +33,7 @@ Cómo funciona y qué límites tiene:
 
 - El dispositivo del anfitrión dirige la partida: debe mantener el juego abierto. Si se le cierra, puede volver con **Reanudar mi sala**.
 - Si alguien pierde la conexión, al volver a entrar con el mismo código recupera su club. Si no vuelve, el anfitrión puede hacer que la IA juegue su turno.
-- Los mensajes pasan por servidores MQTT públicos y gratuitos (`src/net/session.ts`). No hay cuentas ni servidor propio, pero tampoco garantía de disponibilidad, y el estado de la sala no va cifrado: sirve para jugar entre amigos, no para nada serio.
+- Los mensajes pasan por **Supabase Realtime**, del mismo proyecto que las cuentas (`src/net/realtime.ts`). Sin cuentas configuradas, o si Supabase no responde al crear la sala, se usan servidores MQTT públicos y gratuitos (`src/net/mqtt.ts`), sin garantía de disponibilidad. La primera letra del código de sala indica cuál: A, B o C son los públicos.
 - El estado completo (incluidas las cartas en mano de todos) llega a cada dispositivo; la interfaz solo enseña las tuyas.
 
 ## Empezar
@@ -64,7 +64,7 @@ src/engine/
   engine.test.ts     Tests
 src/account/         Cuentas: sesión, perfil y llamadas al servidor
 supabase/            Esquema de la base de datos y sus pruebas
-src/net/             Multijugador: cliente MQTT, protocolo de sala y sesiones
+src/net/             Multijugador: protocolo de sala, sesiones y transportes (Supabase Realtime y MQTT)
 src/ui/              Pantallas y componentes
 scripts/simulate.ts  Simulador de equilibrio
 docs/                Reglas y notas de equilibrio

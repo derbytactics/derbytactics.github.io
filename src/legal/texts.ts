@@ -35,7 +35,7 @@ export const privacy = (): LegalSection[] => [
     title: 'Quién más interviene',
     body: [
       'Las cuentas y las partidas guardadas se alojan en Supabase. La web se sirve desde GitHub Pages. Google o Apple, según con cuál entres, intervienen en el acceso según sus propias políticas de privacidad.',
-      'Durante una partida en línea, el estado de la sala (nombres de club, plantillas y cartas) viaja por servidores públicos de mensajería. No incluye tu correo, pero no debe considerarse privado.',
+      'Durante una partida en línea, el estado de la sala (nombres de club, plantillas y cartas) viaja por el servicio de mensajería de Supabase (o, si no responde, por servidores públicos de mensajería). No incluye tu correo, pero no debe considerarse privado.',
     ],
   },
   { title: 'Cuánto tiempo se conservan', body: ['Mientras mantengas tu cuenta. Puedes borrarla en cualquier momento desde «Mi cuenta → Borrar mi cuenta»: se eliminan tu perfil, tu club, tu historial y tus valoraciones.'] },

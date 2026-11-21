@@ -10,7 +10,7 @@ interface Backend {
   url: string;
   key: string;
 }
-function backend(): Backend | null {
+export function backend(): Backend | null {
   const injected = (globalThis as { __FUTCARDS_BACKEND__?: Backend }).__FUTCARDS_BACKEND__;
   if (injected) return injected;
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -231,6 +231,8 @@ export async function signInWith(provider: Provider): Promise<void> {
     loc.assign(`${b.url}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(back)}`);
     return;
   }
+  // iPhone: ventana nativa de Apple (sin web ni clave que caduque); el token se canjea en Supabase.
+  if (provider === 'apple' && (await import('react-native')).Platform.OS === 'ios') return signInWithAppleNative();
   const WebBrowser = await import('expo-web-browser');
   const r = await WebBrowser.openAuthSessionAsync(`${b.url}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(NATIVE_RETURN)}`, NATIVE_RETURN);
   if (r.type !== 'success') return; // Cerrado por el usuario.
@@ -243,6 +245,27 @@ export async function signInWith(provider: Provider): Promise<void> {
   }
   set({ linkError: null });
   if (await acceptTokens(params)) await refreshProfile();
+}
+
+async function signInWithAppleNative(): Promise<void> {
+  const Apple = await import('expo-apple-authentication');
+  let token: string | null;
+  try {
+    // Solo el correo: el nombre real no hace falta (cada jugador elige su nombre de usuario).
+    token = (await Apple.signInAsync({ requestedScopes: [Apple.AppleAuthenticationScope.EMAIL] })).identityToken;
+  } catch (e) {
+    if ((e as { code?: string }).code !== 'ERR_REQUEST_CANCELED') set({ linkError: 'No se ha podido entrar con Apple. Inténtalo de nuevo.' });
+    return;
+  }
+  if (!token) return set({ linkError: 'Apple no ha devuelto la identificación. Inténtalo de nuevo.' });
+  try {
+    const session = toSession(await call<AuthResponse>('/auth/v1/token?grant_type=id_token', { body: { provider: 'apple', id_token: token } }));
+    if (!session) throw new Error('Sin sesión.');
+    set({ session, linkError: null });
+    await refreshProfile();
+  } catch (e) {
+    set({ linkError: `No se ha podido entrar con Apple: ${(e as Error).message}` });
+  }
 }
 
 /** Elige el nombre de usuario (la primera vez tras entrar con Google o Apple, o para cambiarlo). */
