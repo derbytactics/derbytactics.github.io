@@ -38,6 +38,8 @@ export class RealtimeClient {
   private ping: ReturnType<typeof setInterval> | null = null;
   private retry: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
+  /** Última respuesta del servidor: si pasa mucho sin ninguna, la conexión está muerta aunque parezca abierta. */
+  private lastReply = 0;
   connected = false;
 
   /** `url`: dirección del proyecto (https://xxxx.supabase.co); `key`: clave pública. */
@@ -50,10 +52,15 @@ export class RealtimeClient {
     this.ws = ws;
     ws.onopen = () => {
       this.channels.clear();
+      this.lastReply = Date.now();
       for (const t of this.topics) this.join(split(t));
-      this.ping = setInterval(() => this.send({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: this.nextRef() }), HEARTBEAT_MS);
+      this.ping = setInterval(() => {
+        if (Date.now() - this.lastReply > 2.5 * HEARTBEAT_MS) return this.ws?.close();
+        this.send({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: this.nextRef() });
+      }, HEARTBEAT_MS);
     };
     ws.onmessage = (e) => {
+      this.lastReply = Date.now();
       try {
         this.handle(JSON.parse(String(e.data)) as Frame);
       } catch {}
@@ -117,6 +124,18 @@ export class RealtimeClient {
       this.h.onStatus(false);
     }
     if (!this.closed) this.retry = setTimeout(() => this.connect(), 2000);
+  }
+
+  /** Comprueba la conexión al volver a primer plano: si lleva rato sin respuesta, reconecta ya. */
+  nudge() {
+    if (this.closed) return;
+    if (!this.ws || this.ws.readyState > 1 || Date.now() - this.lastReply > HEARTBEAT_MS) {
+      this.ws?.close();
+      if (!this.ws || this.ws.readyState === 3) {
+        if (this.retry) clearTimeout(this.retry);
+        this.connect();
+      }
+    }
   }
 
   subscribe(topic: string) {

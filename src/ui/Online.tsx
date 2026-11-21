@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { AppState, ScrollView, Text, View } from 'react-native';
 import { HostCard, backendEnabled, getAccount, refreshProfile, rpc } from '../account/api';
 import { useAccount } from '../account/useAccount';
 import { CONFIG, CrestDesign, SeasonLength, standings } from '../engine';
@@ -128,6 +128,13 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Al volver a primer plano (el móvil pudo cortar la conexión en segundo plano): reconecta y reenvía el estado.
+  useEffect(() => {
+    if (!ses) return;
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && ses.wake());
+    return () => sub.remove();
+  }, [ses]);
 
   // La IA de los clubes sin persona juega en el dispositivo del anfitrión.
   const g = room?.game;
@@ -298,6 +305,13 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
   const gameId = room?.gameId ?? null;
   const hostUserId = room?.hostUserId ?? null;
   const mySeat = room ? seatOf(room, me) : -1;
+
+  // Al volver a primer plano: reconecta si hace falta y pide el estado al anfitrión.
+  useEffect(() => {
+    if (!ses || ses === 'invalid') return;
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && ses.wake());
+    return () => sub.remove();
+  }, [ses]);
 
   // Reputación del anfitrión, para enseñarla en la sala de espera.
   useEffect(() => {

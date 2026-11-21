@@ -135,6 +135,14 @@ export class MqttClient {
     this.ws?.send(packet(0x82, [0, 1, ...str(topic), 0]));
   }
 
+  /** Al volver a primer plano: si la conexión no está viva, reconecta ya en vez de esperar. */
+  nudge() {
+    if (this.closed || (this.connected && this.ws?.readyState === 1)) return;
+    if (this.retry) clearTimeout(this.retry);
+    this.ws?.close();
+    if (!this.ws || this.ws.readyState === 3) this.connect();
+  }
+
   subscribe(topic: string) {
     this.topics.add(topic);
     if (this.connected) this.sendSubscribe(topic);
