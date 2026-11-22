@@ -9,7 +9,7 @@ Tu club acaba de ascender y la directiva te ha dado 80 millones y una temporada 
 ## Componentes
 
 - **95 futbolistas:** 15 porteros, 28 defensas, 32 medios y 20 delanteros. Cada uno tiene números entre el 2 y el 12 (nunca el 7).
-- **43 cartas especiales.**
+- **51 cartas especiales.**
 - **2 dados** y dinero (en millones, M).
 
 ## Tu plantilla
