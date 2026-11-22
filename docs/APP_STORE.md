@@ -70,7 +70,7 @@ No hace falta cuenta de prueba.
 
 ## Capturas
 
-Apple exige capturas de iPhone de 6,9" (1320 × 2868). En `store/capturas/` hay tres generadas: bienvenida, club y sala en línea. Las de partida (mercado, partido y reparto) es mejor hacerlas en el propio iPhone durante una partida contra la IA: botón lateral + subir volumen. Si tu iPhone no es de 6,9", usa el simulador «iPhone 16 Pro Max» de Xcode.
+App Store Connect acepta capturas de 6,1"/6,3" (1179 × 2556). En `store/capturas-6.3/` hay siete, en el orden recomendado: partido, reparto, mercado, turno de un rival, preparar partida, tu club y portada. En `store/capturas/` hay tres de 6,9" (1320 × 2868), por si te las pide. Las de partida (mercado, partido y reparto) es mejor hacerlas en el propio iPhone durante una partida contra la IA: botón lateral + subir volumen. Si tu iPhone no es de 6,9", usa el simulador «iPhone 16 Pro Max» de Xcode.
 
 ## Compilar y subir a TestFlight
 
