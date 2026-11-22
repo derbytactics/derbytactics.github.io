@@ -79,8 +79,6 @@ export function GameView(props: {
 function GameBody(props: Parameters<typeof GameView>[0]) {
   const clubColor = useClubColor();
   const { game, seat, dispatch, online } = props;
-  /** Turno que la persona ya ha confirmado tener en la mano (solo al compartir dispositivo). */
-  const [handoff, setHandoff] = useState('');
   /** Convocatoria ya enviada que se quiere cambiar (en línea). */
   const [editLineup, setEditLineup] = useState('');
   const me = currentPlayer(game);
@@ -109,21 +107,9 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
       }
       return <LineupScreen key={lineupKey} state={game} me={mine} onConfirm={(ids) => { setEditLineup(''); return confirm(seat)(ids); }} />;
     }
-    // Un solo dispositivo: cada persona elige en secreto, pasándose el móvil.
+    // En este móvil juega una sola persona contra la IA (las partidas antiguas con varias van una tras otra).
     const cur = pending.find((p) => !p.isBot)!;
-    const humans = game.players.filter((p) => !p.isBot).length;
-    const turn = `${lineupKey}-${cur.id}`;
-    if (humans > 1 && handoff !== turn) {
-      return (
-        <View style={{ padding: 24, flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Crest name={cur.name} color={clubColor(cur.id)} design={cur.crest} size={96} />
-          <Text style={[s.p, { marginTop: 16 }]}>Convocatoria secreta: pasa el dispositivo a</Text>
-          <Text style={[s.h1, { textAlign: 'center', marginTop: 4, marginBottom: 20 }]}>{cur.name}</Text>
-          <Btn label="Soy yo, elegir mi alineación" onPress={() => setHandoff(turn)} style={{ alignSelf: 'stretch' }} />
-        </View>
-      );
-    }
-    return <LineupScreen key={turn} state={game} me={cur} onConfirm={confirm(cur.id)} />;
+    return <LineupScreen key={`${lineupKey}-${cur.id}`} state={game} me={cur} onConfirm={confirm(cur.id)} />;
   }
   if (game.phase === 'match' || game.phase === 'summary') {
     const footer = !online ? undefined : !online.iAmReady ? (
@@ -178,17 +164,6 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
           <Chronicle state={game} max={6} />
           <StandingsTable state={game} highlight={seat ?? cur.id} />
         </View>
-      </View>
-    );
-  }
-  if (seat === null && game.players.filter((p) => !p.isBot).length > 1 && handoff !== turnKey) {
-    // Varias personas comparten dispositivo: las cartas en mano son secretas.
-    return (
-      <View style={{ padding: 24, flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Crest name={cur.name} color={clubColor(cur.id)} design={cur.crest} size={96} />
-        <Text style={[s.p, { marginTop: 16 }]}>Pasa el dispositivo a</Text>
-        <Text style={[s.h1, { textAlign: 'center', marginTop: 4, marginBottom: 20 }]}>{cur.name}</Text>
-        <Btn label="Soy yo, empezar mi turno" onPress={() => setHandoff(turnKey)} style={{ alignSelf: 'stretch' }} />
       </View>
     );
   }

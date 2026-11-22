@@ -13,7 +13,7 @@ Eres el presidente de un club recién ascendido. Con 80M en caja tienes que mont
 
 - **Cuentas de usuario (opcionales):** historial de partidas, ranking por victorias y reputación de anfitriones con sanciones temporales. Ver [docs/CUENTAS.md](docs/CUENTAS.md).
 - **Multijugador en línea:** cada persona desde su móvil, con salas por código o enlace de invitación.
-- Partida en un solo dispositivo: varias personas pasándoselo y/o rivales controlados por IA (cuatro tácticas).
+- Partida en un solo dispositivo contra rivales controlados por la IA (varias tácticas). Para jugar con otras personas, cada una en su móvil (en línea).
 - Mercado de fichajes, cláusulas, blindajes, ampliación de estadio, 43 cartas especiales, recuento de goles y reparto por posición cada jornada.
 - **Tu club:** cada persona funda un único club (nombre y escudo a medida: forma, dibujo, emblema y colores) que se guarda en el dispositivo y la acompaña a todas sus partidas. Desde el menú lateral se cambia el nombre o el escudo y se consulta el historial de temporadas terminadas.
 - Futbolistas con nombres y caras nuevos en cada partida, de todas las procedencias (`src/engine/identity.ts`). Los rivales de la IA también reciben nombre y escudo al azar.

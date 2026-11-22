@@ -76,7 +76,7 @@ Atacan delanteros y medios; defienden porteros y defensas. Nadie hace las dos co
 
 ## Preparación
 
-- Cada club empieza con **80M**, estadio de **nivel 1**, sin futbolistas ni cartas.
+- Cada club empieza con **80M**, estadio de **nivel 1**, sin futbolistas y con **3 cartas especiales**.
 - Se descubre el mercado: 5 futbolistas con 2 jugadores, 6 con 3-4, 7 con 5-6 y 8 con 7-8.
 - **Pretemporada:** en orden aleatorio y en serpiente (1, 2, 3… 3, 2, 1), cada club juega **dos turnos de mercado** antes de la jornada 1.
 
@@ -100,7 +100,7 @@ Al empezar cada jornada, el futbolista más antiguo del mercado se retira y entr
 
 Al cerrar el mercado, **todos los clubes eligen a la vez y en secreto sus 5 titulares** (o todos, si tienen 5 o menos). Las plantillas de los rivales son públicas, pero no sabes a quién van a sacar: ¿tapas el número con el que te atacan o te la juegas con otro delantero? La app propone una alineación, que puedes aceptar tal cual. Las alineaciones se descubren al pitido inicial, y en el partido **solo cuentan los titulares**.
 
-En un solo dispositivo con varias personas, cada una elige pasándose el móvil. En línea, cada una en el suyo. La IA elige sin ver las alineaciones de nadie.
+En línea, cada persona elige en su móvil. La IA elige sin ver las alineaciones de nadie.
 
 ### 3. Partido
 
