@@ -25,6 +25,7 @@ import { GameView } from './src/ui/GameView';
 import { HelpScreen } from './src/ui/HelpScreen';
 import { HistoryScreen } from './src/ui/HistoryScreen';
 import { AchievementToast, AchievementsScreen } from './src/ui/AchievementsScreen';
+import { forgetLocalCollection, syncCollection } from './src/account/achievements';
 import { LegalScreen, LegalTab } from './src/ui/LegalScreen';
 import { OnlineGuest, OnlineHost } from './src/ui/Online';
 import { SetupScreen } from './src/ui/SetupScreen';
@@ -89,6 +90,7 @@ export default function App() {
   useEffect(() => {
     if (booted && userId) {
       syncClub();
+      void syncCollection();
       // Resultados del reto jugados sin conexión o antes de entrar: al ranking.
       void submitPending();
     }
@@ -107,6 +109,7 @@ export default function App() {
         if (getAccount().signedOut) {
           // Cerrar sesión desconecta todo: fuera de la partida, y nada de la cuenta queda a la vista.
           forgetLocalClub();
+          forgetLocalCollection();
           for (const k of [LOCAL_KEY, HOST_KEY, GUEST_KEY]) remove(k);
           setGame(null);
           setMode({ kind: 'menu' });
@@ -124,6 +127,7 @@ export default function App() {
         // se limpian como al cerrar sesión, y se vuelve a la portada.
         if (backendEnabled() && !getAccount().session && belongsToAccount() && !load<boolean>(GUEST_MODE_KEY)) {
           forgetLocalClub();
+          forgetLocalCollection();
           for (const k of [LOCAL_KEY, HOST_KEY, GUEST_KEY]) remove(k);
         }
       })
@@ -221,6 +225,7 @@ export default function App() {
     // Sin cuenta no se usa nada de una cuenta que se quedara en el dispositivo.
     if (belongsToAccount()) {
       forgetLocalClub();
+      forgetLocalCollection();
       for (const k of [LOCAL_KEY, HOST_KEY, GUEST_KEY]) remove(k);
     }
     save(GUEST_MODE_KEY, true);
@@ -231,7 +236,7 @@ export default function App() {
     setLeaving(false);
     if (getAccount().session) {
       // Antes de salir se sube lo pendiente; al cerrarse la sesión se borra lo de la cuenta del dispositivo.
-      await Promise.race([syncClub(), new Promise((r) => setTimeout(r, 4000))]);
+      await Promise.race([Promise.all([syncClub(), syncCollection()]), new Promise((r) => setTimeout(r, 4000))]);
       await signOut();
     } else {
       remove(GUEST_MODE_KEY);

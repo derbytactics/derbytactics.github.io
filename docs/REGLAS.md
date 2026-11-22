@@ -175,7 +175,7 @@ Desde el menú lateral, **Logros y álbum**:
 
 - **Álbum:** cada futbolista que fichas entra en tu álbum con el nombre y la cara que tenía la primera vez (en cada partida cambian). Hay 95 por coleccionar, ordenados por posición; los que faltan se ven en gris con su precio.
 - **Logros:** 22 hitos que se desbloquean jugando, con un aviso en pantalla: marcar el primer gol, una goleada, acabar una jornada sin encajar, salvar un gol con una carta de giro, provocar una cantada, que expulsen a un rival, pagar una cláusula, ganar una liga (también sin portero o con 4 defensas), terminar una partida en línea, el reto diario y su racha de 7 días, ascender y ganar la Liga de Campeones en la carrera, y llenar el álbum.
-- Los logros de la jornada se comprueban al volver del partido, no durante la narración, para no destripar el resultado. Se guardan en el dispositivo.
+- Los logros de la jornada se comprueban al volver del partido, no durante la narración, para no destripar el resultado. Se guardan en el dispositivo y, con cuenta, también en ella: no se pierden al cambiar de móvil.
 
 ## Final de temporada
 

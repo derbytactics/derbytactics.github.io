@@ -215,6 +215,23 @@ select pg_temp.login(null);
 select log_client_error('fallo de prueba', 'pila', 'contexto');
 select pg_temp.ok((select count(*) = 1 and bool_and(user_id is null) from client_errors), 'los informes de error se guardan sin cuenta');
 
+-- Logros y álbum.
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.ok((my_collection() ->> 'achievements') = '{}', 'sin colección, vacía');
+select save_collection('{"reto":"2026-11-21","campeon":"2026-11-22","<x>":"2026-01-01","mal":"ayer"}', '{"f1":{"date":"2026-11-20","identity":{"name":"Leo"}},"zz":{"date":"2026-11-20"}}');
+select pg_temp.ok((select achievements = '{"reto":"2026-11-21","campeon":"2026-11-22"}'::jsonb and album ? 'f1' and not album ? 'zz'
+                     from collections where user_id = '00000000-0000-0000-0000-00000000000b'), 'se guarda la colección, sin entradas mal formadas');
+select save_collection('{"reto":"2026-11-25","campeon":"2026-11-01","goleada":"2026-11-23"}', '{"f1":{"date":"2026-12-01","identity":{"name":"Otro"}},"f2":{"date":"2026-12-01"}}');
+select pg_temp.ok((my_collection()::jsonb -> 'achievements') = '{"reto":"2026-11-21","campeon":"2026-11-01","goleada":"2026-11-23"}', 'de cada logro queda la fecha más antigua');
+select pg_temp.ok((my_collection()::jsonb #>> '{album,f1,identity,name}') = 'Leo' and (my_collection()::jsonb #> '{album}') ? 'f2', 'el álbum suma y no cambia lo que ya había');
+do $$ begin
+  perform save_collection('[]', '{}');
+  raise exception 'FALLA: colección con forma no válida';
+exception when raise_exception then
+  if sqlerrm like 'FALLA%' then raise; end if;
+  raise notice 'ok · se rechaza una colección con forma no válida';
+end $$;
+
 -- Las tablas no son accesibles directamente.
 set role authenticated;
 do $$ begin
@@ -241,4 +258,7 @@ select pg_temp.ok(not exists (select 1 from profiles where id = '00000000-0000-0
 select pg_temp.login('00000000-0000-0000-0000-00000000000a');
 select delete_my_account();
 select pg_temp.ok(not exists (select 1 from season_history where user_id = '00000000-0000-0000-0000-00000000000a'), 'borrar la cuenta elimina su historial de temporadas');
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select delete_my_account();
+select pg_temp.ok(not exists (select 1 from collections where user_id = '00000000-0000-0000-0000-00000000000b'), 'borrar la cuenta elimina sus logros y su álbum');
 \echo TODAS LAS PRUEBAS DE BASE DE DATOS PASAN

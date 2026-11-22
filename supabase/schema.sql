@@ -83,6 +83,14 @@ create table if not exists public.daily_results (
 );
 create index if not exists daily_results_day_idx on public.daily_results (day, points desc);
 
+-- Logros y álbum de cada cuenta. achievements: {id: 'AAAA-MM-DD'}; album: {cardId: {identity, date}}.
+create table if not exists public.collections (
+  user_id uuid primary key references public.profiles (id) on delete cascade,
+  achievements jsonb not null default '{}',
+  album jsonb not null default '{}',
+  updated_at timestamptz not null default now()
+);
+
 -- Denuncias de nombres ofensivos. Con 3 personas distintas contra el mismo nombre, se retira solo.
 create table if not exists public.name_reports (
   reporter uuid not null references public.profiles (id) on delete cascade,
@@ -111,6 +119,7 @@ alter table public.host_ratings enable row level security;
 alter table public.season_history enable row level security;
 alter table public.name_reports enable row level security;
 alter table public.daily_results enable row level security;
+alter table public.collections enable row level security;
 
 -- ---------------------------------------------------------------- Alta de usuario
 
@@ -582,11 +591,50 @@ $$;
 
 -- ---------------------------------------------------------------- Permisos
 
+-- ---------------------------------------------------------------- Logros y álbum
+
+-- Junta lo que manda el dispositivo con lo guardado: nunca se pierde nada. De cada logro se queda
+-- la fecha más antigua; del álbum, la primera entrada de cada futbolista. Lo que no tenga buena forma se ignora.
+create or replace function public.save_collection(p_achievements jsonb, p_album jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  me uuid := auth.uid();
+  a jsonb;
+  b jsonb;
+begin
+  if me is null then raise exception 'Inicia sesión.'; end if;
+  if jsonb_typeof(p_achievements) is distinct from 'object' or jsonb_typeof(p_album) is distinct from 'object'
+     or length(p_achievements::text) > 4000 or length(p_album::text) > 40000 then
+    raise exception 'Colección no válida.';
+  end if;
+  select coalesce(jsonb_object_agg(key, value), '{}') into a from jsonb_each(p_achievements)
+   where key ~ '^[A-Za-z0-9]{1,24}$' and jsonb_typeof(value) = 'string' and (value #>> '{}') ~ '^\d{4}-\d{2}-\d{2}$';
+  select coalesce(jsonb_object_agg(key, value), '{}') into b from jsonb_each(p_album)
+   where key ~ '^f[0-9]{1,3}$' and jsonb_typeof(value) = 'object' and (value ->> 'date') ~ '^\d{4}-\d{2}-\d{2}$' and length(value::text) <= 300;
+  insert into collections (user_id) values (me) on conflict (user_id) do nothing;
+  update collections c
+     set achievements = (select coalesce(jsonb_object_agg(k, to_jsonb(d)), '{}')
+                           from (select key k, min(value #>> '{}') d
+                                   from (select * from jsonb_each(c.achievements) union all select * from jsonb_each(a)) x
+                                  group by key) y),
+         album = b || c.album,
+         updated_at = now()
+   where c.user_id = me;
+end $$;
+
+create or replace function public.my_collection() returns json
+language sql stable security definer set search_path = public as $$
+  select coalesce((select json_build_object('achievements', achievements, 'album', album) from collections where user_id = auth.uid()),
+                  json_build_object('achievements', '{}'::json, 'album', '{}'::json))
+$$;
+
 revoke all on function public.apply_host_penalty(uuid), public.sweep_host(uuid), public.handle_new_user(), public.valid_crest(jsonb) from public, anon, authenticated;
 revoke all on function public.set_my_club(text, jsonb), public.save_seasons(jsonb), public.my_seasons(), public.report_name(text) from public, anon;
 grant execute on function public.set_my_club(text, jsonb), public.save_seasons(jsonb), public.my_seasons(), public.report_name(text) to authenticated;
 grant execute on function public.is_offensive(text), public.norm_word(text) to anon, authenticated;
 revoke all on function public.submit_daily(date, int, int, int, int) from public, anon;
+revoke all on function public.save_collection(jsonb, jsonb), public.my_collection() from public, anon;
+grant execute on function public.save_collection(jsonb, jsonb), public.my_collection() to authenticated;
 grant execute on function public.submit_daily(date, int, int, int, int) to authenticated;
 grant execute on function public.daily_ranking(date, int) to anon, authenticated;
 revoke all on function public.my_profile(), public.set_avatar(text), public.set_username(text), public.start_game(text, text, int, jsonb), public.join_game(uuid, int),
