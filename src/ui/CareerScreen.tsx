@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { CAREER, CareerState, DIVISIONS, GameState, OUTCOME_TEXT, STYLE_MOTTO, careerBudget, careerRivals } from '../engine';
 import { closeCareerSeason, loadCareer } from '../account/career';
+import { unlock } from '../account/achievements';
 import { Crest } from './art';
 import { Btn, Overline, s } from './components';
 import { I, Icon } from './icons';
@@ -125,6 +126,11 @@ export function CareerOverview({ onClose, onAbandon }: { onClose: () => void; on
 /** Al terminar una temporada de carrera (dentro de la pantalla final): resultado y siguiente temporada. */
 export function CareerEnd({ game, onNext }: { game: GameState; onNext: () => void }) {
   const [c] = useState(() => closeCareerSeason(game));
+  const outcome = c?.history[c.history.length - 1]?.outcome;
+  useEffect(() => {
+    if (outcome === 'ascenso') unlock(['ascenso']);
+    if (outcome === 'campeon') unlock(['campeones']);
+  }, [outcome]);
   if (!c) return null;
   const last = c.history[c.history.length - 1];
   if (!last) return null;

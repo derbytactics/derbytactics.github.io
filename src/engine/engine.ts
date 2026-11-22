@@ -60,6 +60,8 @@ export interface Player {
   starters?: string[] | null;
   /** Jornada en la que ya hizo su cambio (uno por partido). */
   subbedJornada?: number;
+  /** Cláusulas pagadas en la temporada (para los logros). */
+  clauses?: number;
   /** Estilo de la IA (modo carrera: cada rival tiene el suyo). */
   style?: BotStyle;
 }
@@ -644,6 +646,7 @@ export function apply(prev: GameState, action: Action): GameState {
       owner.squad = owner.squad.filter((e) => e !== entry);
       state.turn.signed = true;
       me.squad.push({ ...entry, shielded: false, noClauseUntil: J + CONFIG.transferProtection });
+      me.clauses = (me.clauses ?? 0) + 1;
       say(state, `¡Bombazo! ${me.name} paga la cláusula de ${cardName(state, action.cardId)} (${cost}M) a ${owner.name}.`, [owner.id]);
       break;
     }

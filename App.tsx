@@ -24,6 +24,7 @@ import { ErrorBoundary, installGlobalErrorHandlers } from './src/ui/ErrorBoundar
 import { GameView } from './src/ui/GameView';
 import { HelpScreen } from './src/ui/HelpScreen';
 import { HistoryScreen } from './src/ui/HistoryScreen';
+import { AchievementToast, AchievementsScreen } from './src/ui/AchievementsScreen';
 import { LegalScreen, LegalTab } from './src/ui/LegalScreen';
 import { OnlineGuest, OnlineHost } from './src/ui/Online';
 import { SetupScreen } from './src/ui/SetupScreen';
@@ -63,6 +64,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [clubOpen, setClubOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [dailyOpen, setDailyOpen] = useState(false);
   const [careerOpen, setCareerOpen] = useState(false);
   const club = useMyClub();
@@ -144,6 +146,7 @@ export default function App() {
       { open: !!legal, close: () => setLegal(null) },
       { open: help, close: () => setHelp(false) },
       { open: historyOpen, close: () => setHistoryOpen(false) },
+      { open: achievementsOpen, close: () => setAchievementsOpen(false) },
       { open: clubOpen, close: () => setClubOpen(false) },
       { open: accountOpen, close: () => setAccountOpen(false) },
     ];
@@ -338,6 +341,11 @@ export default function App() {
             <DailyResultScreen onClose={() => setDailyOpen(false)} />
           </View>
         ) : null}
+        {achievementsOpen ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
+            <AchievementsScreen onClose={() => setAchievementsOpen(false)} />
+          </View>
+        ) : null}
         {historyOpen ? (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
             <HistoryScreen onClose={() => setHistoryOpen(false)} />
@@ -368,12 +376,14 @@ export default function App() {
             onClose={() => setMenuOpen(false)}
             onClub={() => setClubOpen(true)}
             onHistory={() => setHistoryOpen(true)}
+            onAchievements={() => setAchievementsOpen(true)}
             onAccount={() => setAccountOpen(true)}
             onHelp={onHelp}
             onLegal={setLegal}
             onLeave={backendEnabled() ? () => (getAccount().session ? setLeaving(true) : leave()) : undefined}
           />
         ) : null}
+        <AchievementToast />
         {leaving ? (
           <Popup overline="CERRAR SESIÓN" title="¿Cerrar sesión?" button="Cancelar" onClose={() => setLeaving(false)}>
             <Text style={[s.p, { textAlign: 'center', marginBottom: 12 }]}>

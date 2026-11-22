@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Platform, ScrollView, Share, Text, View } from 'react-native';
 import { backendEnabled } from '../account/api';
 import { useAccount } from '../account/useAccount';
+import { unlock } from '../account/achievements';
 import { DAILY, GameState, dailyKey, dailyNumber } from '../engine';
 import { DailyRankingRow, DailyResult, dailyRanking, dailyStreak, recordDaily, shareText, todayResult } from '../account/daily';
 import { Btn, Overline, s } from './components';
@@ -121,6 +122,9 @@ export function DailyResultView({ result }: { result: DailyResult }) {
 /** Al terminar el reto (dentro de la pantalla final): se apunta el resultado y se enseña. */
 export function DailyEnd({ game }: { game: GameState }) {
   const [result] = useState(() => recordDaily(game));
+  useEffect(() => {
+    if (result) unlock(dailyStreak() >= 7 ? ['reto', 'racha7'] : ['reto']);
+  }, [result]);
   return result ? <DailyResultView result={result} /> : null;
 }
 

@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { Action, GameState, currentPlayer, currentRoller } from '../engine';
 import { Crest } from './art';
 import { recordGame } from '../account/club';
+import { checkGame } from '../account/achievements';
 import { Btn, Chronicle, ExitContext, NavBar, RosterContext, useBack, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
 import { EndScreen } from './EndScreen';
 import { GameScreen } from './GameScreen';
@@ -55,6 +56,14 @@ export function GameView(props: {
     if (finished) recordGame(props.game, props.seat ?? 0, !!props.online);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished]);
+  // Álbum y logros: al fichar y al volver del partido (no durante la narración, para no destripar el resultado).
+  const seat = props.seat ?? 0;
+  const squadKey = props.game.players[seat]?.squad.map((e) => e.cardId).join(',');
+  const phase = props.game.phase;
+  useEffect(() => {
+    if (phase === 'market' || phase === 'lineup' || phase === 'finished') checkGame(props.game, seat, !!props.online);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [squadKey, phase, props.game.jornada]);
   return (
     <ClubColorsContext.Provider value={palette}>
     <RosterContext.Provider value={props.game.roster}>

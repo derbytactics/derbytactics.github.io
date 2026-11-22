@@ -169,6 +169,14 @@ Tu club empieza en **Tercera División** y puede llegar a la **Liga de Campeones
 - **Rivales:** en cada división, siempre los mismos tres en esa carrera, cada uno con su estilo (cerrojo, todo al ataque, defensa de hierro, bloque compensado). Empiezan con una plantilla mejor cuanto más arriba.
 - En la **vitrina** ves tus títulos, el historial de temporadas y los rivales de tu división.
 
+## Logros y álbum
+
+Desde el menú lateral, **Logros y álbum**:
+
+- **Álbum:** cada futbolista que fichas entra en tu álbum con el nombre y la cara que tenía la primera vez (en cada partida cambian). Hay 95 por coleccionar, ordenados por posición; los que faltan se ven en gris con su precio.
+- **Logros:** 22 hitos que se desbloquean jugando, con un aviso en pantalla: marcar el primer gol, una goleada, acabar una jornada sin encajar, salvar un gol con una carta de giro, provocar una cantada, que expulsen a un rival, pagar una cláusula, ganar una liga (también sin portero o con 4 defensas), terminar una partida en línea, el reto diario y su racha de 7 días, ascender y ganar la Liga de Campeones en la carrera, y llenar el álbum.
+- Los logros de la jornada se comprueban al volver del partido, no durante la narración, para no destripar el resultado. Se guardan en el dispositivo.
+
 ## Final de temporada
 
 Tras la última jornada, **balance final:** cada club suma 1 punto por cada 20M que tenga en caja. Gana quien tenga más puntos; si hay empate, mejor diferencia de goles, después más goles a favor y, por último, más dinero.

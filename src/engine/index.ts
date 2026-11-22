@@ -6,3 +6,4 @@ export * from './identity';
 export * from './moderation';
 export * from './daily';
 export * from './career';
+export * from './achievements';

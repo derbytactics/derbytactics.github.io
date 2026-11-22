@@ -3,6 +3,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useAccount } from '../account/useAccount';
 import { Crest, UserAvatar } from './art';
 import { useHistory, useMyClub } from '../account/club';
+import { useAlbum, useUnlocked } from '../account/achievements';
+import { ACHIEVEMENTS, FOOTBALLERS } from '../engine';
 import { s } from './components';
 import { C, DISPLAY } from './theme';
 import { I, Icon, IconName } from './icons';
@@ -30,6 +32,7 @@ export function SideMenu(props: {
   onClose: () => void;
   onClub: () => void;
   onHistory: () => void;
+  onAchievements: () => void;
   onAccount: () => void;
   onHelp: () => void;
   onLegal: (tab: 'privacidad' | 'condiciones') => void;
@@ -39,6 +42,8 @@ export function SideMenu(props: {
   const club = useMyClub();
   const history = useHistory();
   const { avatar, profile, session } = useAccount();
+  const done = Object.keys(useUnlocked()).length;
+  const album = Object.keys(useAlbum()).length;
   const titles = history.filter((h) => h.position === 1).length;
   const go = (f: () => void) => () => {
     props.onClose();
@@ -57,6 +62,7 @@ export function SideMenu(props: {
           </View>
           <Item icon={I.club} label="Mi club" note="Cambiar nombre y escudo" onPress={go(props.onClub)} />
           <Item icon={I.history} label="Historial de partidas" note={history.length ? `Última: ${history[0].position === 1 ? 'campeón' : `${history[0].position}.º puesto`}` : 'Aún sin partidas terminadas'} onPress={go(props.onHistory)} />
+          <Item icon="medal" label="Logros y álbum" note={`${done}/${ACHIEVEMENTS.length} logros · ${album}/${FOOTBALLERS.length} futbolistas`} onPress={go(props.onAchievements)} />
           {session ? (
             <Pressable accessibilityRole="button" onPress={go(props.onAccount)} style={({ pressed }) => [s.row, { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, backgroundColor: pressed ? C.panelAlt : 'transparent' }]}>
               <View style={{ width: 34 }}>

@@ -13,8 +13,11 @@ export function EndScreen({ state, onRestart, extra }: { state: GameState; onRes
   // Podio: 2.º, 1.º, 3.º
   const podium = [table[1], table[0], table[2]].filter(Boolean);
   const heights = new Map([[table[0]?.id, 96], [table[1]?.id, 68], [table[2]?.id, 48]]);
+  // En el reto y en la carrera lo primero es tu resultado (ascenso, puesto, racha), no el campeón.
+  const mineFirst = !!(state.daily || state.career);
   return (
     <ScrollView contentContainerStyle={{ padding: 16 }}>
+      {mineFirst ? extra : null}
       <View style={{ alignItems: 'center', marginTop: 8 }}>
         <Trophy size={104} />
         <Overline>CAMPEÓN DE LIGA</Overline>
@@ -40,7 +43,7 @@ export function EndScreen({ state, onRestart, extra }: { state: GameState; onRes
         })}
       </View>
 
-      {extra}
+      {mineFirst ? null : extra}
       <StandingsTable state={state} highlight={champ.id} />
       <View style={s.panel}>
         <Overline>BALANCE FINAL · 1 PUNTO POR CADA {CONFIG.moneyPerPoint}M EN CAJA</Overline>
