@@ -7,6 +7,7 @@ import { Btn, LeaguePicker, Wordmark, LegalLinks, NavBar, Overline, s, useBack }
 import { C, clubColor, DISPLAY } from './theme';
 import { I, Icon } from './icons';
 import { DailyCard } from './DailyScreen';
+import { CareerCard } from './CareerScreen';
 
 type Rival = { name: string; isBot: boolean; crest: CrestDesign };
 const rnd = () => Math.random();
@@ -44,6 +45,9 @@ export function SetupScreen(props: {
   dailyPlaying: boolean;
   onDaily: () => void;
   onDailyResult: () => void;
+  /** Modo carrera: jugar o seguir la temporada, y abrir la vitrina. */
+  onCareer: () => void;
+  onCareerOpen: () => void;
   /** Comprueba si esta persona puede crear salas; devuelve el motivo si no. */
   hostGate: () => Promise<string | null>;
 }) {
@@ -147,6 +151,7 @@ export function SetupScreen(props: {
       ) : (
         <>
           <DailyCard playing={props.dailyPlaying} onPlay={props.onDaily} onResult={props.onDailyResult} />
+          <CareerCard onPlay={props.onCareer} onOpen={props.onCareerOpen} />
           {props.savedLocal ? (
             <View style={[s.panel, { borderColor: C.accent }]}>
               <Overline>PARTIDA A MEDIAS</Overline>

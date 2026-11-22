@@ -156,6 +156,19 @@ Cada club juega como mucho **2 cartas de árbitro o de jugada por partido**. Las
 
 Para añadir cartas nuevas basta con una entrada en `SPECIAL_INFO` (`src/engine/cards.ts`) con su tipo, sus copias y su efecto en el motor.
 
+## Reto diario
+
+Cada día, la misma partida para todo el mundo: **4 jornadas contra 3 clubes de la IA**, con el mismo mercado, los mismos rivales y el mismo orden de dados. Un intento al día. Al terminar se apunta tu puesto, tus puntos y tus goles, se lleva la cuenta de los **días seguidos** (racha) y puedes **compartir el resultado** con un texto corto. Con cuenta, sale en el **ranking del día** (cuenta el primer intento).
+
+## Modo carrera
+
+Tu club empieza en **Tercera División** y puede llegar a la **Liga de Campeones** (Tercera → Segunda → Primera → Liga de Campeones). Cada temporada es una liga de **4 clubes y 8 jornadas**: el **campeón sube** y **el último baja** (en Tercera no se baja). Ganar la Liga de Campeones suma un título.
+
+- **Tu plantilla se queda** de una temporada a otra, con los mismos nombres y caras, y también tu estadio.
+- **Dinero:** empiezas cada temporada con la mitad del presupuesto de la división más un 25 % de lo que tenías en caja al acabar la anterior.
+- **Rivales:** en cada división, siempre los mismos tres en esa carrera, cada uno con su estilo (cerrojo, todo al ataque, defensa de hierro, bloque compensado). Empiezan con una plantilla mejor cuanto más arriba.
+- En la **vitrina** ves tus títulos, el historial de temporadas y los rivales de tu división.
+
 ## Final de temporada
 
 Tras la última jornada, **balance final:** cada club suma 1 punto por cada 20M que tenga en caja. Gana quien tenga más puntos; si hay empate, mejor diferencia de goles, después más goles a favor y, por último, más dinero.

@@ -41,6 +41,9 @@ export const TACTICS: Record<BotStyle, Record<Position, number>> = {
 export const BOT_STYLES: BotStyle[] = ['equilibrado', 'ofensivo', 'defensivo', 'cerrojo'];
 export const SIM_STYLES: BotStyle[] = [...BOT_STYLES, 'sinPortero', 'sinDefensa'];
 
+/** Estilo con el que juega la IA a un club: el suyo (modo carrera) o uno por orden. */
+export const styleOf = (state: GameState, id: number): BotStyle => state.players[id].style ?? BOT_STYLES[id % BOT_STYLES.length];
+
 const pips = (cardId: string) => totalPips(footballer(cardId).numbers);
 const posOf = (cardId: string) => footballer(cardId).position;
 const entryPower = (e: SquadEntry, J: number) =>

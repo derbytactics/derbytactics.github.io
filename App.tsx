@@ -9,9 +9,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler, Platform, Text, View } from 'react-native';
 import { backendEnabled, browserLocation, getAccount, initAccount, refreshProfile, signOut, subscribeAccount } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
-import { Action, BOT_STYLES, CrestDesign, GameState, apply, botAction, check, createDailyGame, createGame, currentPlayer, dailyKey } from './src/engine';
+import { Action, CrestDesign, GameState, apply, botAction, check, styleOf, createCareerSeason, createDailyGame, createGame, currentPlayer, dailyKey } from './src/engine';
 import { saveDailyGame, savedDailyGame, submitPending } from './src/account/daily';
 import { DailyEnd, DailyResultScreen } from './src/ui/DailyScreen';
+import { CareerEnd, CareerOverview } from './src/ui/CareerScreen';
+import { abandonCareer, loadCareer, saveCareerGame, startCareer } from './src/account/career';
 import { RoomState } from './src/net/room';
 import { GUEST_KEY, HOST_KEY, normalizeCode } from './src/net/session';
 import { hydrateStorage, load, remove, save } from './src/net/storage';
@@ -62,6 +64,7 @@ export default function App() {
   const [clubOpen, setClubOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [dailyOpen, setDailyOpen] = useState(false);
+  const [careerOpen, setCareerOpen] = useState(false);
   const club = useMyClub();
   /** Juega sin cuenta: lo eligió en la portada y se recuerda hasta que pulse «Salir». */
   const [guestMode, setGuestMode] = useState(false);
@@ -182,7 +185,7 @@ export default function App() {
     const t = setTimeout(() => {
       setGame((g) => {
         const p = g && currentPlayer(g);
-        return g && p?.isBot ? apply(g, botAction(g, BOT_STYLES[p.id % BOT_STYLES.length])) : g;
+        return g && p?.isBot ? apply(g, botAction(g, styleOf(g, p.id))) : g;
       });
     }, 350);
     return () => clearTimeout(t);
@@ -193,6 +196,7 @@ export default function App() {
   useEffect(() => {
     if (mode.kind !== 'local' || !game) return;
     if (game.daily) saveDailyGame(game);
+    else if (game.career) saveCareerGame(game);
     else if (game.phase === 'finished') remove(LOCAL_KEY);
     else save(LOCAL_KEY, game);
   }, [game, mode.kind]);
@@ -202,6 +206,14 @@ export default function App() {
     setMode({ kind: 'menu' });
   };
   const onHelp = () => setHelp(true);
+  /** Modo carrera: sigue la temporada a medias o empieza la que toca (y la carrera, si no hay). */
+  const playCareer = () => {
+    const saved = loadCareer();
+    const career = saved?.career ?? (club ? startCareer({ name: club.name, crest: club.crest }) : null);
+    if (!career) return;
+    setGame(saved?.game && saved.game.phase !== 'finished' ? saved.game : createCareerSeason(career));
+    setMode({ kind: 'local' });
+  };
   const enterAsGuest = () => {
     // Sin cuenta no se usa nada de una cuenta que se quedara en el dispositivo.
     if (belongsToAccount()) {
@@ -241,8 +253,8 @@ export default function App() {
         dispatch={dispatch}
         onHelp={onHelp}
         onExit={toMenu}
-        exitText={game.daily ? 'El reto queda guardado: puedes seguirlo hoy desde el menú.' : 'La partida queda guardada en este dispositivo: podrás continuarla desde el menú.'}
-        endExtra={game.daily ? <DailyEnd game={game} /> : undefined}
+        exitText={game.daily ? 'El reto queda guardado: puedes seguirlo hoy desde el menú.' : game.career ? 'La temporada queda guardada: la sigues desde «Modo carrera».' : 'La partida queda guardada en este dispositivo: podrás continuarla desde el menú.'}
+        endExtra={game.daily ? <DailyEnd game={game} /> : game.career ? <CareerEnd game={game} onNext={playCareer} /> : undefined}
       />
     );
   } else if (backendEnabled() && !account.session && !guestMode) {
@@ -277,6 +289,8 @@ export default function App() {
           setMode({ kind: 'local' });
         }}
         onDailyResult={() => setDailyOpen(true)}
+        onCareer={playCareer}
+        onCareerOpen={() => setCareerOpen(true)}
         onEditClub={() => setClubOpen(true)}
         onHost={() => setMode({ kind: 'host', name: club.name, crest: club.crest, resume: null })}
         onJoin={(code) => setMode({ kind: 'guest', code, name: club.name, crest: club.crest })}
@@ -306,6 +320,17 @@ export default function App() {
         {clubOpen && club ? (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
             <ClubScreen initial={club} inGame={mode.kind !== 'menu'} onClose={() => setClubOpen(false)} />
+          </View>
+        ) : null}
+        {careerOpen ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
+            <CareerOverview
+              onClose={() => setCareerOpen(false)}
+              onAbandon={() => {
+                abandonCareer();
+                setCareerOpen(false);
+              }}
+            />
           </View>
         ) : null}
         {dailyOpen ? (

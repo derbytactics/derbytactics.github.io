@@ -93,7 +93,7 @@ const MEDAL = ['🥇', '🥈', '🥉'];
 /** Texto para compartir, al estilo de los retos diarios. */
 export function shareText(r: DailyResult, streak: number, url?: string): string {
   const [y, m, d] = r.day.split('-');
-  const pos = `${MEDAL[r.position - 1] ?? '⚽'} ${r.position}.º de ${r.clubs}`;
+  const pos = `${MEDAL[r.position - 1] ?? '🏟️'} ${r.position}.º de ${r.clubs}`;
   return [
     `DerbyTactics · Reto #${r.number} · ${d}/${m}/${y}`,
     `${pos} · ${r.points} pts · ⚽ ${r.goals}-${r.against}`,

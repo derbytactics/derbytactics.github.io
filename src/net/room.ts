@@ -3,7 +3,7 @@
  * Los invitados mandan mensajes; el anfitrión los valida, aplica la acción
  * con el motor y difunde el estado completo de la sala.
  */
-import { Action, BOT_STYLES, CONFIG, CrestDesign, GameState, League, SeasonLength, apply, autoLineup, botAction, check, createGame, currentRoller, fillBotLineups, autoReact, isOffensive, makeRand, randomClubName, sanitizeCrest } from '../engine';
+import { Action, styleOf, CONFIG, CrestDesign, GameState, League, SeasonLength, apply, autoLineup, botAction, check, createGame, currentRoller, fillBotLineups, autoReact, isOffensive, makeRand, randomClubName, sanitizeCrest } from '../engine';
 
 export interface Seat {
   name: string;
@@ -195,7 +195,7 @@ export function botStep(room: RoomState, force = false): RoomState {
   if (g.phase !== 'market') return room;
   const cur = g.turnOrder[g.turnIndex];
   if (!g.players[cur].isBot && !force) return room;
-  return bump(room, { game: apply(g, botAction(g, BOT_STYLES[cur % BOT_STYLES.length])) });
+  return bump(room, { game: apply(g, botAction(g, styleOf(g, cur))) });
 }
 
 /** La IA termina el turno entero del club al que le toca (para cuando alguien se ha ido). */

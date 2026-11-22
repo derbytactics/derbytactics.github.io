@@ -11,6 +11,7 @@ import {
 import { CONFIG, SeasonLength, marketSize } from './config';
 import { CrestDesign, Identity, League, generateRoster, makeRand, randomCrest, sanitizeCrest, words } from './identity';
 import { nextRandom } from './rng';
+import type { BotStyle } from './bots';
 
 // ---------------------------------------------------------------- Tipos
 
@@ -59,6 +60,8 @@ export interface Player {
   starters?: string[] | null;
   /** Jornada en la que ya hizo su cambio (uno por partido). */
   subbedJornada?: number;
+  /** Estilo de la IA (modo carrera: cada rival tiene el suyo). */
+  style?: BotStyle;
 }
 
 /** Una jugada de ataque: un club con atacantes en el número que ha salido. */
@@ -207,10 +210,24 @@ export interface GameState {
   league?: League;
   /** Reto diario: el día (AAAA-MM-DD) al que pertenece la partida. */
   daily?: string;
+  /** Modo carrera: división y temporada de esta partida. */
+  career?: { division: number; season: number };
+}
+
+/** Un club al crear la partida. Plantilla, dinero, estadio y estilo son para el modo carrera. */
+export interface NewPlayer {
+  name: string;
+  isBot: boolean;
+  crest?: CrestDesign;
+  money?: number;
+  stadium?: number;
+  squad?: SquadEntry[];
+  /** Estilo de la IA de este club (si no, se reparte por orden). */
+  style?: BotStyle;
 }
 
 export interface NewGameOptions {
-  players: { name: string; isBot: boolean; crest?: CrestDesign }[];
+  players: NewPlayer[];
   season?: SeasonLength;
   /** Número de jornadas, si no es una de las temporadas normales (reto diario). */
   jornadas?: number;
@@ -218,6 +235,10 @@ export interface NewGameOptions {
   league?: League;
   /** Reto diario: el día (AAAA-MM-DD) de la partida. */
   daily?: string;
+  /** Nombres y caras que se conservan (futbolistas que vienen de otra temporada). */
+  roster?: Record<string, Identity>;
+  /** Modo carrera: división (0 = la más baja) y temporada. */
+  career?: { division: number; season: number };
 }
 
 export type Action =
@@ -409,9 +430,10 @@ export function createGame(opts: NewGameOptions): GameState {
   const state: GameState = {
     seed,
     gameId: `g${(seed >>> 0).toString(36)}${n}`,
-    roster: generateRoster(FOOTBALLERS.map((f) => f.id), seed, opts.league),
+    roster: { ...generateRoster(FOOTBALLERS.map((f) => f.id), seed, opts.league), ...(opts.roster ?? {}) },
     ...(opts.league === 'femenina' ? { league: 'femenina' as const } : {}),
     ...(opts.daily ? { daily: opts.daily } : {}),
+    ...(opts.career ? { career: opts.career } : {}),
     totalJornadas: opts.jornadas ?? CONFIG.seasonLengths[opts.season ?? 'estandar'],
     jornada: 1,
     phase: 'market',
@@ -419,10 +441,11 @@ export function createGame(opts: NewGameOptions): GameState {
       id,
       name: p.name.trim() || `Club ${id + 1}`,
       isBot: p.isBot,
-      money: CONFIG.startingMoney,
-      squad: [],
+      money: p.money ?? CONFIG.startingMoney,
+      squad: (p.squad ?? []).map((e) => ({ ...e })),
       hand: [],
-      stadium: 1,
+      stadium: p.stadium ?? 1,
+      ...(p.style ? { style: p.style } : {}),
       points: 0,
       goals: 0,
       against: 0,
@@ -444,7 +467,9 @@ export function createGame(opts: NewGameOptions): GameState {
     log: [],
     logSeq: 0,
   };
-  state.footballDeck = shuffle(state, FOOTBALLERS.map((f) => f.id));
+  // Los futbolistas que ya tienen club (modo carrera) no salen al mercado.
+  const owned = new Set(state.players.flatMap((p) => p.squad.map((e) => e.cardId)));
+  state.footballDeck = shuffle(state, FOOTBALLERS.filter((f) => !owned.has(f.id)).map((f) => f.id));
   state.specialDeck = shuffle(state, SPECIAL_CARDS.map((c) => c.id));
   state.market = state.footballDeck.splice(0, marketSize(n));
   // Cada club empieza con unas cartas especiales en la mano.
