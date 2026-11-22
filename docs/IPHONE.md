@@ -33,6 +33,28 @@ npx eas-cli@latest submit -p ios    # la sube a App Store Connect → TestFlight
 
 Con TestFlight puedes invitar a amigos por correo sin publicar en la App Store. El plan gratuito de EAS compila en cola (puede tardar).
 
+## Tras añadir código nativo nuevo (p. ej. el modo sin internet)
+
+Si ya tenías la carpeta `ios/` de una compilación anterior, regenérala para que entren el módulo nuevo y sus permisos:
+
+```bash
+git pull
+npm install
+npx expo prebuild --clean -p ios
+npx expo run:ios --device
+```
+
+## Probar el modo sin internet (dos iPhone)
+
+Hace falta la app nativa en **dos iPhone** (no funciona en la web ni en el simulador con fiabilidad). Puedes probarlo con los dos en modo avión, con Bluetooth y wifi activados.
+
+1. En los dos: «Con amigos». Abajo aparece **SIN INTERNET · MÓVILES CERCA**.
+2. La primera vez, iOS pide permiso de **red local**: acéptalo en los dos (si se rechaza: Ajustes → DerbyTactics → Red local).
+3. En uno, «Crear una sala cercana». En el otro aparece la sala en la lista: «Entrar».
+4. El anfitrión pulsa «Empezar».
+
+Si falla, dime en qué paso se queda y copia el error de Xcode si no compila: el código nativo (`modules/derby-nearby/ios`) no se ha podido compilar fuera de un Mac.
+
 ## Antes de entrar con Google o Apple en la app nativa
 
 En Supabase → Authentication → URL Configuration → Redirect URLs, añade `derbytactics://**`. Sin eso, después de elegir la cuenta se vuelve a la web en lugar de a la app.

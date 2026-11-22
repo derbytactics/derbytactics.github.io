@@ -33,11 +33,17 @@ import { SideMenu } from './src/ui/SideMenu';
 import { WelcomeScreen } from './src/ui/WelcomeScreen';
 import { BackContext, Btn, NavContext, Popup, s } from './src/ui/components';
 import { C, TOP_INSET } from './src/ui/theme';
+import DerbyNearby from './modules/derby-nearby';
+import { NearbyNative, setNearbyNative } from './src/net/nearby';
+
+// Partidas sin internet entre móviles cercanos: solo si la app nativa lleva el módulo (iPhone).
+// En pruebas de navegador se puede inyectar uno falso (como los servidores, con una variable global).
+setNearbyNative(DerbyNearby ?? (globalThis as { __FUTCARDS_NEARBY__?: NearbyNative }).__FUTCARDS_NEARBY__ ?? null);
 
 type Mode =
   | { kind: 'menu' }
   | { kind: 'local' }
-  | { kind: 'host'; name: string; crest?: CrestDesign; resume: RoomState | null }
+  | { kind: 'host'; name: string; crest?: CrestDesign; resume: RoomState | null; nearby?: boolean }
   | { kind: 'guest'; code: string; name: string; crest?: CrestDesign };
 
 /** Partida de un solo dispositivo guardada para poder continuarla. */
@@ -250,7 +256,7 @@ export default function App() {
   if (!booted || !fontsReady) {
     body = null;
   } else if (mode.kind === 'host') {
-    body = <OnlineHost name={mode.name} crest={mode.crest} resume={mode.resume} onHelp={onHelp} onExit={toMenu} />;
+    body = <OnlineHost name={mode.name} crest={mode.crest} resume={mode.resume} nearby={mode.nearby} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'guest') {
     body = <OnlineGuest code={mode.code} name={mode.name} crest={mode.crest} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'local' && game) {
@@ -301,6 +307,7 @@ export default function App() {
         onCareerOpen={() => setCareerOpen(true)}
         onEditClub={() => setClubOpen(true)}
         onHost={() => setMode({ kind: 'host', name: club.name, crest: club.crest, resume: null })}
+        onHostNearby={() => setMode({ kind: 'host', name: club.name, crest: club.crest, resume: null, nearby: true })}
         onJoin={(code) => setMode({ kind: 'guest', code, name: club.name, crest: club.crest })}
         resumeCode={savedHost?.code ?? null}
         onResume={() => savedHost && setMode({ kind: 'host', name: savedHost.seats[0].name, crest: savedHost.seats[0].crest, resume: savedHost })}

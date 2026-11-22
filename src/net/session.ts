@@ -7,10 +7,12 @@
  *   Ahí el estado queda retenido para quien llegue tarde.
  * - Resto: Supabase Realtime, del mismo proyecto que las cuentas. No retiene mensajes: el anfitrión
  *   reenvía el estado cada vez que un invitado escribe (al entrar o reconectarse) y cada 20 s.
+ * - Z: sala cercana, sin internet (móviles al lado, ver nearby.ts). Funciona como Supabase: sin retener.
  */
 import { backend } from '../account/api';
 import { Action, CrestDesign, check, currentRoller } from '../engine';
 import { MqttClient, MqttHandlers } from './mqtt';
+import { NEARBY_LETTER, NearbyTransport, isNearbyCode } from './nearby';
 import { RealtimeClient } from './realtime';
 import { ClientMsg, RoomState, hostReduce, newRoom, seatOf } from './room';
 import { remove, save } from './storage';
@@ -37,9 +39,19 @@ interface Transport {
   nudge(): void;
 }
 
-/** El transporte que corresponde a un código de sala, o null si no hay ninguno disponible. */
-function transportFor(code: string, h: MqttHandlers): { client: Transport; retains: boolean } | null {
+/**
+ * El transporte que corresponde a un código de sala, o null si no hay ninguno disponible.
+ * `hostName` solo hace falta al anunciar una sala cercana.
+ */
+function transportFor(code: string, h: MqttHandlers, hostName?: string): { client: Transport; retains: boolean } | null {
   if (code.length !== 5) return null;
+  if (isNearbyCode(code)) {
+    try {
+      return { client: new NearbyTransport(hostName !== undefined ? 'host' : 'guest', code, hostName ?? '', h), retains: false };
+    } catch {
+      return null;
+    }
+  }
   const i = ALPHABET.indexOf(code[0]);
   const list = brokers();
   if (i < 0) return null;
@@ -48,9 +60,13 @@ function transportFor(code: string, h: MqttHandlers): { client: Transport; retai
   return b ? { client: new RealtimeClient(b.url, b.key, h), retains: false } : null;
 }
 
-/** Código nuevo: con Supabase, una letra a partir de la cuarta; con el servidor público `i`, su letra. */
-function newCode(broker: number | 'realtime'): string {
-  const first = broker === 'realtime' ? 3 + Math.floor(Math.random() * (ALPHABET.length - 3)) : broker;
+/**
+ * Código nuevo: con Supabase, una letra a partir de la cuarta (sin la Z); con el servidor público `i`,
+ * su letra; las salas cercanas, con la Z.
+ */
+function newCode(broker: number | 'realtime' | 'nearby'): string {
+  const first =
+    broker === 'nearby' ? ALPHABET.indexOf(NEARBY_LETTER) : broker === 'realtime' ? 3 + Math.floor(Math.random() * (ALPHABET.length - 4)) : broker;
   let code = ALPHABET[first];
   for (let k = 0; k < 4; k++) code += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
   return code;
@@ -86,7 +102,7 @@ export class HostSession {
           if (!this.retains && this.room === before) this.publish();
         } catch {}
       },
-    });
+    }, room.seats[0]?.name ?? '');
     if (!t) throw new Error('No hay servidor para esta sala.');
     this.client = t.client;
     this.retains = t.retains;
@@ -116,6 +132,27 @@ export class HostSession {
         }, 6000);
       });
     return attempt(0);
+  }
+
+  /** Crea una sala cercana, sin internet: la anuncia este móvil a los que tenga al lado. */
+  static createNearby(hostId: string, hostName: string, l: Listener<RoomState>, hostCrest?: CrestDesign): Promise<HostSession> {
+    return new Promise((resolve, reject) => {
+      let s: HostSession;
+      const timer = setTimeout(() => {
+        s.close(false);
+        reject(new Error('No se ha podido anunciar la sala. Revisa que el Bluetooth y el wifi estén activados.'));
+      }, 6000);
+      try {
+        s = new HostSession(newRoom(newCode('nearby'), hostId, hostName, null, hostCrest), l, () => {
+          clearTimeout(timer);
+          save(HOST_KEY, s.room);
+          resolve(s);
+        });
+      } catch (e) {
+        clearTimeout(timer);
+        reject(e);
+      }
+    });
   }
 
   /** Reanuda una sala guardada en este dispositivo. */

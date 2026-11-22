@@ -5,6 +5,7 @@ import { useAccount } from '../account/useAccount';
 import { CONFIG, CrestDesign, SeasonLength, standings } from '../engine';
 import { RoomState, botStep, finalSeats, hostAct, hostReady, kickSeat, pendingReady, playTurnForAbsent, seatOf, setLobby, startGame } from '../net/room';
 import { GuestSession, HostSession } from '../net/session';
+import { isNearbyCode } from '../net/nearby';
 import { deviceId } from '../net/storage';
 import { Stars } from './AccountScreen';
 import { Crest } from './art';
@@ -90,7 +91,7 @@ function Connecting({ text, error, onExit, children }: { text: string; error?: s
 
 // ---------------------------------------------------------------- Anfitrión
 
-export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: RoomState | null; onHelp: () => void; onExit: () => void }) {
+export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: RoomState | null; nearby?: boolean; onHelp: () => void; onExit: () => void }) {
   /** La referencia es para cerrar la sesión al salir; la pantalla usa el estado `ses`. */
   const session = useRef<HostSession | null>(null);
   const [ses, setSes] = useState<HostSession | null>(null);
@@ -112,7 +113,9 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
           if (!s2) throw new Error('No se ha podido reanudar la sala.');
           return s2;
         })
-      : HostSession.create(deviceId(), props.name, getAccount().session?.user.id ?? null, l, props.crest);
+      : props.nearby
+        ? HostSession.createNearby(deviceId(), props.name, l, props.crest)
+        : HostSession.create(deviceId(), props.name, getAccount().session?.user.id ?? null, l, props.crest);
     opened.then(
       (s2) => {
         if (!alive) return s2.close(!props.resume);
@@ -181,7 +184,8 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
     if (!ses2) return;
     setStartError(null);
     let gid: string | null = null;
-    if (backendEnabled()) {
+    // Las partidas cercanas (sin internet) son amistosas: no se registran en el servidor.
+    if (backendEnabled() && !isNearbyCode(ses2.room.code)) {
       try {
         const seats = finalSeats(ses2.room);
         gid = await rpc<string>('start_game', {
@@ -204,7 +208,8 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
   if (!room || !ses) return <Connecting text="Creando la sala…" error={error} onExit={props.onExit} />;
 
   if (!room.game) {
-    const link = inviteLink(room.code);
+    const nearby = isNearbyCode(room.code);
+    const link = nearby ? null : inviteLink(room.code);
     const copy = () => {
       const nav = (globalThis as { navigator?: Navigator }).navigator;
       nav?.clipboard?.writeText(link ?? room.code).then(() => setCopied(true), () => {});
@@ -214,14 +219,16 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
         <NavBar subtitle={`Sala ${room.code} · sala de espera`} />
         <Offline connected={connected} />
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-          <Overline>SALA CREADA · COMPARTE ESTE CÓDIGO</Overline>
+          <Overline>{nearby ? 'SALA CERCANA · SIN INTERNET' : 'SALA CREADA · COMPARTE ESTE CÓDIGO'}</Overline>
           <View style={[s.panel, { alignItems: 'center', marginTop: 8, borderColor: C.accent }]}>
             <Text selectable style={{ color: C.accent, fontSize: 58, ...DISPLAY, letterSpacing: 8 }}>{room.code}</Text>
             {link ? <Text selectable style={[s.p, { fontSize: 12, textAlign: 'center', marginTop: 4 }]}>{link}</Text> : null}
             {link ? <Btn small kind="ghost" label={copied ? '✓ Enlace copiado' : 'Copiar enlace de invitación'} onPress={copy} style={{ marginTop: 10 }} /> : null}
           </View>
           <Text style={[s.p, { marginBottom: 14 }]}>
-            Tus amigos abren el enlace en su móvil, o entran en el juego, eligen «En línea» y escriben el código. No cierres esta pantalla: tu móvil dirige la partida.
+            {nearby
+              ? 'Tus amigos, con el móvil cerca del tuyo, abren el juego, van a «Con amigos» y pulsan «Entrar» en tu sala. Mantened el Bluetooth y el wifi activados (vale en modo avión) y esta pantalla abierta: tu móvil dirige la partida.'
+              : 'Tus amigos abren el enlace en su móvil, o entran en el juego, eligen «En línea» y escriben el código. No cierres esta pantalla: tu móvil dirige la partida.'}
           </Text>
 
           <View style={[s.row, { marginBottom: 10 }]}>

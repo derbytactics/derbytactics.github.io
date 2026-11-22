@@ -169,6 +169,10 @@ Tu club empieza en **Tercera División** y puede llegar a la **Liga de Campeones
 - **Rivales:** en cada división, siempre los mismos tres en esa carrera, cada uno con su estilo (cerrojo, todo al ataque, defensa de hierro, bloque compensado). Empiezan con una plantilla mejor cuanto más arriba.
 - En la **vitrina** ves tus títulos, el historial de temporadas y los rivales de tu división.
 
+## Sin internet (iPhone)
+
+En la app de iPhone, en «Con amigos», se puede jugar con quien tengas al lado **sin internet** (en el avión, por ejemplo): uno crea una **sala cercana** y los demás la ven en la lista y entran. Va por Bluetooth y wifi directo, sin servidor, hasta 8 móviles. Las reglas son las mismas; la partida es amistosa (no cuenta para el ranking).
+
 ## Logros y álbum
 
 Desde el menú lateral, **Logros y álbum**:

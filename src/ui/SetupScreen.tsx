@@ -8,6 +8,8 @@ import { C, clubColor, DISPLAY } from './theme';
 import { I, Icon } from './icons';
 import { DailyCard } from './DailyScreen';
 import { CareerCard } from './CareerScreen';
+import { NearbyPanel } from './NearbyPanel';
+import { nearbyAvailable } from '../net/nearby';
 
 type Rival = { name: string; isBot: boolean; crest: CrestDesign };
 const rnd = () => Math.random();
@@ -33,6 +35,8 @@ export function SetupScreen(props: {
   club: MyClub;
   onEditClub: () => void;
   onHost: () => void;
+  /** Sala cercana, sin internet (solo donde haya módulo nativo). */
+  onHostNearby: () => void;
   onJoin: (code: string) => void;
   /** Sala propia guardada en este dispositivo, si la hay. */
   resumeCode: string | null;
@@ -108,7 +112,7 @@ export function SetupScreen(props: {
             }}
             style={{ flex: 1, minHeight: 44, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: mode === m ? C.sel : 'transparent', borderWidth: 1, borderColor: mode === m ? C.selLine : 'transparent' }}
           >
-            <Text style={{ color: C.text, fontWeight: '800', fontSize: 15 }}>{m === 'local' ? 'Jugar aquí' : 'Con amigos en línea'}</Text>
+            <Text style={{ color: C.text, fontWeight: '800', fontSize: 15 }}>{m === 'local' ? 'Jugar aquí' : nearbyAvailable() ? 'Con amigos' : 'Con amigos en línea'}</Text>
           </Pressable>
         ))}
       </View>
@@ -147,6 +151,7 @@ export function SetupScreen(props: {
             label="Unirme a la sala"
             onPress={() => (code.length === 5 ? props.onJoin(code) : setWarn('El código tiene 5 letras.'))}
           />
+          <NearbyPanel onHost={props.onHostNearby} onJoin={props.onJoin} />
         </>
       ) : (
         <>

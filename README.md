@@ -13,6 +13,7 @@ Eres el presidente de un club recién ascendido. Con 80M en caja tienes que mont
 
 - **Cuentas de usuario (opcionales):** historial de partidas, ranking por victorias y reputación de anfitriones con sanciones temporales. Ver [docs/CUENTAS.md](docs/CUENTAS.md).
 - **Multijugador en línea:** cada persona desde su móvil, con salas por código o enlace de invitación.
+- **Sin internet (iPhone):** salas cercanas por Bluetooth y wifi directo con Multipeer Connectivity (`modules/derby-nearby`, módulo nativo propio).
 - Partida en un solo dispositivo contra rivales controlados por la IA (varias tácticas). Para jugar con otras personas, cada una en su móvil (en línea).
 - Mercado de fichajes, cláusulas, blindajes, ampliación de estadio, 51 cartas especiales, recuento de goles y reparto por posición cada jornada.
 - **Tu club:** cada persona funda un único club (nombre y escudo a medida: forma, dibujo, emblema y colores) que se guarda en el dispositivo y la acompaña a todas sus partidas. Desde el menú lateral se cambia el nombre o el escudo y se consulta el historial de temporadas terminadas.
@@ -66,7 +67,8 @@ src/engine/
   engine.test.ts     Tests
 src/account/         Cuentas: sesión, perfil y llamadas al servidor
 supabase/            Esquema de la base de datos y sus pruebas
-src/net/             Multijugador: protocolo de sala, sesiones y transportes (Supabase Realtime y MQTT)
+src/net/             Multijugador: protocolo de sala, sesiones y transportes (Supabase Realtime, MQTT y salas cercanas)
+modules/derby-nearby Módulo nativo de iPhone para jugar sin internet
 src/ui/              Pantallas y componentes
 scripts/simulate.ts  Simulador de equilibrio
 docs/                Reglas y notas de equilibrio
