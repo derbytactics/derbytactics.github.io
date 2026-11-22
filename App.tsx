@@ -9,7 +9,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler, Platform, Text, View } from 'react-native';
 import { backendEnabled, browserLocation, getAccount, initAccount, refreshProfile, signOut, subscribeAccount } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
-import { Action, BOT_STYLES, CrestDesign, GameState, apply, botAction, check, createGame, currentPlayer } from './src/engine';
+import { Action, BOT_STYLES, CrestDesign, GameState, apply, botAction, check, createDailyGame, createGame, currentPlayer, dailyKey } from './src/engine';
+import { saveDailyGame, savedDailyGame, submitPending } from './src/account/daily';
+import { DailyEnd, DailyResultScreen } from './src/ui/DailyScreen';
 import { RoomState } from './src/net/room';
 import { GUEST_KEY, HOST_KEY, normalizeCode } from './src/net/session';
 import { hydrateStorage, load, remove, save } from './src/net/storage';
@@ -59,6 +61,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [clubOpen, setClubOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [dailyOpen, setDailyOpen] = useState(false);
   const club = useMyClub();
   /** Juega sin cuenta: lo eligió en la portada y se recuerda hasta que pulse «Salir». */
   const [guestMode, setGuestMode] = useState(false);
@@ -79,7 +82,11 @@ export default function App() {
   const userId = account.session?.user.id;
   // Con cuenta, el club y el historial se sincronizan al entrar.
   useEffect(() => {
-    if (booted && userId) syncClub();
+    if (booted && userId) {
+      syncClub();
+      // Resultados del reto jugados sin conexión o antes de entrar: al ranking.
+      void submitPending();
+    }
   }, [booted, userId]);
   // Al cerrar sesión o borrar la cuenta (desde donde sea): se cierran las ventanas y se vuelve al inicio.
   // Si había una partida en marcha, sigue; la bienvenida aparece al volver al menú.
@@ -182,9 +189,11 @@ export default function App() {
   }, [game, me]);
 
   // La partida local se guarda sola tras cada jugada y se borra al terminar la temporada.
+  // El reto diario se guarda aparte, para no pisar la partida normal.
   useEffect(() => {
     if (mode.kind !== 'local' || !game) return;
-    if (game.phase === 'finished') remove(LOCAL_KEY);
+    if (game.daily) saveDailyGame(game);
+    else if (game.phase === 'finished') remove(LOCAL_KEY);
     else save(LOCAL_KEY, game);
   }, [game, mode.kind]);
 
@@ -225,7 +234,17 @@ export default function App() {
   } else if (mode.kind === 'guest') {
     body = <OnlineGuest code={mode.code} name={mode.name} crest={mode.crest} onHelp={onHelp} onExit={toMenu} />;
   } else if (mode.kind === 'local' && game) {
-    body = <GameView game={game} seat={null} dispatch={dispatch} onHelp={onHelp} onExit={toMenu} exitText="La partida queda guardada en este dispositivo: podrás continuarla desde el menú." />;
+    body = (
+      <GameView
+        game={game}
+        seat={null}
+        dispatch={dispatch}
+        onHelp={onHelp}
+        onExit={toMenu}
+        exitText={game.daily ? 'El reto queda guardado: puedes seguirlo hoy desde el menú.' : 'La partida queda guardada en este dispositivo: podrás continuarla desde el menú.'}
+        endExtra={game.daily ? <DailyEnd game={game} /> : undefined}
+      />
+    );
   } else if (backendEnabled() && !account.session && !guestMode) {
     // Portada: entrar con la cuenta o jugar sin ella.
     body = <WelcomeScreen onGuest={enterAsGuest} />;
@@ -252,6 +271,12 @@ export default function App() {
           setMode({ kind: 'local' });
         }}
         club={club}
+        dailyPlaying={!!savedDailyGame()}
+        onDaily={() => {
+          setGame(savedDailyGame() ?? createDailyGame(dailyKey(), { name: club.name, crest: club.crest }));
+          setMode({ kind: 'local' });
+        }}
+        onDailyResult={() => setDailyOpen(true)}
         onEditClub={() => setClubOpen(true)}
         onHost={() => setMode({ kind: 'host', name: club.name, crest: club.crest, resume: null })}
         onJoin={(code) => setMode({ kind: 'guest', code, name: club.name, crest: club.crest })}
@@ -281,6 +306,11 @@ export default function App() {
         {clubOpen && club ? (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
             <ClubScreen initial={club} inGame={mode.kind !== 'menu'} onClose={() => setClubOpen(false)} />
+          </View>
+        ) : null}
+        {dailyOpen ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
+            <DailyResultScreen onClose={() => setDailyOpen(false)} />
           </View>
         ) : null}
         {historyOpen ? (

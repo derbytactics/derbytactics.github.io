@@ -205,13 +205,19 @@ export interface GameState {
   roster?: Record<string, Identity>;
   /** Liga masculina (por defecto) o femenina. */
   league?: League;
+  /** Reto diario: el día (AAAA-MM-DD) al que pertenece la partida. */
+  daily?: string;
 }
 
 export interface NewGameOptions {
   players: { name: string; isBot: boolean; crest?: CrestDesign }[];
   season?: SeasonLength;
+  /** Número de jornadas, si no es una de las temporadas normales (reto diario). */
+  jornadas?: number;
   seed?: number;
   league?: League;
+  /** Reto diario: el día (AAAA-MM-DD) de la partida. */
+  daily?: string;
 }
 
 export type Action =
@@ -405,7 +411,8 @@ export function createGame(opts: NewGameOptions): GameState {
     gameId: `g${(seed >>> 0).toString(36)}${n}`,
     roster: generateRoster(FOOTBALLERS.map((f) => f.id), seed, opts.league),
     ...(opts.league === 'femenina' ? { league: 'femenina' as const } : {}),
-    totalJornadas: CONFIG.seasonLengths[opts.season ?? 'estandar'],
+    ...(opts.daily ? { daily: opts.daily } : {}),
+    totalJornadas: opts.jornadas ?? CONFIG.seasonLengths[opts.season ?? 'estandar'],
     jornada: 1,
     phase: 'market',
     players: opts.players.map((p, id) => ({

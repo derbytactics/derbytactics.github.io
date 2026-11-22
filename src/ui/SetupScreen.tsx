@@ -6,6 +6,7 @@ import { MyClub } from '../account/club';
 import { Btn, LeaguePicker, Wordmark, LegalLinks, NavBar, Overline, s, useBack } from './components';
 import { C, clubColor, DISPLAY } from './theme';
 import { I, Icon } from './icons';
+import { DailyCard } from './DailyScreen';
 
 type Rival = { name: string; isBot: boolean; crest: CrestDesign };
 const rnd = () => Math.random();
@@ -39,6 +40,10 @@ export function SetupScreen(props: {
   /** Descripción de la partida local guardada, si la hay. */
   savedLocal: string | null;
   onContinueLocal: () => void;
+  /** Reto diario: si hay uno a medias, empezarlo o seguirlo, y ver el resultado de hoy. */
+  dailyPlaying: boolean;
+  onDaily: () => void;
+  onDailyResult: () => void;
   /** Comprueba si esta persona puede crear salas; devuelve el motivo si no. */
   hostGate: () => Promise<string | null>;
 }) {
@@ -141,6 +146,7 @@ export function SetupScreen(props: {
         </>
       ) : (
         <>
+          <DailyCard playing={props.dailyPlaying} onPlay={props.onDaily} onResult={props.onDailyResult} />
           {props.savedLocal ? (
             <View style={[s.panel, { borderColor: C.accent }]}>
               <Overline>PARTIDA A MEDIAS</Overline>

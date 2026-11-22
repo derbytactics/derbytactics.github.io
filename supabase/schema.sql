@@ -70,6 +70,19 @@ create table if not exists public.season_history (
 );
 create index if not exists season_history_user_idx on public.season_history (user_id, finished_at desc);
 
+-- Reto diario: un resultado por persona y día (cuenta el primer intento).
+create table if not exists public.daily_results (
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  day date not null,
+  points int not null,
+  goals int not null,
+  against int not null,
+  position int not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, day)
+);
+create index if not exists daily_results_day_idx on public.daily_results (day, points desc);
+
 -- Denuncias de nombres ofensivos. Con 3 personas distintas contra el mismo nombre, se retira solo.
 create table if not exists public.name_reports (
   reporter uuid not null references public.profiles (id) on delete cascade,
@@ -97,6 +110,7 @@ alter table public.game_players enable row level security;
 alter table public.host_ratings enable row level security;
 alter table public.season_history enable row level security;
 alter table public.name_reports enable row level security;
+alter table public.daily_results enable row level security;
 
 -- ---------------------------------------------------------------- Alta de usuario
 
@@ -533,12 +547,48 @@ begin
   return 'retirado';
 end $$;
 
+-- ---------------------------------------------------------------- Reto diario
+
+-- Guarda el resultado del reto de un día. Devuelve false si ya había uno (solo cuenta el primero).
+create or replace function public.submit_daily(p_day date, p_points int, p_goals int, p_against int, p_position int) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare
+  me uuid := auth.uid();
+  added int;
+begin
+  if me is null then raise exception 'Inicia sesión.'; end if;
+  -- Se admite el día de hoy y los vecinos (zonas horarias); los valores, dentro de lo posible.
+  if p_day < current_date - 1 or p_day > current_date + 1 then raise exception 'Ese reto ya no admite resultados.'; end if;
+  if p_points not between 0 and 80 or p_goals not between 0 and 300 or p_against not between 0 and 300 or p_position not between 1 and 8 then
+    raise exception 'Resultado no válido.';
+  end if;
+  insert into daily_results (user_id, day, points, goals, against, position) values (me, p_day, p_points, p_goals, p_against, p_position)
+  on conflict do nothing;
+  get diagnostics added = row_count;
+  return added > 0;
+end $$;
+
+-- Ranking de un día: más puntos, luego más diferencia de goles, luego quien lo envió antes.
+create or replace function public.daily_ranking(p_day date, p_limit int default 50) returns json
+language sql stable security definer set search_path = public as $$
+  select coalesce(json_agg(r), '[]'::json) from (
+    select p.username, d.points, d.goals, d.against, d.position
+      from daily_results d join profiles p on p.id = d.user_id
+     where d.day = p_day
+     order by d.points desc, (d.goals - d.against) desc, d.created_at asc
+     limit least(greatest(p_limit, 1), 100)
+  ) r
+$$;
+
 -- ---------------------------------------------------------------- Permisos
 
 revoke all on function public.apply_host_penalty(uuid), public.sweep_host(uuid), public.handle_new_user(), public.valid_crest(jsonb) from public, anon, authenticated;
 revoke all on function public.set_my_club(text, jsonb), public.save_seasons(jsonb), public.my_seasons(), public.report_name(text) from public, anon;
 grant execute on function public.set_my_club(text, jsonb), public.save_seasons(jsonb), public.my_seasons(), public.report_name(text) to authenticated;
 grant execute on function public.is_offensive(text), public.norm_word(text) to anon, authenticated;
+revoke all on function public.submit_daily(date, int, int, int, int) from public, anon;
+grant execute on function public.submit_daily(date, int, int, int, int) to authenticated;
+grant execute on function public.daily_ranking(date, int) to anon, authenticated;
 revoke all on function public.my_profile(), public.set_avatar(text), public.set_username(text), public.start_game(text, text, int, jsonb), public.join_game(uuid, int),
   public.heartbeat(uuid), public.finish_game(uuid, jsonb), public.abandon_game(uuid), public.report_abandon(uuid),
   public.rate_host(uuid, int), public.my_history(int), public.delete_my_account() from public, anon;

@@ -53,6 +53,22 @@ exception when others then
   raise notice 'ok · un nombre de club ofensivo se rechaza';
 end $$;
 
+-- Reto diario: un resultado por persona y día; el ranking ordena por puntos y diferencia de goles.
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select pg_temp.ok(submit_daily(current_date, 9, 7, 3, 1), 'se guarda el resultado del reto');
+select pg_temp.ok(not submit_daily(current_date, 12, 9, 1, 1), 'solo cuenta el primer intento');
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.ok(submit_daily(current_date, 9, 8, 2, 1), 'otra persona también envía el suyo');
+do $$ begin
+  perform submit_daily(current_date - 5, 9, 1, 1, 1);
+  raise exception 'FALLA: aceptó un reto antiguo';
+exception when others then
+  if sqlerrm like 'FALLA%' then raise; end if;
+  raise notice 'ok · un reto de hace días no admite resultados';
+end $$;
+select pg_temp.login(null);
+select pg_temp.ok((daily_ranking(current_date) -> 0 ->> 'username') = 'Luis' and json_array_length(daily_ranking(current_date)) = 2, 'el ranking del día ordena por puntos y diferencia de goles');
+
 -- Denuncias: con tres personas distintas, el nombre se retira y se pide otro.
 select pg_temp.login('00000000-0000-0000-0000-00000000000a');
 select pg_temp.ok(report_name('Goleador') = 'recibida', 'primera denuncia recibida');
