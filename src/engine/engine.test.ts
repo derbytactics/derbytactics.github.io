@@ -12,6 +12,7 @@ import {
   GameState,
   SPECIAL_CARDS,
   apply,
+  autoLineup,
   basePrice,
   botAction,
   check,
@@ -20,6 +21,7 @@ import {
   currentPlayer,
   currentRoller,
   rollsFor,
+  strengthOn,
   hasKeeper,
   lineup,
   pipsOf,
@@ -323,6 +325,69 @@ describe('partido', () => {
     s = apply(s, { type: 'nextJornada' });
     expect(s.jornada).toBe(2);
     expect(s.turnOrder).toEqual([1, 2, 0]);
+  });
+});
+
+describe('convocatoria secreta', () => {
+  const DEL68 = card('DEL', [6, 8]);
+  const DEL59 = card('DEL', [5, 9]);
+  const MED68 = card('MED', [6, 8]);
+  const DEF68 = card('DEF', [4, 6, 8]);
+  const POR = card('POR', [5, 6, 8, 9]);
+  /** Lleva una partida de personas hasta la convocatoria, con plantillas fijas. */
+  function toLineup(squads: string[][], bots: boolean[] = []): GameState {
+    let s = createGame({ players: squads.map((_, i) => ({ name: `Club ${i + 1}`, isBot: !!bots[i] })), seed: 3 });
+    s.players.forEach((p, i) => (p.squad = squads[i].map((id) => entry(id))));
+    for (let i = 0; i < 40 && s.phase === 'market'; i++) s = apply(s, { type: 'endTurn' });
+    return s;
+  }
+  it('tras el mercado se eligen titulares, cada club por su cuenta, y el partido empieza cuando están todos', () => {
+    let s = toLineup([[DEL68, MED68, DEF68, POR, DEL59, CHEAP], [POR]]);
+    expect(s.phase).toBe('lineup');
+    expect(check(s, { type: 'roll' })).toBeTruthy();
+    // El segundo club puede elegir antes que el primero: no hay turnos.
+    s = apply(s, { type: 'setLineup', playerId: 1, cardIds: [POR] });
+    expect(s.phase).toBe('lineup');
+    s = apply(s, { type: 'setLineup', playerId: 0, cardIds: [DEL68, MED68, DEF68, POR, DEL59] });
+    expect(s.phase).toBe('match');
+  });
+  it('exige 5 titulares de la propia plantilla (o todos si tiene menos)', () => {
+    const s = toLineup([[DEL68, MED68, DEF68, POR, DEL59, CHEAP], [POR, DEF68]]);
+    expect(check(s, { type: 'setLineup', playerId: 0, cardIds: [DEL68, MED68] })).toMatch(/5 titulares/);
+    expect(check(s, { type: 'setLineup', playerId: 0, cardIds: [DEL68, DEL68, MED68, DEF68, POR] })).toMatch(/repetido/);
+    expect(check(s, { type: 'setLineup', playerId: 1, cardIds: [POR, DEL68] })).toMatch(/plantilla/);
+    expect(check(s, { type: 'setLineup', playerId: 1, cardIds: [POR, DEF68] })).toBeNull();
+  });
+  it('en el partido solo cuentan los titulares, y en la jornada siguiente vuelve a contar toda la plantilla', () => {
+    let s = toLineup([[DEL68, MED68, DEF68, POR, DEL59, CHEAP], [POR]]);
+    s = apply(s, { type: 'setLineup', playerId: 1, cardIds: [POR] });
+    s = apply(s, { type: 'setLineup', playerId: 0, cardIds: [MED68, DEF68, POR, DEL59, CHEAP] });
+    // DEL68 está en el banquillo: con el 6 solo ataca el medio.
+    expect(strengthOn(s.players[0], 6, s.jornada).attack).toBe(CONFIG.roles.MED.attack);
+    s = apply(s, { type: 'playMatch' });
+    expect(s.lastMatch!.rolls.flatMap((r) => r.plays).flatMap((p) => p.cards)).not.toContain(DEL68);
+    s = apply(s, { type: 'nextJornada' });
+    expect(s.players[0].starters).toBeNull();
+    expect(strengthOn(s.players[0], 6, s.jornada).attack).toBe(CONFIG.roles.MED.attack + CONFIG.roles.DEL.attack);
+  });
+  it('quien no tiene más futbolistas que titulares no elige: juegan todos', () => {
+    const s = toLineup([[DEL68, MED68, DEF68, POR, DEL59, CHEAP], [POR, DEF68]]);
+    expect(s.players[1].starters).toEqual([POR, DEF68]);
+    expect(s.players[0].starters).toBeNull();
+    // Con todos así, ni siquiera hay convocatoria.
+    expect(toLineup([[POR], [DEF68]]).phase).toBe('match');
+  });
+  it('la IA elige sola al momento, sin ver las alineaciones rivales', () => {
+    const s = toLineup([[DEL68, MED68, DEF68, POR, DEL59, CHEAP], [DEF68]], [false, true]);
+    expect(s.phase).toBe('lineup');
+    expect(s.players[1].starters).toEqual([DEF68]);
+    expect(s.players[0].starters).toBeNull();
+  });
+  it('la alineación propuesta tapa con el portero los números con los que atacan los rivales', () => {
+    const s = toLineup([[DEL68, MED68, DEF68, POR, DEL59, CHEAP], [DEL68]]);
+    const xi = autoLineup(s, s.players[0]);
+    expect(xi).toHaveLength(5);
+    expect(xi).toContain(POR);
   });
 });
 

@@ -7,6 +7,7 @@ import { Btn, Chronicle, ExitContext, NavBar, RosterContext, useBack, Overline, 
 import { EndScreen } from './EndScreen';
 import { GameScreen } from './GameScreen';
 import { MatchScreen } from './MatchScreen';
+import { LineupScreen, LineupWaiting } from './LineupScreen';
 import { C } from './theme';
 import { ClubColorsContext, clubPalette, useClubColor } from './clubColors';
 import { I } from './icons';
@@ -80,12 +81,50 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
   const { game, seat, dispatch, online } = props;
   /** Turno que la persona ya ha confirmado tener en la mano (solo al compartir dispositivo). */
   const [handoff, setHandoff] = useState('');
+  /** Convocatoria ya enviada que se quiere cambiar (en línea). */
+  const [editLineup, setEditLineup] = useState('');
   const me = currentPlayer(game);
   const turnKey = `${game.jornada}-${game.turnIndex}`;
   const focus = seat === null ? undefined : [seat];
   const last = game.jornada >= game.totalJornadas;
 
   if (game.phase === 'finished') return <EndScreen state={game} onRestart={props.onExit} extra={props.endExtra} />;
+  if (game.phase === 'lineup') {
+    const pending = game.players.filter((p) => !p.starters);
+    const lineupKey = `lineup-${game.jornada}`;
+    const confirm = (playerId: number) => (cardIds: string[]) => dispatch({ type: 'setLineup', playerId, cardIds });
+    if (seat !== null) {
+      // En línea: cada móvil elige la suya, a la vez que los demás.
+      const mine = game.players[seat];
+      if (mine.starters && editLineup !== `${lineupKey}-${mine.starters.join()}`) {
+        return (
+          <LineupWaiting
+            state={game}
+            me={mine}
+            waitingFor={pending.map((p) => p.name)}
+            onChange={() => setEditLineup(`${lineupKey}-${mine.starters!.join()}`)}
+            onForce={online?.onBotTurn}
+          />
+        );
+      }
+      return <LineupScreen key={lineupKey} state={game} me={mine} onConfirm={(ids) => { setEditLineup(''); return confirm(seat)(ids); }} />;
+    }
+    // Un solo dispositivo: cada persona elige en secreto, pasándose el móvil.
+    const cur = pending.find((p) => !p.isBot)!;
+    const humans = game.players.filter((p) => !p.isBot).length;
+    const turn = `${lineupKey}-${cur.id}`;
+    if (humans > 1 && handoff !== turn) {
+      return (
+        <View style={{ padding: 24, flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Crest name={cur.name} color={clubColor(cur.id)} design={cur.crest} size={96} />
+          <Text style={[s.p, { marginTop: 16 }]}>Convocatoria secreta: pasa el dispositivo a</Text>
+          <Text style={[s.h1, { textAlign: 'center', marginTop: 4, marginBottom: 20 }]}>{cur.name}</Text>
+          <Btn label="Soy yo, elegir mi alineación" onPress={() => setHandoff(turn)} style={{ alignSelf: 'stretch' }} />
+        </View>
+      );
+    }
+    return <LineupScreen key={turn} state={game} me={cur} onConfirm={confirm(cur.id)} />;
+  }
   if (game.phase === 'match' || game.phase === 'summary') {
     const footer = !online ? undefined : !online.iAmReady ? (
       <Btn icon={last ? I.trophy : 'check'} label={last ? 'Listo: ver el final' : 'Listo para la siguiente jornada'} onPress={online.onReady} />

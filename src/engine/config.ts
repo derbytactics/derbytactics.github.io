@@ -11,6 +11,8 @@ export const CONFIG = {
   startingMoney: 80,
   /** Máximo de futbolistas en plantilla (fútbol 7). */
   squadSize: 7,
+  /** Titulares que salen en cada partido; el resto se queda en el banquillo. */
+  starters: 5,
   /** Como mucho un portero por club. */
   maxKeepers: 1,
   /** Como mucho dos delanteros por club: el resto del ataque lo ponen los medios. */

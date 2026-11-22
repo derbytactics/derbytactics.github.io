@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RoomState, botStep, finalSeats, hostAct, hostReady, hostReduce, kickSeat, newRoom, pendingReady, playTurnForAbsent, setLobby, startGame } from './room';
-import { isOffensive } from '../engine';
+import { FOOTBALLERS, isOffensive } from '../engine';
 
 const lobby = () => {
   let r = newRoom('AKXRT', 'host', 'Anfitrión FC');
@@ -67,7 +67,24 @@ describe('partida en línea', () => {
   });
   it('la jornada avanza cuando todas las personas están listas', () => {
     let r = started();
+    // Plantillas de 6 para que haya que elegir 5 titulares.
+    const meds = FOOTBALLERS.filter((f) => f.position === 'MED');
+    const game = structuredClone(r.game!);
+    game.players.forEach((p, i) => (p.squad = meds.slice(i * 6, i * 6 + 6).map((f) => ({ cardId: f.id, shielded: false, noClauseUntil: 99, streakUntil: 0, outUntil: 0, extra: null }))));
+    game.market = game.market.filter((id) => !game.players.some((p) => p.squad.some((e) => e.cardId === id)));
+    r = { ...r, game };
     while (r.game!.phase === 'market') r = botStep(r, true);
+    // Convocatoria: cada persona elige la suya, sin turnos; la IA ya ha elegido.
+    expect(r.game!.phase).toBe('lineup');
+    expect(r.game!.players[3].starters).toBeTruthy();
+    const pick = (seat: number) => r.game!.players[seat].squad.slice(0, Math.min(5, r.game!.players[seat].squad.length)).map((e) => e.cardId);
+    // Nadie elige por otro.
+    expect(hostReduce(r, { t: 'act', clientId: 'ana', seq: r.seq, action: { type: 'setLineup', playerId: 2, cardIds: pick(2) } })).toBe(r);
+    r = hostReduce(r, { t: 'act', clientId: 'luis', seq: r.seq, action: { type: 'setLineup', playerId: 2, cardIds: pick(2) } });
+    r = hostAct(r, { type: 'setLineup', playerId: 0, cardIds: pick(0) }).room;
+    expect(r.game!.phase).toBe('lineup');
+    r = hostReduce(r, { t: 'act', clientId: 'ana', seq: r.seq, action: { type: 'setLineup', playerId: 1, cardIds: pick(1) } });
+    expect(r.game!.phase).toBe('match');
     // Solo tira los dados el club al que le toca.
     const first = r.game!.match!.rollers[0];
     const wrong = ['host', 'ana', 'luis'][(first + 1) % 3];

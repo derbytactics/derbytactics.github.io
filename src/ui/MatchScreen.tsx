@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, Text, View } from 'react-native';
-import { GameState, MatchResult, RollReport, currentRoller, penaltiesOf, standings, ticketPerGoal, words } from '../engine';
+import { GameState, MatchResult, Player, RollReport, currentRoller, footballer, penaltiesOf, standings, ticketPerGoal, words } from '../engine';
 import { Avatar, Crest, Die } from './art';
 import { NumberLine, SpecialCardFace } from './GameScreen';
 import { Btn, FootballerCard, Overline, PhaseStepper, Pop, RosterContext, StandingsTable, s } from './components';
@@ -422,6 +422,7 @@ export function MatchScreen(props: {
                 </Text>
               </View>
             ))}
+            <Lineups state={state} highlight={(id) => isMine(id)} />
             {state.players.filter((p) => isMine(p.id)).map((p) => (
               <View key={p.id} style={[s.panel, { borderColor: clubColor(p.id) + '88' }]}>
                 <View style={[s.row, { marginBottom: 8 }]}>
@@ -601,6 +602,32 @@ function Acta({ state, rolls, rollers }: { state: GameState; rolls: RollReport[]
           </View>
         ))}
       </View>
+    </View>
+  );
+}
+
+/** Alineaciones descubiertas al pitido inicial: los titulares de cada club por posición. */
+function Lineups({ state, highlight }: { state: GameState; highlight: (id: number) => boolean }) {
+  const clubColor = useClubColor();
+  const roster = React.useContext(RosterContext) ?? state.roster;
+  const order = { POR: 0, DEF: 1, MED: 2, DEL: 3 } as const;
+  const surname = (id: string) => (roster?.[id]?.name ?? footballer(id).name).split(' ').slice(-1)[0];
+  const lineupOf = (p: Player) => [...(p.starters ?? p.squad.map((e) => e.cardId))].sort((a, b) => order[footballer(a).position] - order[footballer(b).position]);
+  if (!state.players.some((p) => p.starters)) return null;
+  return (
+    <View style={s.panel}>
+      <Overline>ALINEACIONES</Overline>
+      {state.players.map((p) => (
+        <View key={p.id} style={[s.row, { marginTop: 8, alignItems: 'flex-start' }]}>
+          <Crest name={p.name} color={clubColor(p.id)} design={p.crest} size={22} />
+          <View style={{ flex: 1, marginLeft: 8 }}>
+            <Text numberOfLines={1} style={{ color: highlight(p.id) ? C.accent : C.text, fontWeight: '800' }}>{p.name}</Text>
+            <Text style={{ color: C.dim, fontSize: 12, marginTop: 1 }}>
+              {lineupOf(p).length ? lineupOf(p).map((id) => `${footballer(id).position} ${surname(id)}`).join(' · ') : 'Sin futbolistas'}
+            </Text>
+          </View>
+        </View>
+      ))}
     </View>
   );
 }

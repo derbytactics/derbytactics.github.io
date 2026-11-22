@@ -51,6 +51,11 @@ export interface Player {
   penalties?: { jornada: number; rival: number }[];
   /** Escudo del club (las partidas antiguas no lo tienen). */
   crest?: CrestDesign;
+  /**
+   * Titulares de la jornada (convocatoria secreta). Se eligen tras el mercado y se borran al empezar
+   * la jornada siguiente; sin ellos (mercado, partidas antiguas) cuenta toda la plantilla.
+   */
+  starters?: string[] | null;
 }
 
 /** Una jugada de ataque: un club con atacantes en el número que ha salido. */
@@ -122,7 +127,8 @@ export interface MatchProgress {
   rollers: number[];
 }
 
-export type Phase = 'market' | 'match' | 'summary' | 'finished';
+/** 'lineup': tras el mercado, cada club elige sus titulares en secreto y a la vez. */
+export type Phase = 'market' | 'lineup' | 'match' | 'summary' | 'finished';
 
 export interface TurnFlags {
   signed: boolean;
@@ -176,6 +182,8 @@ export type Action =
   | { type: 'playCard'; handIndex: number; targetPlayerId?: number; targetCardId?: string }
   | { type: 'discardCard'; handIndex: number }
   | { type: 'endTurn' }
+  /** Convocatoria: los titulares de un club para el partido. La manda cada club, sin turnos. */
+  | { type: 'setLineup'; playerId: number; cardIds: string[] }
   /** Una tirada de dados del partido. */
   | { type: 'roll' }
   /** Juega de golpe todas las tiradas que queden (simulador y pruebas). */
@@ -281,15 +289,26 @@ export function powerOf(entry: SquadEntry, jornada: number): { attack: number; d
   return { attack: Math.max(0, role.attack * k - minus), defense: Math.max(0, role.defense * k - minus) };
 }
 
-/** Ataque y defensa de un club con un número concreto. */
+/** Futbolistas que juegan el partido: los titulares si ya los ha elegido; si no, toda la plantilla. */
+export function fielded(player: Player): SquadEntry[] {
+  const starters = player.starters;
+  return starters ? player.squad.filter((e) => starters.includes(e.cardId)) : player.squad;
+}
+
+/** Ataque y defensa de un club con un número concreto (solo cuentan los que juegan). */
 export function strengthOn(player: Player, n: number, jornada: number) {
+  return strengthOfEntries(fielded(player), n, jornada);
+}
+
+/** Ataque y defensa de un grupo de futbolistas con un número concreto. */
+export function strengthOfEntries(entries: SquadEntry[], n: number, jornada: number) {
   let attack = 0;
   let defense = 0;
   let keeper = false;
   let defender = false;
   let midfield = false;
   const attackers: string[] = [];
-  for (const e of player.squad) {
+  for (const e of entries) {
     if (!activeNumbers(e, jornada).includes(n)) continue;
     const pw = powerOf(e, jornada);
     if (pw.attack > 0) attackers.push(e.cardId);
@@ -388,6 +407,7 @@ function findEntry(player: Player, cardId: string): SquadEntry | undefined {
 
 /** Devuelve null si la acción es legal, o el motivo por el que no lo es. */
 export function check(state: GameState, action: Action): string | null {
+  if (action.type === 'setLineup') return checkLineup(state, action);
   if (action.type === 'playMatch' || action.type === 'roll') return state.phase === 'match' ? null : 'No es momento de jugar el partido.';
   if (action.type === 'nextJornada') return state.phase === 'summary' ? null : 'La jornada no ha terminado.';
   const me = currentPlayer(state);
@@ -491,6 +511,11 @@ export function apply(prev: GameState, action: Action): GameState {
   if (action.type === 'roll') return rollOnce(state);
   if (action.type === 'playMatch') return playMatch(state);
   if (action.type === 'nextJornada') return startNextJornada(state);
+  if (action.type === 'setLineup') {
+    state.players[action.playerId].starters = [...action.cardIds];
+    beginMatchIfReady(state);
+    return state;
+  }
 
   const me = currentPlayer(state)!;
   const J = state.jornada;
@@ -564,9 +589,8 @@ export function apply(prev: GameState, action: Action): GameState {
       state.turn = freshTurn();
       state.turnIndex += 1;
       if (state.turnIndex >= state.turnOrder.length) {
-        state.phase = 'match';
-        startMatch(state);
         state.turnIndex = 0;
+        startLineup(state);
       }
       break;
     }
@@ -691,6 +715,90 @@ export function rollsFor(players: number): number {
 export function currentRoller(state: GameState): number | null {
   const m = state.match;
   return state.phase === 'match' && m ? m.rollers[m.rolls.length] ?? null : null;
+}
+
+// ---------------------------------------------------------------- Convocatoria
+
+/** Cuántos titulares tiene que elegir un club (5, o menos si no tiene tantos futbolistas). */
+export const startersNeeded = (player: Player) => Math.min(CONFIG.starters, player.squad.length);
+
+function checkLineup(state: GameState, action: Extract<Action, { type: 'setLineup' }>): string | null {
+  if (state.phase !== 'lineup') return 'No es momento de elegir la alineación.';
+  const p = state.players[action.playerId];
+  if (!p) return 'Ese club no existe.';
+  const need = startersNeeded(p);
+  const ids = new Set(action.cardIds);
+  if (ids.size !== action.cardIds.length) return 'Has repetido un futbolista.';
+  if (action.cardIds.some((id) => !p.squad.some((e) => e.cardId === id))) return 'Ese futbolista no es de tu plantilla.';
+  if (action.cardIds.length !== need) return `Elige ${need} titular${need === 1 ? '' : 'es'}.`;
+  return null;
+}
+
+/**
+ * Alineación que propone la app (y la que usa la IA): de todas las combinaciones posibles, la que
+ * más goles da y menos encaja contra las plantillas completas de los rivales, cuyas alineaciones no
+ * se conocen. Evita a los que no pueden jugar.
+ */
+export function autoLineup(state: GameState, player: Player): string[] {
+  const need = startersNeeded(player);
+  const J = state.jornada;
+  const pool = player.squad;
+  const rivals = state.players.filter((r) => r.id !== player.id);
+  const nums = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
+  const rivalStrength = new Map(nums.map((n) => [n, rivals.map((r) => strengthOfEntries(r.squad, n, J))]));
+  let best: SquadEntry[] = pool.slice(0, need);
+  let bestScore = -Infinity;
+  const pick = (from: number, chosen: SquadEntry[]) => {
+    if (chosen.length === need) {
+      let score = 0;
+      for (const n of nums) {
+        const w = 6 - Math.abs(7 - n);
+        const mine = strengthOfEntries(chosen, n, J);
+        for (const theirs of rivalStrength.get(n)!) {
+          if (mine.attack > theirs.defense) score += w;
+          if (theirs.attack > mine.defense) score -= w;
+        }
+      }
+      // A igualdad, mejor con más fuerza total en el campo (y así no se deja fuera a nadie útil por nada).
+      score += 0.001 * chosen.reduce((t, e) => t + powerOf(e, J).attack + powerOf(e, J).defense, 0);
+      if (score > bestScore) {
+        bestScore = score;
+        best = [...chosen];
+      }
+      return;
+    }
+    for (let i = from; i <= pool.length - (need - chosen.length); i++) pick(i + 1, [...chosen, pool[i]]);
+  };
+  pick(0, []);
+  return best.map((e) => e.cardId);
+}
+
+/** Tras el mercado: convocatoria. La IA elige al momento; las personas, cada una en su móvil. */
+function startLineup(state: GameState) {
+  state.phase = 'lineup';
+  for (const p of state.players) p.starters = null;
+  fillBotLineups(state);
+}
+
+/**
+ * La IA elige los titulares de los clubes que lleva; quien no tiene más futbolistas que titulares no
+ * tiene nada que elegir y juegan todos. Si ya están todos, empieza el partido.
+ */
+export function fillBotLineups(state: GameState) {
+  if (state.phase !== 'lineup') return;
+  for (const p of state.players) {
+    if (p.starters) continue;
+    if (p.isBot) p.starters = autoLineup(state, p);
+    else if (p.squad.length <= CONFIG.starters) p.starters = p.squad.map((e) => e.cardId);
+  }
+  beginMatchIfReady(state);
+}
+
+function beginMatchIfReady(state: GameState) {
+  if (state.phase !== 'lineup' || state.players.some((p) => !p.starters)) return;
+  state.phase = 'match';
+  say(state, `Jornada ${state.jornada}: salen las alineaciones.`);
+  startMatch(state);
 }
 
 function startMatch(state: GameState) {
@@ -824,6 +932,7 @@ function startNextJornada(state: GameState): GameState {
   }
   state.jornada += 1;
   state.phase = 'market';
+  for (const p of state.players) p.starters = null;
   state.turn = freshTurn();
   state.turnIndex = 0;
   // El colista abre el mercado; el líder elige el último.

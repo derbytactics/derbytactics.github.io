@@ -16,6 +16,7 @@ Tu club acaba de ascender y la directiva te ha dado 80 millones y una temporada 
 
 - Como máximo **7 futbolistas**, con **un solo portero** y **dos delanteros como mucho**.
 - El resto, con la táctica que quieras: 1-2-2-2, 1-3-1-2, 1-1-3-2… Puedes incluso jugar sin portero, pero lo pagarás.
+- **En cada partido juegan 5 titulares**; los otros se quedan en el banquillo (ver «Convocatoria»). Tener 7 no es «más es mejor»: es tener opciones según el rival.
 
 ## Los números
 
@@ -95,11 +96,17 @@ Por turnos, **empezando por el colista** y terminando por el líder. En tu turno
 
 Al empezar cada jornada, el futbolista más antiguo del mercado se retira y entra uno nuevo.
 
-### 2. Partido
+### 2. Convocatoria secreta
+
+Al cerrar el mercado, **todos los clubes eligen a la vez y en secreto sus 5 titulares** (o todos, si tienen 5 o menos). Las plantillas de los rivales son públicas, pero no sabes a quién van a sacar: ¿tapas el número con el que te atacan o te la juegas con otro delantero? La app propone una alineación, que puedes aceptar tal cual. Las alineaciones se descubren al pitido inicial, y en el partido **solo cuentan los titulares**.
+
+En un solo dispositivo con varias personas, cada una elige pasándose el móvil. En línea, cada una en el suyo. La IA elige sin ver las alineaciones de nadie.
+
+### 3. Partido
 
 Una tirada por club, por turnos. Tras cada tirada se cuenta lo que te afecta, noticia a noticia. Después aparece el botón para tirar (los dados de la IA también se tiran con ese botón) y el árbitro da 5 segundos: si nadie lo pulsa, ordena seguir. El acta recoge todas las jugadas, también las que no te afectan.
 
-### 3. Recuento y reparto
+### 4. Recuento y reparto
 
 Cada club suma sus **goles a favor** (uno por cada rival al que marca) y **en contra**. La jornada se ordena por **diferencia de goles** y, en caso de empate, por goles a favor.
 

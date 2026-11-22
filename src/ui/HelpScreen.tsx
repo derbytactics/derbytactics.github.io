@@ -28,7 +28,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Step
         n={1}
         title="Monta tu equipo"
-        text={`Caben ${CONFIG.squadSize} futbolistas, con un portero y dos delanteros como mucho; el resto, con la táctica que quieras. Cada uno actúa cuando sale uno de sus números (el 6 y el 8 son los que más salen). Un fichaje por turno.`}
+        text={`Caben ${CONFIG.squadSize} futbolistas, con un portero y dos delanteros como mucho; el resto, con la táctica que quieras. Cada uno actúa cuando sale uno de sus números (el 6 y el 8 son los que más salen). Un fichaje por turno. Antes de cada partido eliges en secreto ${CONFIG.starters} titulares: el resto se queda en el banquillo.`}
         art={
           <View style={{ alignItems: 'center' }}>
             <Avatar seed="f1" size={50} jersey="#E5484D" ring={C.accent} />

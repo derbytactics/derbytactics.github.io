@@ -50,6 +50,7 @@ Con esta muestra, diferencias de ±0,13 son ruido. Entre las cuatro tácticas ju
 | Caja inicial de 80M y taquilla 2/3/4/6/8 | Con 60M las plantillas acababan con menos de 6 de 7 futbolistas. |
 | Taquilla por jugada de gol, no por rival batido | Si no, con 8 clubes un gol llenaba el estadio siete veces. |
 | Una tirada por club y jornada | Cada persona tira sus dados. Con un 7, quien tira roba carta. |
+| Convocatoria secreta de 5 titulares (versión 1.0.1) | Añade una decisión antes de cada partido. Apenas cambia el equilibrio (unos 2 % menos de goles y 1-3 puntos menos de jugadas paradas), pero la decisión pesa: con 2 clubes, quien alinea con cabeza gana el 56 % de las partidas, quien alinea al azar el 38 % y quien deja fuera a los mejores el 31 % (con 4 clubes: 29 %, 17 % y 13 %; lo justo es 50 % y 25 %). |
 
 ## Problemas conocidos
 

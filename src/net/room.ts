@@ -3,7 +3,7 @@
  * Los invitados mandan mensajes; el anfitrión los valida, aplica la acción
  * con el motor y difunde el estado completo de la sala.
  */
-import { Action, BOT_STYLES, CONFIG, CrestDesign, GameState, League, SeasonLength, apply, botAction, check, createGame, currentRoller, isOffensive, makeRand, randomClubName, sanitizeCrest } from '../engine';
+import { Action, BOT_STYLES, CONFIG, CrestDesign, GameState, League, SeasonLength, apply, autoLineup, botAction, check, createGame, currentRoller, fillBotLineups, isOffensive, makeRand, randomClubName, sanitizeCrest } from '../engine';
 
 export interface Seat {
   name: string;
@@ -92,6 +92,8 @@ export function hostReduce(room: RoomState, msg: ClientMsg): RoomState {
       // Con la partida empezada, su club pasa a la IA.
       const game = structuredClone(room.game);
       game.players[seat].isBot = true;
+      // Si se va durante la convocatoria, la IA elige su alineación.
+      fillBotLineups(game);
       return advanceIfAllReady(bump(room, { game, seats: room.seats.map((s, i) => (i === seat ? { ...s, clientId: null } : s)) }));
     }
     case 'act': {
@@ -99,8 +101,9 @@ export function hostReduce(room: RoomState, msg: ClientMsg): RoomState {
       if (!g || seat < 0 || msg.seq !== room.seq) return room;
       const a = msg.action;
       if (a.type === 'nextJornada' || a.type === 'playMatch') return room;
-      // En el partido solo tira los dados el club al que le toca; en el mercado, solo juega el del turno.
-      if (a.type === 'roll' ? currentRoller(g) !== seat : g.phase !== 'market' || g.turnOrder[g.turnIndex] !== seat) return room;
+      // En el partido solo tira los dados el club al que le toca; en el mercado, solo juega el del turno;
+      // en la convocatoria, cada uno elige la suya cuando quiera.
+      if (a.type === 'setLineup' ? a.playerId !== seat : a.type === 'roll' ? currentRoller(g) !== seat : g.phase !== 'market' || g.turnOrder[g.turnIndex] !== seat) return room;
       if (check(g, a)) return room;
       return bump(room, { game: apply(g, a) });
     }
@@ -152,6 +155,8 @@ export function hostAct(room: RoomState, action: Action): { room: RoomState; err
     // El anfitrión tira por su club y por los que lleva la IA.
     const roller = currentRoller(g);
     if (roller === null || (roller !== 0 && !g.players[roller].isBot)) return { room, error: 'No te toca tirar los dados.' };
+  } else if (action.type === 'setLineup') {
+    if (action.playerId !== 0) return { room, error: 'Solo eliges tu alineación.' };
   } else if (action.type !== 'nextJornada' && (g.phase !== 'market' || g.turnOrder[g.turnIndex] !== 0)) {
     return { room, error: 'No es tu turno.' };
   }
@@ -175,6 +180,13 @@ export function botStep(room: RoomState, force = false): RoomState {
     if (roller === null || (!g.players[roller].isBot && !force)) return room;
     return bump(room, { game: apply(g, { type: 'roll' }) });
   }
+  if (g.phase === 'lineup') {
+    // La IA elige ya en el motor; con `force`, también por quien no responde.
+    if (!force) return room;
+    let game = g;
+    for (const p of g.players) if (!p.starters && game.phase === 'lineup') game = apply(game, { type: 'setLineup', playerId: p.id, cardIds: autoLineup(game, p) });
+    return game === g ? room : bump(room, { game });
+  }
   if (g.phase !== 'market') return room;
   const cur = g.turnOrder[g.turnIndex];
   if (!g.players[cur].isBot && !force) return room;
@@ -184,7 +196,7 @@ export function botStep(room: RoomState, force = false): RoomState {
 /** La IA termina el turno entero del club al que le toca (para cuando alguien se ha ido). */
 export function playTurnForAbsent(room: RoomState): RoomState {
   const g = room.game;
-  if (g?.phase === 'match') return botStep(room, true);
+  if (g?.phase === 'match' || g?.phase === 'lineup') return botStep(room, true);
   if (!g || g.phase !== 'market') return room;
   const turn = g.turnIndex;
   let r = room;
