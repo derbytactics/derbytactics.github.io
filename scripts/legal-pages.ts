@@ -36,7 +36,7 @@ const page = (title: string, sections: LegalSection[]) => `<!doctype html>
 <p class="meta">DerbyTactics · Última actualización: ${esc(LEGAL.updated)}</p>
 ${legalReady() ? '' : '<p class="draft">Borrador: faltan los datos del titular y del contacto.</p>'}
 ${sections.map((s) => `<h2>${esc(s.title)}</h2>\n${s.body.map((p) => `<p>${esc(p)}</p>`).join('\n')}`).join('\n')}
-<nav><a href="privacidad.html">Privacidad</a> · <a href="condiciones.html">Condiciones</a> · <a href="borrar-cuenta.html">Borrar tu cuenta</a> · <a href="./">Jugar</a></nav>
+<nav><a href="soporte.html">Soporte</a> · <a href="privacidad.html">Privacidad</a> · <a href="condiciones.html">Condiciones</a> · <a href="borrar-cuenta.html">Borrar tu cuenta</a> · <a href="./">Jugar</a></nav>
 </main></body>
 </html>
 `;
@@ -62,6 +62,21 @@ const deletion: LegalSection[] = [
   },
 ];
 
+const support: LegalSection[] = [
+  { title: 'Contacto', body: [`¿Un problema, una duda o una idea? Escribe a ${contact}. Respondemos en español.`] },
+  {
+    title: 'Preguntas frecuentes',
+    body: [
+      '¿Necesito cuenta para jugar? No. Como invitado puedes jugar en un dispositivo contra la IA y unirte a la sala de un amigo. La cuenta (con Google o Apple) sirve para crear salas, guardar tu club e historial y aparecer en el ranking.',
+      '¿Cómo juego con amigos? Uno crea una sala en «En línea» y comparte el código o el enlace; los demás lo escriben en «En línea» o abren el enlace. Cada uno juega desde su móvil.',
+      '¿Se paga algo? No. Los millones del juego son ficticios y no se compran con dinero real.',
+      '¿Cómo borro mi cuenta? Abre el menú (☰), entra en «Mi cuenta» y pulsa «Borrar mi cuenta». Más detalles en la página de borrado de cuenta.',
+      '¿Alguien usa un nombre ofensivo? En el ranking, toca su nombre y pulsa «Denunciar». Si eres anfitrión, puedes expulsar a un invitado de la sala de espera.',
+    ],
+  },
+];
+
+writeFileSync(join(out, 'soporte.html'), page('Soporte', support));
 writeFileSync(join(out, 'privacidad.html'), page('Política de privacidad', privacy()));
 writeFileSync(join(out, 'condiciones.html'), page('Condiciones de uso', terms()));
 writeFileSync(join(out, 'borrar-cuenta.html'), page('Borrar tu cuenta', deletion));

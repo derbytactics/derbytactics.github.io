@@ -127,14 +127,17 @@ export default function App() {
     };
   }, []);
   const overlays = useRef<{ open: boolean; close: () => void }[]>([]);
-  overlays.current = [
-    { open: menuOpen, close: () => setMenuOpen(false) },
-    { open: !!legal, close: () => setLegal(null) },
-    { open: help, close: () => setHelp(false) },
-    { open: historyOpen, close: () => setHistoryOpen(false) },
-    { open: clubOpen, close: () => setClubOpen(false) },
-    { open: accountOpen, close: () => setAccountOpen(false) },
-  ];
+  // Ventanas superpuestas, de arriba abajo; la referencia se actualiza tras cada render para el botón «atrás».
+  useLayoutEffect(() => {
+    overlays.current = [
+      { open: menuOpen, close: () => setMenuOpen(false) },
+      { open: !!legal, close: () => setLegal(null) },
+      { open: help, close: () => setHelp(false) },
+      { open: historyOpen, close: () => setHistoryOpen(false) },
+      { open: clubOpen, close: () => setClubOpen(false) },
+      { open: accountOpen, close: () => setAccountOpen(false) },
+    ];
+  });
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       const top = overlays.current.find((o) => o.open);
