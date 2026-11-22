@@ -104,7 +104,7 @@ export function hostReduce(room: RoomState, msg: ClientMsg): RoomState {
       if (a.type === 'nextJornada' || a.type === 'playMatch') return room;
       // En el partido solo tira los dados el club al que le toca; en el mercado, solo juega el del turno;
       // en la convocatoria, cada uno elige la suya cuando quiera.
-      const ownAction = a.type === 'setLineup' || a.type === 'matchCard' || a.type === 'react';
+      const ownAction = a.type === 'setLineup' || a.type === 'matchCard' || a.type === 'react' || a.type === 'substitute';
       if (ownAction ? a.playerId !== seat : a.type === 'roll' ? currentRoller(g) !== seat : g.phase !== 'market' || g.turnOrder[g.turnIndex] !== seat) return room;
       if (check(g, a)) return room;
       return bump(room, { game: apply(g, a) });
@@ -157,7 +157,7 @@ export function hostAct(room: RoomState, action: Action): { room: RoomState; err
     // El anfitrión tira por su club y por los que lleva la IA.
     const roller = currentRoller(g);
     if (roller === null || (roller !== 0 && !g.players[roller].isBot)) return { room, error: 'No te toca tirar los dados.' };
-  } else if (action.type === 'setLineup' || action.type === 'matchCard' || action.type === 'react') {
+  } else if (action.type === 'setLineup' || action.type === 'matchCard' || action.type === 'react' || action.type === 'substitute') {
     if (action.playerId !== 0) return { room, error: 'Solo juegas por tu club.' };
   } else if (action.type !== 'nextJornada' && (g.phase !== 'market' || g.turnOrder[g.turnIndex] !== 0)) {
     return { room, error: 'No es tu turno.' };

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, Text, View } from 'react-native';
-import { Action, CONFIG, GameState, MatchCardEvent, MatchResult, Player, ReactionOffer, RollReport, SPECIAL_INFO, cardName, currentRoller, fielded, footballer, isOut, penaltiesOf, specialCard, standings, ticketPerGoal, words } from '../engine';
+import { Action, CONFIG, GameState, MatchCardEvent, MatchResult, Player, ReactionOffer, RollReport, SPECIAL_INFO, cardName, currentRoller, fielded, footballer, isOut, penaltiesOf, specialCard, standings, substitution, ticketPerGoal, words } from '../engine';
 import { PACES, PACE_FACTOR, getPace, setPace, usePace } from './pace';
 import { CARD_TYPE } from './cardTypes';
 import { Avatar, Crest, Die } from './art';
@@ -558,6 +558,7 @@ export function MatchScreen(props: {
           />
         ) : null}
 
+        {live && viewer !== null && props.act ? <SubstitutionPanel state={state} me={state.players[viewer]} act={props.act} /> : null}
         {live && viewer !== null && props.act ? <MatchHand state={state} me={state.players[viewer]} act={props.act} /> : null}
 
         {/* Tus números y tus cartas, siempre a mano durante el partido. */}
@@ -832,5 +833,31 @@ function MatchHand({ state, me, act }: { state: GameState; me: Player; act: (a: 
         ))}
       </View>
     </View>
+  );
+}
+
+/** Cambio: si te han expulsado o lesionado a un titular y tienes suplentes, eliges quién entra. */
+function SubstitutionPanel({ state, me, act }: { state: GameState; me: Player; act: (a: Action) => string | null }) {
+  const sub = substitution(state, me);
+  if (!sub) return null;
+  const out = sub.out[0];
+  return (
+    <Pop style={{ alignSelf: 'stretch' }}>
+      <View style={[s.panel, { borderColor: C.accent }]}>
+        <View style={[s.row, { marginBottom: 6 }]}>
+          <Icon name="swap-vertical-bold" size={18} color={C.accent} style={{ marginRight: 6 }} />
+          <Overline>CAMBIO</Overline>
+        </View>
+        <Text style={{ color: C.text, fontWeight: '800' }}>
+          {cardName(state, out.cardId)} no puede seguir. ¿Quién entra?
+        </Text>
+        <Text style={[s.p, { marginTop: 2, marginBottom: 8 }]}>Un cambio por partido. Juega desde la siguiente tirada.</Text>
+        <View style={[s.row, { flexWrap: 'wrap', gap: 6 }]}>
+          {sub.bench.map((e) => (
+            <Btn key={e.cardId} small label={`${footballer(e.cardId).position} ${cardName(state, e.cardId)}`} onPress={() => act({ type: 'substitute', playerId: me.id, outCardId: out.cardId, inCardId: e.cardId })} />
+          ))}
+        </View>
+      </View>
+    </Pop>
   );
 }

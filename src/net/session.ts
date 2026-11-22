@@ -240,7 +240,7 @@ export class GuestSession {
     if (!room?.game) return 'La partida no ha empezado.';
     if (this.pending) return 'Enviando tu jugada anterior… espera un momento.';
     const g = room.game;
-    const mine = action.type === 'setLineup' || action.type === 'matchCard' || action.type === 'react' ? action.playerId === this.seat : action.type === 'roll' ? currentRoller(g) === this.seat : g.phase === 'market' && g.turnOrder[g.turnIndex] === this.seat;
+    const mine = action.type === 'setLineup' || action.type === 'matchCard' || action.type === 'react' || action.type === 'substitute' ? action.playerId === this.seat : action.type === 'roll' ? currentRoller(g) === this.seat : g.phase === 'market' && g.turnOrder[g.turnIndex] === this.seat;
     if (!mine) return 'No es tu turno.';
     const error = check(g, action);
     if (!error) this.sendReliable({ t: 'act', clientId: this.clientId, seq: room.seq, action }, room.seq);

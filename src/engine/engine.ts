@@ -57,6 +57,8 @@ export interface Player {
    * la jornada siguiente; sin ellos (mercado, partidas antiguas) cuenta toda la plantilla.
    */
   starters?: string[] | null;
+  /** Jornada en la que ya hizo su cambio (uno por partido). */
+  subbedJornada?: number;
 }
 
 /** Una jugada de ataque: un club con atacantes en el número que ha salido. */
@@ -230,6 +232,8 @@ export type Action =
   | { type: 'matchCard'; playerId: number; handIndex: number; targetPlayerId?: number; targetCardId?: string }
   /** Respuesta a la primera ocasión de giro pendiente: jugar la carta o dejar seguir. */
   | { type: 'react'; playerId: number; use: boolean }
+  /** Cambio: un suplente entra por un titular expulsado o lesionado (uno por partido). */
+  | { type: 'substitute'; playerId: number; outCardId: string; inCardId: string }
   /** Juega de golpe todas las tiradas que queden (simulador y pruebas). */
   | { type: 'playMatch' }
   | { type: 'nextJornada' };
@@ -455,6 +459,7 @@ function findEntry(player: Player, cardId: string): SquadEntry | undefined {
 export function check(state: GameState, action: Action): string | null {
   if (action.type === 'setLineup') return checkLineup(state, action);
   if (action.type === 'matchCard') return checkMatchCard(state, action);
+  if (action.type === 'substitute') return checkSubstitute(state, action);
   if (action.type === 'react') {
     const head = state.match?.pending?.[0];
     return state.phase === 'match' && head && head.playerId === action.playerId ? null : 'No hay ninguna jugada esperando tu respuesta.';
@@ -575,6 +580,10 @@ export function apply(prev: GameState, action: Action): GameState {
   }
   if (action.type === 'react') {
     react(state, action.use);
+    return state;
+  }
+  if (action.type === 'substitute') {
+    substitute(state, action.playerId, action.outCardId, action.inCardId);
     return state;
   }
 
@@ -997,6 +1006,48 @@ function checkMatchCard(state: GameState, action: Extract<Action, { type: 'match
   return null;
 }
 
+// ---------------------------------------------------------------- Cambios
+
+/** Titulares que ya no pueden seguir (expulsados o lesionados) y suplentes disponibles para entrar. */
+export function substitution(state: GameState, player: Player): { out: SquadEntry[]; bench: SquadEntry[] } | null {
+  const J = state.jornada;
+  if (state.phase !== 'match' || !state.match || !player.starters || player.subbedJornada === J) return null;
+  if (state.match.rolls.length >= state.match.rollers.length) return null;
+  const out = fielded(player).filter((e) => isOut(e, J));
+  const bench = player.squad.filter((e) => !player.starters!.includes(e.cardId) && !isOut(e, J));
+  return out.length && bench.length ? { out, bench } : null;
+}
+
+function checkSubstitute(state: GameState, action: Extract<Action, { type: 'substitute' }>): string | null {
+  const p = state.players[action.playerId];
+  if (!p) return 'Ese club no existe.';
+  const sub = substitution(state, p);
+  if (!sub) return 'Ahora no puedes hacer ningún cambio.';
+  if (!sub.out.some((e) => e.cardId === action.outCardId)) return 'Solo puede salir un titular expulsado o lesionado.';
+  if (!sub.bench.some((e) => e.cardId === action.inCardId)) return 'Ese futbolista no está disponible en el banquillo.';
+  return null;
+}
+
+function substitute(state: GameState, playerId: number, outCardId: string, inCardId: string) {
+  const p = state.players[playerId];
+  p.starters = p.starters!.map((id) => (id === outCardId ? inCardId : id));
+  p.subbedJornada = state.jornada;
+  say(state, `Cambio en ${p.name}: entra ${cardName(state, inCardId)} por ${cardName(state, outCardId)}.`);
+}
+
+/** La IA hace su cambio en cuanto puede, con el suplente que deja mejor alineación. */
+function botSubstitutions(state: GameState) {
+  for (const p of state.players) {
+    if (!p.isBot) continue;
+    const sub = substitution(state, p);
+    if (!sub) continue;
+    const keep = p.starters!.filter((id) => id !== sub.out[0].cardId);
+    // De los posibles, el que elegiría la alineación propuesta con los que siguen en el campo.
+    const best = autoLineup(state, { ...p, squad: p.squad.filter((e) => keep.includes(e.cardId) || sub.bench.includes(e)) }).find((id) => !keep.includes(id)) ?? sub.bench[0].cardId;
+    substitute(state, p.id, sub.out[0].cardId, best);
+  }
+}
+
 function playMatchCard(state: GameState, action: Extract<Action, { type: 'matchCard' }>) {
   const S = CONFIG.special;
   const J = state.jornada;
@@ -1044,6 +1095,7 @@ function playMatchCard(state: GameState, action: Extract<Action, { type: 'matchC
       say(state, `¡Penalti a favor de ${me.name}! Gol a ${rival.name}.`, [rival.id]);
       break;
   }
+  botSubstitutions(state);
 }
 
 /** La IA lanza sus cartas de partido al empezar: penalti al líder y tarjetas al titular rival más peligroso. */

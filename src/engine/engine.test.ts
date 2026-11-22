@@ -324,6 +324,29 @@ describe('partido', () => {
     s = apply(s, { type: 'matchCard', playerId: 1, handIndex: 0, targetPlayerId: 0, targetCardId: MED68 });
     expect(check(s, { type: 'matchCard', playerId: 1, handIndex: 0, targetPlayerId: 0 })).toMatch(/Máximo/);
   });
+  it('si te expulsan a un titular, puedes meter a un suplente (uno por partido)', () => {
+    let s = give(give(newGame(2), 0, 'roja-1'), 0, 'lesion-1');
+    s.players[1].squad = [entry(DEL68), entry(MED68), entry(POR), entry(DEF68)];
+    s.players[1].starters = [DEL68, MED68];
+    s = inMatch(s);
+    expect(check(s, { type: 'substitute', playerId: 1, outCardId: DEL68, inCardId: POR })).toMatch(/ningún cambio/);
+    s = apply(s, { type: 'matchCard', playerId: 0, handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 });
+    expect(check(s, { type: 'substitute', playerId: 1, outCardId: MED68, inCardId: POR })).toMatch(/expulsado o lesionado/);
+    s = apply(s, { type: 'substitute', playerId: 1, outCardId: DEL68, inCardId: POR });
+    expect(s.players[1].starters).toEqual([POR, MED68]);
+    // Un segundo titular fuera ya no tiene cambio.
+    s = apply(s, { type: 'matchCard', playerId: 0, handIndex: 0, targetPlayerId: 1, targetCardId: MED68 });
+    expect(check(s, { type: 'substitute', playerId: 1, outCardId: MED68, inCardId: DEF68 })).toMatch(/ningún cambio/);
+  });
+  it('la IA hace su cambio sola', () => {
+    let s = give(newGame(2), 0, 'roja-1');
+    s.players[1].isBot = true;
+    s.players[1].squad = [entry(DEL68), entry(MED68), entry(card('DEL', [5, 9]))];
+    s.players[1].starters = [DEL68, MED68];
+    s = inMatch(s);
+    s = apply(s, { type: 'matchCard', playerId: 0, handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 });
+    expect(s.players[1].starters).toEqual([card('DEL', [5, 9]), MED68]);
+  });
   it('salvada in extremis: anula el gol que te iban a marcar; si no la juegas, el partido espera', () => {
     let s = give(newGame(2, 7), 1, 'salvada-1');
     s.players[0].squad = [entry(DEL68)];

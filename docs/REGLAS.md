@@ -131,6 +131,8 @@ Hay cuatro tipos, y cada carta lleva su color y su tipo en la banda superior:
 - **Jugada** (dorado): durante el partido, cuando quieras.
 - **Giro** (morado): en el momento de una jugada que te afecta. Aparece un botón sobre la noticia, con una cuenta atrás; si no lo pulsas, la jugada sigue. Una reacción por jugada.
 
+**Cambio:** si te expulsan o lesionan a un titular durante el partido y tienes suplentes, puedes meter a uno (un cambio por partido). Entra desde la siguiente tirada. La IA hace su cambio sola.
+
 Cada club juega como mucho **2 cartas de árbitro o de jugada por partido**. Las duraciones cuentan la jornada en curso. Las sanciones se pueden anular con el Gabinete jurídico.
 
 | Carta | Tipo | Copias | Efecto |
