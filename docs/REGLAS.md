@@ -122,24 +122,37 @@ Cada club suma sus **goles a favor** (uno por cada rival al que marca) y **en co
 
 ## Cartas especiales
 
-Las sanciones se juegan contra un rival; el resto, sobre tu club. Las duraciones cuentan la jornada en curso.
+Cada club empieza la temporada con **3 cartas** y recibe **1 al empezar cada jornada**. También se pueden comprar en el mercado (5M, una por turno), se roban con el 7 del VAR y el portero gana una con 3 paradas en una jornada. Máximo **5 en la mano**. Las cartas de cada uno son secretas.
 
-| Carta | Copias | Efecto |
-|---|---|---|
-| **Incidentes en la grada** (sanción) | 4 | Por incidentes con su afición, el rival paga 6M de multa. |
-| **A puerta cerrada** (sanción) | 3 | El rival no cobra taquilla durante 2 jornadas. |
-| **Lesión muscular** (sanción) | 2 | Un futbolista rival ni ataca ni defiende durante 3 jornadas. |
-| **Tarjeta amarilla** (sanción) | 4 | Un futbolista rival juega esta jornada con 1 menos de fuerza (un medio amonestado no ataca; un delantero, un defensa o un portero se quedan en 1). Si ya tenía amarilla esta jornada, es expulsado. |
-| **Tarjeta roja** (sanción) | 2 | Un futbolista rival es expulsado: ni ataca ni defiende esta jornada ni la siguiente. |
-| **Penalti a favor** | 3 | El árbitro señala penalti: en el partido de esta jornada marcas un gol al rival que elijas. Cuenta como jugada de gol para la taquilla. |
-| **Jugador en racha** | 4 | Uno de tus futbolistas juega con el doble de fuerza durante 2 jornadas. |
-| **Olfato de gol** | 6 | Uno de tus futbolistas actúa también con el número de la carta (4, 5, 6, 8, 9 o 10) durante 3 jornadas. |
-| **Jugador de cantera** | 3 | Nadie puede pagar la cláusula de uno de tus futbolistas durante 3 jornadas. |
-| **Nuevo patrocinador** | 3 | Cobras 8M. |
-| **Día del club** | 2 | Esta jornada cobras el doble de taquilla. |
-| **Subvención municipal** | 2 | Tu próxima ampliación de estadio cuesta la mitad. |
-| **Ojeador estrella** | 2 | Tu próximo fichaje del mercado este turno cuesta un 30% menos. |
-| **Gabinete jurídico** | 3 | No se juega: desde tu mano anula la primera sanción que te lancen, y se descarta. |
+Hay cuatro tipos, y cada carta lleva su color y su tipo en la banda superior:
+
+- **Despacho** (verde): en tu turno de mercado.
+- **Árbitro** (naranja): durante el partido, cuando quieras, desde «Mis cartas», contra un **titular** rival. Afectan desde la siguiente tirada.
+- **Jugada** (dorado): durante el partido, cuando quieras.
+- **Giro** (morado): en el momento de una jugada que te afecta. Aparece un botón sobre la noticia, con una cuenta atrás; si no lo pulsas, la jugada sigue. Una reacción por jugada.
+
+Cada club juega como mucho **2 cartas de árbitro o de jugada por partido**. Las duraciones cuentan la jornada en curso. Las sanciones se pueden anular con el Gabinete jurídico.
+
+| Carta | Tipo | Copias | Efecto |
+|---|---|---|---|
+| **Incidentes en la grada** | Despacho (sanción) | 4 | El rival paga 6M de multa. |
+| **A puerta cerrada** | Despacho (sanción) | 3 | El rival no cobra taquilla durante 2 jornadas. |
+| **Jugador en racha** | Despacho | 4 | Uno de tus futbolistas juega con el doble de fuerza durante 2 jornadas. |
+| **Olfato de gol** | Despacho | 6 | Uno de tus futbolistas actúa también con el número de la carta (4, 5, 6, 8, 9 o 10) durante 3 jornadas. |
+| **Jugador de cantera** | Despacho | 3 | Nadie puede pagar la cláusula de uno de tus futbolistas durante 3 jornadas. |
+| **Nuevo patrocinador** | Despacho | 3 | Cobras 8M. |
+| **Día del club** | Despacho | 2 | Esta jornada cobras el doble de taquilla. |
+| **Subvención municipal** | Despacho | 2 | Tu próxima ampliación de estadio cuesta la mitad. |
+| **Ojeador estrella** | Despacho | 2 | Tu próximo fichaje del mercado este turno cuesta un 30% menos. |
+| **Gabinete jurídico** | Despacho (automática) | 3 | No se juega: desde tu mano anula la primera sanción que te lancen, y se descarta. |
+| **Tarjeta amarilla** | Árbitro (sanción) | 4 | Un titular rival juega el resto de la jornada con 1 menos de fuerza. Si ya tenía amarilla, es expulsado. |
+| **Tarjeta roja** | Árbitro (sanción) | 2 | Expulsas a un titular rival: ni ataca ni defiende el resto de la jornada ni la siguiente. |
+| **Lesión muscular** | Árbitro (sanción) | 2 | Un titular rival se retira y se pierde 3 jornadas (esta incluida). |
+| **Penalti a favor** | Jugada | 3 | Marcas un gol al rival que elijas. Cuenta como jugada de gol para la taquilla. |
+| **Salvada in extremis** | Giro | 4 | Cuando te van a marcar: el gol no sube al marcador (solo el tuyo; si la jugada marcaba a varios, a los demás sí). |
+| **Cantada terrible** | Giro | 4 | Cuando un rival te para una jugada: se le escapa el balón y es gol contra ese rival. |
+
+Para añadir cartas nuevas basta con una entrada en `SPECIAL_INFO` (`src/engine/cards.ts`) con su tipo, sus copias y su efecto en el motor.
 
 ## Final de temporada
 

@@ -130,9 +130,22 @@ export type SpecialKind =
   | 'diaDelClub'
   | 'subvencion'
   | 'ojeador'
-  | 'abogados';
+  | 'abogados'
+  | 'salvada'
+  | 'cantada';
 
-export type TargetType = 'self' | 'rival' | 'rivalFootballer' | 'ownFootballer' | 'passive';
+export type TargetType = 'self' | 'rival' | 'rivalFootballer' | 'ownFootballer' | 'passive' | 'reaction';
+
+/**
+ * Cuándo se juega cada carta:
+ * - despacho: en tu turno de mercado.
+ * - arbitro: durante el partido, cuando quieras, contra un titular rival (afecta desde la siguiente tirada).
+ * - jugada: durante el partido, cuando quieras.
+ * - giro: en el momento de una jugada que te afecta (botón sobre la noticia).
+ */
+export type CardTiming = 'despacho' | 'arbitro' | 'jugada' | 'giro';
+
+/** Para añadir una carta nueva: su tipo en `SpecialKind`, una entrada aquí y su efecto en el motor. */
 
 export interface SpecialCard {
   id: string;
@@ -145,10 +158,11 @@ const S = CONFIG.special;
 
 export const SPECIAL_INFO: Record<
   SpecialKind,
-  { title: string; target: TargetType; sanction: boolean; copies: number; text: (c: SpecialCard) => string }
+  { title: string; timing: CardTiming; target: TargetType; sanction: boolean; copies: number; text: (c: SpecialCard) => string }
 > = {
   incidentes: {
     title: 'Incidentes en la grada',
+    timing: 'despacho',
     target: 'rival',
     sanction: true,
     copies: 4,
@@ -156,6 +170,7 @@ export const SPECIAL_INFO: Record<
   },
   puertaCerrada: {
     title: 'A puerta cerrada',
+    timing: 'despacho',
     target: 'rival',
     sanction: true,
     copies: 3,
@@ -163,34 +178,39 @@ export const SPECIAL_INFO: Record<
   },
   lesion: {
     title: 'Lesión muscular',
+    timing: 'arbitro',
     target: 'rivalFootballer',
     sanction: true,
     copies: 2,
-    text: () => `Un futbolista rival se pierde ${S.injuryRounds} jornadas: ni ataca ni defiende.`,
+    text: () => `En el partido: un titular rival se retira lesionado y se pierde ${S.injuryRounds} jornadas (esta incluida).`,
   },
   amarilla: {
     title: 'Tarjeta amarilla',
+    timing: 'arbitro',
     target: 'rivalFootballer',
     sanction: true,
     copies: 4,
-    text: () => `Un futbolista rival juega esta jornada con ${S.yellowPenalty} menos de fuerza. Si ya tenía amarilla, es expulsado esta jornada.`,
+    text: () => `En el partido: un titular rival juega el resto de la jornada con ${S.yellowPenalty} menos de fuerza. Si ya tenía amarilla, es expulsado.`,
   },
   roja: {
     title: 'Tarjeta roja',
+    timing: 'arbitro',
     target: 'rivalFootballer',
     sanction: true,
     copies: 2,
-    text: () => `Un futbolista rival es expulsado: ni ataca ni defiende esta jornada ni la siguiente.`,
+    text: () => `En el partido: expulsas a un titular rival. Ni ataca ni defiende el resto de la jornada ni la siguiente.`,
   },
   penalti: {
     title: 'Penalti a favor',
+    timing: 'jugada',
     target: 'rival',
     sanction: false,
     copies: 3,
-    text: () => 'El árbitro señala penalti: en el partido de esta jornada marcas un gol al rival que elijas.',
+    text: () => 'En el partido: el árbitro señala penalti y marcas un gol al rival que elijas.',
   },
   racha: {
     title: 'Jugador en racha',
+    timing: 'despacho',
     target: 'ownFootballer',
     sanction: false,
     copies: 4,
@@ -198,6 +218,7 @@ export const SPECIAL_INFO: Record<
   },
   olfato: {
     title: 'Olfato de gol',
+    timing: 'despacho',
     target: 'ownFootballer',
     sanction: false,
     copies: 6,
@@ -205,6 +226,7 @@ export const SPECIAL_INFO: Record<
   },
   cantera: {
     title: 'Jugador de cantera',
+    timing: 'despacho',
     target: 'ownFootballer',
     sanction: false,
     copies: 3,
@@ -212,6 +234,7 @@ export const SPECIAL_INFO: Record<
   },
   patrocinador: {
     title: 'Nuevo patrocinador',
+    timing: 'despacho',
     target: 'self',
     sanction: false,
     copies: 3,
@@ -219,6 +242,7 @@ export const SPECIAL_INFO: Record<
   },
   diaDelClub: {
     title: 'Día del club',
+    timing: 'despacho',
     target: 'self',
     sanction: false,
     copies: 2,
@@ -226,6 +250,7 @@ export const SPECIAL_INFO: Record<
   },
   subvencion: {
     title: 'Subvención municipal',
+    timing: 'despacho',
     target: 'self',
     sanction: false,
     copies: 2,
@@ -233,6 +258,7 @@ export const SPECIAL_INFO: Record<
   },
   ojeador: {
     title: 'Ojeador estrella',
+    timing: 'despacho',
     target: 'self',
     sanction: false,
     copies: 2,
@@ -240,10 +266,27 @@ export const SPECIAL_INFO: Record<
   },
   abogados: {
     title: 'Gabinete jurídico',
+    timing: 'despacho',
     target: 'passive',
     sanction: false,
     copies: 3,
     text: () => 'No se juega: mientras esté en tu mano, anula automáticamente la primera sanción que te lancen.',
+  },
+  salvada: {
+    title: 'Salvada in extremis',
+    timing: 'giro',
+    target: 'reaction',
+    sanction: false,
+    copies: 4,
+    text: () => 'Cuando te van a marcar: uno de los tuyos saca el balón sobre la línea y el gol no sube al marcador.',
+  },
+  cantada: {
+    title: 'Cantada terrible',
+    timing: 'giro',
+    target: 'reaction',
+    sanction: false,
+    copies: 4,
+    text: () => 'Cuando un rival te para una jugada: al portero se le escapa el balón y acaba en gol.',
   },
 };
 

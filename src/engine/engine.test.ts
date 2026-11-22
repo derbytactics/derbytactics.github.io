@@ -31,8 +31,19 @@ import {
   totalPips,
 } from './index';
 
-const newGame = (n = 4, seed = 42) =>
-  createGame({ players: Array.from({ length: n }, (_, i) => ({ name: `Club ${i + 1}`, isBot: false })), seed });
+/** Partida de personas con las manos vacías (el reparto inicial se prueba aparte). */
+const newGame = (n = 4, seed = 42) => {
+  const g = createGame({ players: Array.from({ length: n }, (_, i) => ({ name: `Club ${i + 1}`, isBot: false })), seed });
+  g.players.forEach((p) => (p.hand = []));
+  return g;
+};
+/** Partido en marcha entre plantillas dadas (todos titulares), con `rolls` tiradas pendientes. */
+const inMatch = (s: GameState, rolls = 2): GameState => {
+  const c = structuredClone(s);
+  c.phase = 'match';
+  c.match = { jornada: c.jornada, rolls: [], rollers: Array.from({ length: rolls }, (_, i) => i % c.players.length) };
+  return c;
+};
 
 /** Coloca una carta concreta en el mercado para no depender del barajado. */
 function withInMarket(s: GameState, cardId: string): GameState {
@@ -261,6 +272,12 @@ describe('partido', () => {
     }
     expect(sevens).toBeGreaterThan(0);
   });
+  it('las tarjetas, la lesión y el penalti no se juegan en el mercado', () => {
+    const s = give(newGame(2), 0, 'amarilla-1');
+    s.turnOrder = [0, 1];
+    s.players[1].squad = [entry(DEL68)];
+    expect(check(s, { type: 'playCard', handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 })).toMatch(/partido/);
+  });
   it('la amarilla resta 1 de fuerza y la segunda amarilla expulsa', () => {
     // Delantero amonestado: ataque 1, lo para hasta un medio... no: lo para el portero y también marcaría a quien no defienda.
     const booked = play([entry(DEL68, { yellowUntil: 1 }), entry(MED68)], [entry(POR)]);
@@ -268,22 +285,21 @@ describe('partido', () => {
     const keeperBooked = play([entry(DEL68)], [entry(POR, { yellowUntil: 1 })]);
     expect(keeperBooked.r0.goals).toBe(keeperBooked.hits); // portero amonestado defiende 1
     let s = give(give(newGame(2), 0, 'amarilla-1'), 0, 'amarilla-2');
-    s.turnOrder = [0, 1];
     s.players[1].squad = [entry(DEL68)];
-    s = apply(s, { type: 'playCard', handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 });
+    s = inMatch(s);
+    s = apply(s, { type: 'matchCard', playerId: 0, handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 });
     expect(s.players[1].squad[0].yellowUntil).toBe(1);
     expect(s.players[1].squad[0].outUntil).toBe(0);
-    s = apply(s, { type: 'playCard', handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 });
+    s = apply(s, { type: 'matchCard', playerId: 0, handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 });
     expect(s.players[1].squad[0].outUntil).toBe(1);
+    expect(s.match!.events!.map((e) => !!e.secondYellow)).toEqual([false, true]);
   });
   it('el penalti es un gol seguro al rival elegido en el partido de esa jornada', () => {
     let s = give(newGame(2), 0, 'penalti-1');
-    s.turnOrder = [0, 1];
-    s = apply(s, { type: 'playCard', handIndex: 0, targetPlayerId: 1 });
-    s.phase = 'match';
-    s.match = null;
     s.players[0].squad = [];
     s.players[1].squad = [];
+    s = inMatch(s);
+    s = apply(s, { type: 'matchCard', playerId: 0, handIndex: 0, targetPlayerId: 1 });
     s = apply(s, { type: 'playMatch' });
     const [r0, r1] = [0, 1].map((id) => s.lastMatch!.results.find((r) => r.playerId === id)!);
     expect([r0.goals, r0.against, r1.goals, r1.against, r0.rank]).toEqual([1, 0, 0, 1, 1]);
@@ -292,10 +308,60 @@ describe('partido', () => {
   });
   it('la roja expulsa esta jornada y la siguiente', () => {
     let s = give(newGame(2), 0, 'roja-1');
-    s.turnOrder = [0, 1];
-    s.players[1].squad = [entry(DEL68)];
-    s = apply(s, { type: 'playCard', handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 });
-    expect(s.players[1].squad[0].outUntil).toBe(2);
+    s.players[1].squad = [entry(DEL68), entry(MED68)];
+    s.players[1].starters = [MED68];
+    s = inMatch(s);
+    // Solo a titulares: el del banquillo no está en el campo.
+    expect(check(s, { type: 'matchCard', playerId: 0, handIndex: 0, targetPlayerId: 1, targetCardId: DEL68 })).toMatch(/titulares/);
+    s = apply(s, { type: 'matchCard', playerId: 0, handIndex: 0, targetPlayerId: 1, targetCardId: MED68 });
+    expect(s.players[1].squad[1].outUntil).toBe(2);
+  });
+  it('cada club juega como mucho 2 cartas por partido, cuando quiera y sin turnos', () => {
+    let s = give(give(give(newGame(2), 1, 'amarilla-1'), 1, 'amarilla-2'), 1, 'penalti-1');
+    s.players[0].squad = [entry(DEL68), entry(MED68), entry(POR)];
+    s = inMatch(s);
+    s = apply(s, { type: 'matchCard', playerId: 1, handIndex: 0, targetPlayerId: 0, targetCardId: DEL68 });
+    s = apply(s, { type: 'matchCard', playerId: 1, handIndex: 0, targetPlayerId: 0, targetCardId: MED68 });
+    expect(check(s, { type: 'matchCard', playerId: 1, handIndex: 0, targetPlayerId: 0 })).toMatch(/Máximo/);
+  });
+  it('salvada in extremis: anula el gol que te iban a marcar; si no la juegas, el partido espera', () => {
+    let s = give(newGame(2, 7), 1, 'salvada-1');
+    s.players[0].squad = [entry(DEL68)];
+    s.players[1].squad = [];
+    s = inMatch(s, 12);
+    // Tira hasta que salga el 6 o el 8.
+    for (let i = 0; i < 12 && !s.match?.pending?.length; i++) s = apply(s, { type: 'roll' });
+    expect(s.match!.pending![0]).toMatchObject({ kind: 'salvada', playerId: 1, attacker: 0, rival: 1 });
+    expect(check(s, { type: 'roll' })).toMatch(/decidir/);
+    expect(check(s, { type: 'react', playerId: 0, use: true })).toBeTruthy();
+    s = apply(s, { type: 'react', playerId: 1, use: true });
+    expect(s.players[1].hand).toHaveLength(0);
+    s = apply(s, { type: 'playMatch' });
+    const hits = s.lastMatch!.rolls.filter((r) => r.sum === 6 || r.sum === 8).length;
+    const r1 = s.lastMatch!.results.find((r) => r.playerId === 1)!;
+    expect(r1.against).toBe(hits - 1);
+  });
+  it('cantada terrible: la jugada que te paran acaba en gol', () => {
+    let s = give(newGame(2, 7), 0, 'cantada-1');
+    s.players[0].squad = [entry(DEL68)];
+    s.players[1].squad = [entry(POR)];
+    s = inMatch(s, 12);
+    for (let i = 0; i < 12 && !s.match?.pending?.length; i++) s = apply(s, { type: 'roll' });
+    expect(s.match!.pending![0]).toMatchObject({ kind: 'cantada', playerId: 0, rival: 1 });
+    s = apply(s, { type: 'react', playerId: 0, use: true });
+    s = apply(s, { type: 'playMatch' });
+    const r0 = s.lastMatch!.results.find((r) => r.playerId === 0)!;
+    expect(r0.goals).toBe(1);
+    expect(r0.scoringPlays).toBe(1);
+  });
+  it('la IA juega sus giros sola y no hace esperar', () => {
+    let s = give(newGame(2, 7), 1, 'salvada-1');
+    s.players[1].isBot = true;
+    s.players[0].squad = [entry(DEL68)];
+    s.players[1].squad = [];
+    s = inMatch(s, 12);
+    s = apply(s, { type: 'playMatch' });
+    expect(s.lastMatch!.rolls.flatMap((r) => r.twists ?? []).map((t) => t.kind)).toEqual(['salvada']);
   });
   it('la racha dobla la fuerza, la baja la anula y a puerta cerrada no hay taquilla', () => {
     const streak = play([entry(DEL68, { streakUntil: 1 })], [entry(POR)]);
@@ -305,16 +371,24 @@ describe('partido', () => {
     const closed = play([entry(DEL68)], [], (s) => { s.players[0].closedDoorsUntil = 1; });
     expect(closed.r0.ticket).toBe(0);
   });
-  it('con 2 clubes, cada jornada reparte derechos de TV y una carta; con 3 no', () => {
+  it('con 2 clubes, cada jornada reparte derechos de TV; con 3 no', () => {
     let two = newGame(2, 3);
     two.phase = 'summary';
     two = apply(two, { type: 'nextJornada' });
     expect(two.players.map((p) => p.money)).toEqual([CONFIG.startingMoney + CONFIG.tvRights.money, CONFIG.startingMoney + CONFIG.tvRights.money]);
-    expect(two.players.map((p) => p.hand.length)).toEqual([1, 1]);
     let three = newGame(3, 3);
     three.phase = 'summary';
     three = apply(three, { type: 'nextJornada' });
-    expect(three.players.every((p) => p.money === CONFIG.startingMoney && p.hand.length === 0)).toBe(true);
+    expect(three.players.every((p) => p.money === CONFIG.startingMoney)).toBe(true);
+  });
+  it('se reparten 3 cartas al empezar y 1 en cada jornada, hasta un máximo de 5 en la mano', () => {
+    let s = createGame({ players: [{ name: 'A', isBot: false }, { name: 'B', isBot: false }], seed: 9 });
+    expect(s.players.map((p) => p.hand.length)).toEqual([CONFIG.special.initialHand, CONFIG.special.initialHand]);
+    for (let j = 0; j < 4; j++) {
+      s.phase = 'summary';
+      s = apply(s, { type: 'nextJornada' });
+    }
+    expect(s.players.map((p) => p.hand.length)).toEqual([CONFIG.special.handLimit, CONFIG.special.handLimit]);
   });
   it('tras la jornada el colista abre el mercado', () => {
     let s = newGame(3, 3);

@@ -152,6 +152,7 @@ function GameBody(props: Parameters<typeof GameView>[0]) {
         onForceAbsent={online?.onBotTurn && absent ? online.onBotTurn : undefined}
         online={!!online}
         onSkip={online ? undefined : () => dispatch({ type: 'playMatch' })}
+        act={dispatch}
       />
     );
   }

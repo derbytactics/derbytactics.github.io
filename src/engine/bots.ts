@@ -256,8 +256,10 @@ function pickCardToPlay(state: GameState, me: Player, style: BotStyle, remaining
     if (a && check(state, a) === null) return a;
   }
   // Mano llena de cartas que no puede usar: descarta la más antigua para seguir robando.
+  // Se guardan las de partido (árbitro, jugada, giro): se descarta antes una de despacho.
   if (me.hand.length >= CONFIG.special.handLimit && me.hand.every((id) => SPECIAL_INFO[specialCard(id).kind].target !== 'passive')) {
-    return { type: 'discardCard', handIndex: 0 };
+    const office = me.hand.findIndex((id) => SPECIAL_INFO[specialCard(id).kind].timing === 'despacho');
+    return { type: 'discardCard', handIndex: Math.max(0, office) };
   }
   return null;
 }

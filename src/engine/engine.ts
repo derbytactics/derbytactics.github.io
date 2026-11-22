@@ -2,6 +2,7 @@ import {
   FOOTBALLERS,
   SPECIAL_CARDS,
   SPECIAL_INFO,
+  SpecialKind,
   basePrice,
   footballer,
   roleOf,
@@ -77,6 +78,39 @@ export interface RollReport {
   plays: Play[];
   /** En un 7: quien tiró los dados roba una carta especial (vacío si tenía la mano llena). */
   varDraws: { playerId: number; cardId: string }[];
+  /**
+   * Giros jugados sobre esta tirada (cartas de reacción). Las jugadas no se tocan: el giro se
+   * cuenta aparte, así la crónica puede contar primero el gol y después la salvada.
+   */
+  twists?: Twist[];
+}
+
+export type TwistKind = 'salvada' | 'cantada';
+
+/** Una carta de giro jugada: `attacker` es quien atacaba y `rival`, el club defensor afectado. */
+export interface Twist {
+  kind: TwistKind;
+  playerId: number;
+  attacker: number;
+  rival: number;
+}
+
+/** Ocasión de jugar un giro que espera respuesta de un club. `roll` es el índice de la tirada. */
+export interface ReactionOffer extends Twist {
+  roll: number;
+}
+
+/** Carta de árbitro o de jugada lanzada durante el partido, antes de la tirada número `beforeRoll`. */
+export interface MatchCardEvent {
+  beforeRoll: number;
+  playerId: number;
+  cardId: string;
+  targetPlayerId?: number;
+  targetCardId?: string;
+  /** La anuló el gabinete jurídico del rival. */
+  blocked?: boolean;
+  /** Amarilla que era la segunda: expulsión. */
+  secondYellow?: boolean;
 }
 
 export interface MatchResult {
@@ -107,6 +141,8 @@ export interface MatchReport {
   rollers: number[];
   /** Penaltis lanzados en la jornada (cartas especiales). */
   penalties?: { playerId: number; rival: number }[];
+  /** Cartas de árbitro y de jugada lanzadas durante el partido. */
+  events?: MatchCardEvent[];
   results: MatchResult[];
 }
 
@@ -125,6 +161,10 @@ export interface MatchProgress {
   rolls: RollReport[];
   /** A quién le toca tirar los dados en cada tirada. */
   rollers: number[];
+  /** Giros que esperan respuesta: hasta que se resuelven no se puede volver a tirar. */
+  pending?: ReactionOffer[];
+  /** Cartas de árbitro y de jugada lanzadas en este partido. */
+  events?: MatchCardEvent[];
 }
 
 /** 'lineup': tras el mercado, cada club elige sus titulares en secreto y a la vez. */
@@ -186,6 +226,10 @@ export type Action =
   | { type: 'setLineup'; playerId: number; cardIds: string[] }
   /** Una tirada de dados del partido. */
   | { type: 'roll' }
+  /** Carta de árbitro o de jugada durante el partido; la juega cada club cuando quiera, sin turnos. */
+  | { type: 'matchCard'; playerId: number; handIndex: number; targetPlayerId?: number; targetCardId?: string }
+  /** Respuesta a la primera ocasión de giro pendiente: jugar la carta o dejar seguir. */
+  | { type: 'react'; playerId: number; use: boolean }
   /** Juega de golpe todas las tiradas que queden (simulador y pruebas). */
   | { type: 'playMatch' }
   | { type: 'nextJornada' };
@@ -392,6 +436,8 @@ export function createGame(opts: NewGameOptions): GameState {
   state.footballDeck = shuffle(state, FOOTBALLERS.map((f) => f.id));
   state.specialDeck = shuffle(state, SPECIAL_CARDS.map((c) => c.id));
   state.market = state.footballDeck.splice(0, marketSize(n));
+  // Cada club empieza con unas cartas especiales en la mano.
+  for (let k = 0; k < CONFIG.special.initialHand; k++) for (const p of state.players) drawSpecial(state, p);
   // Pretemporada: orden aleatorio en serpiente, dos turnos de mercado por club.
   const order = shuffle(state, state.players.map((p) => p.id));
   state.turnOrder = [...order, ...(CONFIG.preseasonSnake ? [...order].reverse() : order)];
@@ -408,6 +454,12 @@ function findEntry(player: Player, cardId: string): SquadEntry | undefined {
 /** Devuelve null si la acción es legal, o el motivo por el que no lo es. */
 export function check(state: GameState, action: Action): string | null {
   if (action.type === 'setLineup') return checkLineup(state, action);
+  if (action.type === 'matchCard') return checkMatchCard(state, action);
+  if (action.type === 'react') {
+    const head = state.match?.pending?.[0];
+    return state.phase === 'match' && head && head.playerId === action.playerId ? null : 'No hay ninguna jugada esperando tu respuesta.';
+  }
+  if (action.type === 'roll' && state.match?.pending?.length) return 'Antes, alguien tiene que decidir si juega una carta.';
   if (action.type === 'playMatch' || action.type === 'roll') return state.phase === 'match' ? null : 'No es momento de jugar el partido.';
   if (action.type === 'nextJornada') return state.phase === 'summary' ? null : 'La jornada no ha terminado.';
   const me = currentPlayer(state);
@@ -470,6 +522,7 @@ export function check(state: GameState, action: Action): string | null {
       const card = specialCard(id);
       const info = SPECIAL_INFO[card.kind];
       if (info.target === 'passive') return 'Esta carta no se juega: actúa sola desde tu mano.';
+      if (info.timing !== 'despacho') return info.timing === 'giro' ? 'Se juega en el partido, cuando una jugada te afecta.' : 'Se juega durante el partido.';
       if (state.turn.cardsPlayed >= CONFIG.special.maxPlayedPerTurn) {
         return `Máximo ${CONFIG.special.maxPlayedPerTurn} cartas especiales por turno.`;
       }
@@ -514,6 +567,14 @@ export function apply(prev: GameState, action: Action): GameState {
   if (action.type === 'setLineup') {
     state.players[action.playerId].starters = [...action.cardIds];
     beginMatchIfReady(state);
+    return state;
+  }
+  if (action.type === 'matchCard') {
+    playMatchCard(state, action);
+    return state;
+  }
+  if (action.type === 'react') {
+    react(state, action.use);
     return state;
   }
 
@@ -799,6 +860,7 @@ function beginMatchIfReady(state: GameState) {
   state.phase = 'match';
   say(state, `Jornada ${state.jornada}: salen las alineaciones.`);
   startMatch(state);
+  botMatchCards(state);
 }
 
 function startMatch(state: GameState) {
@@ -843,12 +905,183 @@ function rollOnce(state: GameState): GameState {
     }
   }
   m.rolls.push(roll);
-  if (m.rolls.length >= m.rollers.length) finishMatch(state);
+  m.pending = reactionOffers(state, roll, m.rolls.length - 1);
+  autoReact(state);
   return state;
 }
 
+/** Ocasiones de giro de una tirada: a quien le marcan (salvada) y a quien le paran (cantada), si tienen la carta. */
+function reactionOffers(state: GameState, roll: RollReport, index: number): ReactionOffer[] {
+  const has = (id: number, kind: SpecialKind) => state.players[id].hand.some((h) => specialCard(h).kind === kind);
+  const out: ReactionOffer[] = [];
+  for (const pl of roll.plays) {
+    for (const rival of pl.scored) if (has(rival, 'salvada')) out.push({ kind: 'salvada', playerId: rival, attacker: pl.playerId, rival, roll: index });
+    for (const st of pl.stopped) if (has(pl.playerId, 'cantada')) out.push({ kind: 'cantada', playerId: pl.playerId, attacker: pl.playerId, rival: st.playerId, roll: index });
+  }
+  return out;
+}
+
+/** Aplica un giro a la tirada: quita la carta de la mano y lo apunta. Devuelve false si ya no tiene la carta. */
+function applyTwist(state: GameState, offer: ReactionOffer): boolean {
+  const p = state.players[offer.playerId];
+  const idx = p.hand.findIndex((h) => specialCard(h).kind === offer.kind);
+  if (idx < 0) return false;
+  state.specialDiscard.push(...p.hand.splice(idx, 1));
+  const roll = state.match!.rolls[offer.roll];
+  roll.twists = [...(roll.twists ?? []), { kind: offer.kind, playerId: offer.playerId, attacker: offer.attacker, rival: offer.rival }];
+  const a = state.players[offer.attacker].name;
+  const r = state.players[offer.rival].name;
+  if (offer.kind === 'salvada') say(state, `¡Salvada in extremis de ${r}! Evita el gol de ${a}.`, [offer.attacker]);
+  else say(state, `¡Cantada terrible en ${r}! El balón se escapa y ${a} marca.`, [offer.rival]);
+  return true;
+}
+
+/** Resuelve las ocasiones de la IA y las que ya no tienen carta; para en la primera que espera a una persona. */
+export function autoReact(state: GameState) {
+  const m = state.match;
+  if (state.phase !== 'match' || !m) return;
+  const pending = m.pending ?? [];
+  while (pending.length) {
+    const head = pending[0];
+    const p = state.players[head.playerId];
+    const holds = p.hand.some((h) => specialCard(h).kind === head.kind);
+    if (holds && !p.isBot) break;
+    pending.shift();
+    if (holds) applyTwist(state, head); // La IA juega siempre la carta cuando puede.
+  }
+  m.pending = pending;
+  if (!pending.length && m.rolls.length >= m.rollers.length) finishMatch(state);
+}
+
+function react(state: GameState, use: boolean) {
+  const head = state.match!.pending!.shift()!;
+  if (use) applyTwist(state, head);
+  autoReact(state);
+}
+
+/** Jugadas de una tirada con los giros ya aplicados: quién encaja de verdad y quién lo para. */
+export function effectivePlays(roll: RollReport): Play[] {
+  const tw = roll.twists ?? [];
+  return roll.plays.map((pl) => {
+    const saved = tw.filter((t) => t.kind === 'salvada' && t.attacker === pl.playerId).map((t) => t.rival);
+    const blunders = tw.filter((t) => t.kind === 'cantada' && t.attacker === pl.playerId).map((t) => t.rival);
+    return {
+      ...pl,
+      scored: [...pl.scored.filter((id) => !saved.includes(id)), ...blunders],
+      stopped: [...pl.stopped.filter((st) => !blunders.includes(st.playerId)), ...saved.map((id) => ({ playerId: id, keeper: false }))],
+    };
+  });
+}
+
+// ---------------------------------------------------------------- Cartas durante el partido
+
+function checkMatchCard(state: GameState, action: Extract<Action, { type: 'matchCard' }>): string | null {
+  if (state.phase !== 'match' || !state.match) return 'Solo se juega durante el partido.';
+  const me = state.players[action.playerId];
+  if (!me) return 'Ese club no existe.';
+  const id = me.hand[action.handIndex];
+  if (!id) return 'No tienes esa carta.';
+  const card = specialCard(id);
+  const info = SPECIAL_INFO[card.kind];
+  if (info.timing !== 'arbitro' && info.timing !== 'jugada') return info.timing === 'giro' ? 'Esta carta se juega cuando una jugada te afecta.' : 'Esta carta se juega en el mercado.';
+  const played = (state.match.events ?? []).filter((e) => e.playerId === me.id).length;
+  if (played >= CONFIG.special.maxPlayedPerMatch) return `Máximo ${CONFIG.special.maxPlayedPerMatch} cartas por partido.`;
+  if (state.match.rolls.length >= state.match.rollers.length) return 'El partido ya ha terminado.';
+  const rival = action.targetPlayerId === undefined ? undefined : state.players[action.targetPlayerId];
+  if (!rival || rival.id === me.id) return 'Elige un club rival.';
+  if (info.target === 'rivalFootballer') {
+    const e = action.targetCardId ? fielded(rival).find((x) => x.cardId === action.targetCardId) : undefined;
+    if (!e) return 'Elige a uno de sus titulares.';
+    if (isOut(e, state.jornada)) return 'Ese futbolista ya no está en el campo.';
+  }
+  return null;
+}
+
+function playMatchCard(state: GameState, action: Extract<Action, { type: 'matchCard' }>) {
+  const S = CONFIG.special;
+  const J = state.jornada;
+  const m = state.match!;
+  const me = state.players[action.playerId];
+  const [id] = me.hand.splice(action.handIndex, 1);
+  state.specialDiscard.push(id);
+  const card = specialCard(id);
+  const info = SPECIAL_INFO[card.kind];
+  const rival = state.players[action.targetPlayerId!];
+  const ev: MatchCardEvent = { beforeRoll: m.rolls.length, playerId: me.id, cardId: id, targetPlayerId: rival.id, targetCardId: action.targetCardId };
+  m.events = [...(m.events ?? []), ev];
+  if (info.sanction) {
+    const shieldIdx = rival.hand.findIndex((h) => specialCard(h).kind === 'abogados');
+    if (shieldIdx >= 0) {
+      state.specialDiscard.push(...rival.hand.splice(shieldIdx, 1));
+      ev.blocked = true;
+      say(state, `${me.name} pide «${info.title}» contra ${rival.name}, ¡pero su gabinete jurídico la anula!`, [rival.id]);
+      return;
+    }
+  }
+  const theirs = action.targetCardId ? findEntry(rival, action.targetCardId) : undefined;
+  const who = theirs ? `${cardName(state, theirs.cardId)} (${rival.name})` : rival.name;
+  switch (card.kind) {
+    case 'amarilla':
+      if (isBooked(theirs!, J)) {
+        theirs!.outUntil = Math.max(theirs!.outUntil, J);
+        ev.secondYellow = true;
+        say(state, `Segunda amarilla a ${who}: ${words(state).sentOff}.`, [rival.id]);
+      } else {
+        theirs!.yellowUntil = J;
+        say(state, `Amarilla a ${who}: juega el resto del partido con menos fuerza.`, [rival.id]);
+      }
+      break;
+    case 'roja':
+      theirs!.outUntil = J + S.redCardRounds - 1;
+      say(state, `¡Roja directa a ${who}! ${words(state).sentOff} esta jornada y la siguiente.`, [rival.id]);
+      break;
+    case 'lesion':
+      theirs!.outUntil = J + S.injuryRounds - 1;
+      say(state, `${who} se retira lesionado: ${S.injuryRounds} jornadas de baja.`, [rival.id]);
+      break;
+    case 'penalti':
+      me.penalties = [...(me.penalties ?? []).filter((x) => x.jornada >= J), { jornada: J, rival: rival.id }];
+      say(state, `¡Penalti a favor de ${me.name}! Gol a ${rival.name}.`, [rival.id]);
+      break;
+  }
+}
+
+/** La IA lanza sus cartas de partido al empezar: penalti al líder y tarjetas al titular rival más peligroso. */
+function botMatchCards(state: GameState) {
+  const J = state.jornada;
+  for (const me of state.players) {
+    if (!me.isBot) continue;
+    for (let guard = 0; guard < 5; guard++) {
+      const idx = me.hand.findIndex((h) => ['penalti', 'roja', 'lesion', 'amarilla'].includes(specialCard(h).kind));
+      if (idx < 0) break;
+      const kind = specialCard(me.hand[idx]).kind;
+      const rivals = standings(state).filter((p) => p.id !== me.id);
+      let action: Action | null = null;
+      if (kind === 'penalti') action = { type: 'matchCard', playerId: me.id, handIndex: idx, targetPlayerId: rivals[0].id };
+      else {
+        // El titular rival que más ataca (por probabilidad de sus números).
+        let best: { r: Player; e: SquadEntry; v: number } | null = null;
+        for (const r of rivals) {
+          for (const e of fielded(r)) {
+            if (isOut(e, J)) continue;
+            const v = powerOf(e, J).attack * activeNumbers(e, J).reduce((t, n) => t + (6 - Math.abs(7 - n)), 0);
+            if (v > 0 && (!best || v > best.v)) best = { r, e, v };
+          }
+        }
+        if (best) action = { type: 'matchCard', playerId: me.id, handIndex: idx, targetPlayerId: best.r.id, targetCardId: best.e.cardId };
+      }
+      if (!action || check(state, action)) break;
+      playMatchCard(state, action as Extract<Action, { type: 'matchCard' }>);
+    }
+  }
+}
+
 function playMatch(state: GameState): GameState {
-  while (state.phase === 'match') rollOnce(state);
+  for (let guard = 0; guard < 500 && state.phase === 'match'; guard++) {
+    // Saltar al resultado: las personas dejan pasar sus ocasiones de giro.
+    if (state.match?.pending?.length) react(state, false);
+    else rollOnce(state);
+  }
   return state;
 }
 
@@ -859,7 +1092,7 @@ function finishMatch(state: GameState) {
   const rolls = state.match!.rolls;
   const tally = new Map(state.players.map((p) => [p.id, { goals: 0, against: 0, scoringPlays: 0, saves: 0 }]));
   for (const roll of rolls) {
-    for (const play of roll.plays) {
+    for (const play of effectivePlays(roll)) {
       const t = tally.get(play.playerId)!;
       t.goals += play.scored.length;
       if (play.scored.length) t.scoringPlays += 1;
@@ -911,7 +1144,7 @@ function finishMatch(state: GameState) {
     p.money += r.prize + r.ticket + r.saveBonus;
   }
   results.sort((a, b) => a.rank - b.rank || a.playerId - b.playerId);
-  state.lastMatch = { jornada: J, rolls, rollers: state.match!.rollers, penalties, results };
+  state.lastMatch = { jornada: J, rolls, rollers: state.match!.rollers, penalties, events: state.match!.events, results };
   state.match = null;
   const winners = results.filter((r) => r.rank === 1).map((r) => state.players[r.playerId].name);
   const top = results[0];
@@ -932,7 +1165,11 @@ function startNextJornada(state: GameState): GameState {
   }
   state.jornada += 1;
   state.phase = 'market';
-  for (const p of state.players) p.starters = null;
+  for (const p of state.players) {
+    p.starters = null;
+    // Una carta nueva por jornada para cada club.
+    for (let k = 0; k < CONFIG.special.perJornada; k++) drawSpecial(state, p);
+  }
   state.turn = freshTurn();
   state.turnIndex = 0;
   // El colista abre el mercado; el líder elige el último.

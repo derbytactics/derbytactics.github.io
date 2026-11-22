@@ -24,6 +24,7 @@ import { Btn, Chronicle, FootballerCard, NumberToken, Overline, PhaseStepper, Po
 import { Tip } from './Tip';
 import { C, POS_COLOR, DISPLAY } from './theme';
 import { useClubColor } from './clubColors';
+import { CARD_TYPE } from './cardTypes';
 import { I, Icon, IconName } from './icons';
 
 const J_IS_PRESEASON = (st: GameState) => st.jornada === 1 && st.turnOrder.length > st.players.length;
@@ -45,6 +46,8 @@ export const SPECIAL_ICON: Record<SpecialKind, IconName> = {
   subvencion: 'crane',
   ojeador: 'binoculars',
   abogados: 'scale-balance',
+  salvada: 'shield-alert',
+  cantada: 'hand-back-left-off',
 };
 /** Las tarjetas se pintan de su color. */
 const SPECIAL_ICON_COLOR: Partial<Record<SpecialKind, string>> = { amarilla: '#F5C542', roja: '#E5484D' };
@@ -53,16 +56,22 @@ const SPECIAL_ICON_COLOR: Partial<Record<SpecialKind, string>> = { amarilla: '#F
 export function SpecialCardFace({ id, children }: { id: string; children?: React.ReactNode }) {
   const c = specialCard(id);
   const info = SPECIAL_INFO[c.kind];
-  const tint = info.sanction ? C.danger : info.target === 'passive' ? '#7FB2FF' : C.good;
+  const type = CARD_TYPE[info.timing];
+  const tint = type.color;
   return (
-    <View style={[s.card, { borderColor: tint + '66' }]}>
-      <View style={[s.cardBand, { backgroundColor: tint }]} />
+    <View style={[s.card, { borderColor: tint + '88' }]}>
+      {/* Banda del tipo: se ve de un vistazo cuándo se juega. */}
+      <View style={[s.row, { backgroundColor: tint + '2E', paddingHorizontal: 12, paddingVertical: 5 }]}>
+        <Icon name={type.icon} size={15} color={tint} style={{ marginRight: 6 }} />
+        <Text style={[s.tier, { color: tint }]}>{type.label}</Text>
+        <Text style={{ color: C.dim, fontSize: 12, fontWeight: '700', marginLeft: 8, flex: 1 }} numberOfLines={1}>· {info.target === 'passive' ? 'Actúa sola desde tu mano' : type.when}</Text>
+      </View>
       <View style={[s.row, { padding: 12, alignItems: 'flex-start' }]}>
         <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: tint + '26', alignItems: 'center', justifyContent: 'center' }}>
           <Icon name={SPECIAL_ICON[c.kind]} size={28} color={SPECIAL_ICON_COLOR[c.kind] ?? tint} />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={[s.tier, { color: tint }]}>{info.sanction ? 'SANCIÓN · CONTRA UN RIVAL' : info.target === 'passive' ? 'DEFENSA · AUTOMÁTICA' : 'VENTAJA · PARA TU CLUB'}</Text>
+          {info.sanction ? <Text style={[s.tier, { color: C.danger }]}>CONTRA UN RIVAL</Text> : null}
           <Text style={s.cardName}>{info.title}</Text>
           <Text style={[s.p, { marginTop: 3 }]}>{info.text(c)}</Text>
         </View>

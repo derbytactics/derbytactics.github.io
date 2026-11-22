@@ -57,7 +57,7 @@ export const CONFIG = {
    * Mesas pequeñas: al empezar cada jornada (desde la 2) cada club cobra derechos de TV
    * y roba una carta especial, para compensar que hay pocas tiradas.
    */
-  tvRights: { maxPlayers: 2, money: 5, card: true },
+  tvRights: { maxPlayers: 2, money: 5, card: false },
 
   /** Premio de jornada: interpolación lineal entre el primero y el último. */
   prize: { first: 8, last: 3 },
@@ -70,8 +70,13 @@ export const CONFIG = {
 
   special: {
     cost: 5,
-    handLimit: 3,
+    handLimit: 5,
+    /** Cartas que recibe cada club al empezar la temporada y al empezar cada jornada. */
+    initialHand: 3,
+    perJornada: 1,
     maxPlayedPerTurn: 2,
+    /** Cartas de árbitro y de jugada que cada club puede jugar en un mismo partido. */
+    maxPlayedPerMatch: 2,
     fine: 6,
     closedDoorsRounds: 2,
     injuryRounds: 3,

@@ -2,7 +2,7 @@
  * Crónica de cada tirada, contada desde el punto de vista de un club (o neutral).
  * Devuelve las noticias en el orden en que deben aparecer, una a una.
  */
-import { GameState, Play, RollReport, activeNumbers, cardName, footballer, isOut } from '../engine';
+import { GameState, Play, RollReport, activeNumbers, cardName, effectivePlays, fielded, footballer, isOut } from '../engine';
 
 /** Futbolista con el nombre que lleva en esta partida. */
 const fb = (state: GameState, id: string) => ({ ...footballer(id), name: cardName(state, id) });
@@ -73,7 +73,8 @@ function buildUp(state: GameState, play: Play, pick: ReturnType<typeof picker>):
 /** Quién defiende en un club con un número: su portero (si lo tiene ahí) y sus defensas. */
 function defenders(state: GameState, clubId: number, n: number) {
   const J = state.jornada;
-  const active = state.players[clubId].squad.filter((e) => !isOut(e, J) && activeNumbers(e, J).includes(n)).map((e) => fb(state, e.cardId));
+  // Solo los que están en el campo: los titulares (o toda la plantilla si no hubo convocatoria).
+  const active = fielded(state.players[clubId]).filter((e) => !isOut(e, J) && activeNumbers(e, J).includes(n)).map((e) => fb(state, e.cardId));
   return {
     keeper: active.find((f) => f.position === 'POR') ?? null,
     backs: active.filter((f) => f.position === 'DEF'),
@@ -95,7 +96,7 @@ function neutral(state: GameState, sum: number, play: Play, pick: ReturnType<typ
  * `seed` debe ser estable para la tirada (por ejemplo, jornada × 100 + número de tirada).
  */
 export function rollNews(state: GameState, roll: RollReport, seed: number, viewer: number | null): News[] {
-  const news = tellRoll(state, roll, seed, viewer);
+  const news = [...tellRoll(state, roll, seed, viewer), ...tellTwists(state, roll, viewer)];
   return state.league === 'femenina' ? news.map((x) => ({ ...x, title: inFeminine(x.title), text: inFeminine(x.text) })) : news;
 }
 
@@ -196,11 +197,38 @@ function tellRoll(state: GameState, roll: RollReport, seed: number, viewer: numb
   return out;
 }
 
-/** Goles a favor y en contra de un club en una tirada. */
+/** Los giros (cartas de reacción) se cuentan después de la jugada, y los ve todo el mundo. */
+function tellTwists(state: GameState, roll: RollReport, viewer: number | null): News[] {
+  const name = (id: number) => state.players[id].name;
+  return (roll.twists ?? []).map((t): News => {
+    const att = roll.plays.find((pl) => pl.playerId === t.attacker);
+    if (t.kind === 'salvada') {
+      const hero = defenders(state, t.rival, roll.sum).backs[0] ?? defenders(state, t.rival, roll.sum).keeper;
+      const who = hero ? hero.name : `un defensa de ${name(t.rival)}`;
+      return {
+        kind: viewer === t.attacker ? 'stopped' : 'save',
+        title: '¡Salvada in extremis!',
+        text: `${who} aparece de la nada y saca el balón sobre la línea cuando el gol estaba cantado. ${viewer === t.rival ? 'El gol' : `El gol de ${name(t.attacker)} a ${name(t.rival)}`} no sube al marcador.`,
+        cards: hero ? [hero.id] : undefined,
+        club: t.rival,
+      };
+    }
+    const keeper = defenders(state, t.rival, roll.sum).keeper;
+    return {
+      kind: viewer === t.rival ? 'concede' : 'goal',
+      title: '¡Cantada terrible!',
+      text: `${keeper ? keeper.name : `El portero de ${name(t.rival)}`} tenía el balón atrapado… y se le escurre entre las piernas. ${viewer === t.attacker ? '¡Gol tuyo!' : `Gol de ${name(t.attacker)}.`}`,
+      cards: att?.cards,
+      club: t.attacker,
+    };
+  });
+}
+
+/** Goles a favor y en contra de un club en una tirada (con los giros ya aplicados). */
 export function rollScore(roll: RollReport, club: number): { gf: number; gc: number } {
   let gf = 0;
   let gc = 0;
-  for (const pl of roll.plays) {
+  for (const pl of effectivePlays(roll)) {
     if (pl.playerId === club) gf += pl.scored.length;
     else if (pl.scored.includes(club)) gc += 1;
   }
