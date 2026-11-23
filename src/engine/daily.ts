@@ -2,7 +2,7 @@
  * Reto diario: la misma partida para todo el mundo cada día. La fecha decide la semilla, los
  * rivales y su escudo; así el mercado y los dados salen igual para todos los que lo juegan.
  */
-import { CrestDesign, makeRand, randomClubName, randomCrest } from './identity';
+import { CrestDesign, LEAGUES, League, makeRand, randomClubName, randomCrest } from './identity';
 import { GameState, createGame } from './engine';
 
 export const DAILY = { jornadas: 4, clubs: 4 };
@@ -34,6 +34,9 @@ function seedOf(key: string): number {
 }
 
 /** La partida del reto de ese día, con tu club y tres rivales de la IA iguales para todos. */
+/** La liga del reto: cambia cada día, la misma para todo el mundo. */
+export const dailyLeague = (key: string): League => LEAGUES[(seedOf(key) >>> 0) % LEAGUES.length];
+
 export function createDailyGame(key: string, me: { name: string; crest?: CrestDesign }): GameState {
   const seed = seedOf(key);
   const r = makeRand(seed ^ 0x2f6b9d);
@@ -43,5 +46,5 @@ export function createDailyGame(key: string, me: { name: string; crest?: CrestDe
     taken.push(name);
     return { name, isBot: true, crest: randomCrest(r) };
   });
-  return createGame({ players: [{ name: me.name, isBot: false, crest: me.crest }, ...rivals], seed, jornadas: DAILY.jornadas, daily: key });
+  return createGame({ players: [{ name: me.name, isBot: false, crest: me.crest }, ...rivals], seed, jornadas: DAILY.jornadas, daily: key, league: dailyLeague(key) });
 }

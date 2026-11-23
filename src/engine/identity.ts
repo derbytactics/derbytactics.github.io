@@ -19,7 +19,8 @@ export interface Identity {
 }
 
 /** Liga de la partida: cambia los nombres, las caras y algunos textos. */
-export type League = 'masculina' | 'femenina';
+export type League = 'masculina' | 'femenina' | 'mixta';
+export const LEAGUES: League[] = ['masculina', 'femenina', 'mixta'];
 
 export interface CrestDesign {
   /** Silueta del escudo (0..CREST_SHAPES-1). */
@@ -212,13 +213,17 @@ export function generateRoster(ids: readonly string[], seed: number, league: Lea
   const r = makeRand(seed ^ 0x2f6b9e13);
   const taken = new Set<string>();
   const out: Record<string, Identity> = {};
-  for (const id of ids) out[id] = randomIdentity(r, taken, league === 'femenina');
+  // En la mixta, cada futbolista es jugador o jugadora a partes iguales.
+  for (const id of ids) out[id] = randomIdentity(r, taken, league === 'femenina' || (league === 'mixta' && r() < 0.5));
   return out;
 }
 
-/** Palabras que cambian con la liga. */
-export function words(state: { league?: League }) {
-  const f = state.league === 'femenina';
+/**
+ * Palabras que cambian con la liga. Con `cardId`, concuerdan con ese futbolista (en la liga mixta
+ * cada uno tiene su género); sin él, en la mixta se usa el genérico.
+ */
+export function words(state: { league?: League; roster?: Record<string, Identity> }, cardId?: string) {
+  const f = state.league === 'femenina' || (state.league === 'mixta' && !!cardId && !!state.roster?.[cardId]?.fem);
   return {
     fem: f,
     keeper: f ? 'portera' : 'portero',

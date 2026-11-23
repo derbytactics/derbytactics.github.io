@@ -18,7 +18,7 @@ export interface HistoryEntry {
   date: string;
   online: boolean;
   /** Liga en la que se jugó (sin indicar, masculina). */
-  league?: 'masculina' | 'femenina';
+  league?: 'masculina' | 'femenina' | 'mixta';
   club: string;
   crest?: CrestDesign;
   position: number;
@@ -123,7 +123,7 @@ export function recordGame(game: GameState, seat: number, online: boolean) {
     id,
     date: new Date().toISOString(),
     online,
-    ...(game.league === 'femenina' ? { league: 'femenina' as const } : {}),
+    ...(game.league && game.league !== 'masculina' ? { league: game.league } : {}),
     club: me.name,
     crest: me.crest,
     position: table.findIndex((p) => p.id === seat) + 1,

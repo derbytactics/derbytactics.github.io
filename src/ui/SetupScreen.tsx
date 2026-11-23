@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { CONFIG, CrestDesign, League, NewGameOptions, SeasonLength, randomClubName, randomCrest } from '../engine';
 import { Crest, Logo } from './art';
 import { MyClub } from '../account/club';
-import { Btn, LeaguePicker, Wordmark, LegalLinks, NavBar, Overline, s, useBack } from './components';
+import { Btn, LeagueChooser, Wordmark, LegalLinks, NavBar, Overline, s, useBack } from './components';
 import { C, clubColor, DISPLAY } from './theme';
 import { I, Icon } from './icons';
 import { DailyCard } from './DailyScreen';
@@ -62,7 +62,8 @@ export function SetupScreen(props: {
   const [warn, setWarn] = useState<string | null>(null);
   const [count, setCount] = useState(4);
   const [season, setSeason] = useState<SeasonLength>('estandar');
-  const [league, setLeague] = useState<League>('masculina');
+  /** Tras pulsar «Jugar», se elige la liga. */
+  const [asking, setAsking] = useState(false);
   const [rivals, setRivals] = useState(() => randomRivals(club.name));
   const patch = (i: number, p: Partial<Rival>) => setRivals((all) => all.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const reroll = (i: number) =>
@@ -79,7 +80,7 @@ export function SetupScreen(props: {
   );
 
   // En este móvil se juega contra la IA: los rivales siempre los lleva ella.
-  const start = () =>
+  const start = (league: League) =>
     onStart({ players: [{ name: club.name, isBot: false, crest: club.crest }, ...rivals.slice(0, count - 1).map((r, i) => ({ ...r, isBot: true, name: r.name.trim() || `Club ${i + 2}` }))], season, league });
   // «Atrás» en Android: vuelve a jugar aquí o pliega las opciones antes de salir de la app.
   useBack(() => {
@@ -198,7 +199,6 @@ export function SetupScreen(props: {
               <Text style={[s.p, { fontSize: 13, marginBottom: 8 }]}>Los rivales los lleva la IA. Para jugar con amigos, cada uno en su móvil: «Con amigos en línea».</Text>
 
               <View style={{ height: 6 }} />
-              <LeaguePicker value={league} onPick={setLeague} />
               <View style={{ marginBottom: 12 }}>
                 <Overline>DURACIÓN DE LA TEMPORADA</Overline>
                 <View style={[s.row, { gap: 8, marginTop: 8 }]}>
@@ -222,10 +222,19 @@ export function SetupScreen(props: {
           kind={props.savedLocal ? 'ghost' : 'primary'}
           icon={I.ball}
           label={props.savedLocal ? 'Empezar una nueva partida' : 'Jugar contra la IA'}
-          onPress={start}
+          onPress={() => setAsking(true)}
         />
         {props.savedLocal ? <Text style={[s.p, { fontSize: 13, marginTop: 4, textAlign: 'center' }]}>Sustituye a la partida a medias.</Text> : null}
       </View>
+    ) : null}
+    {asking ? (
+      <LeagueChooser
+        onClose={() => setAsking(false)}
+        onPick={(l) => {
+          setAsking(false);
+          start(l);
+        }}
+      />
     ) : null}
     </View>
   );

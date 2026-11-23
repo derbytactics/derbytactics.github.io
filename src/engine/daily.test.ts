@@ -23,3 +23,16 @@ describe('reto diario', () => {
     expect(a.daily).toBe('2026-11-22');
   });
 });
+
+describe('liga del reto', () => {
+  it('cambia según el día y es la misma para todo el mundo', async () => {
+    const { dailyLeague, createDailyGame } = await import('./daily');
+    const days = ['2026-11-22', '2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27'];
+    const leagues = days.map(dailyLeague);
+    expect(new Set(leagues).size).toBeGreaterThan(1);
+    const a = createDailyGame('2026-11-23', { name: 'Ana FC' });
+    const b = createDailyGame('2026-11-23', { name: 'Luis City' });
+    expect(a.league ?? 'masculina').toBe(dailyLeague('2026-11-23'));
+    expect(a.roster).toEqual(b.roster);
+  });
+});

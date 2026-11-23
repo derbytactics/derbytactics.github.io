@@ -8,7 +8,7 @@ import { BotStyle } from './bots';
 import { CONFIG } from './config';
 import { FOOTBALLERS, Position, basePrice } from './cards';
 import { GameState, SquadEntry, createGame, standings } from './engine';
-import { CrestDesign, Identity, makeRand, randomClubName, randomCrest } from './identity';
+import { CrestDesign, Identity, League, makeRand, randomClubName, randomCrest } from './identity';
 
 /**
  * `budget`: dinero de los rivales (tú recibes una parte). `squad`: futbolistas con los que ya
@@ -79,12 +79,14 @@ export interface CareerState {
   history: CareerSeason[];
   /** Ligas de Campeones ganadas. */
   titles: number;
+  /** Liga de toda la carrera (las carreras antiguas no la tienen: masculina). */
+  league?: League;
 }
 
 const STYLES: BotStyle[] = ['equilibrado', 'ofensivo', 'defensivo', 'cerrojo'];
 
-export function newCareer(club: { name: string; crest?: CrestDesign }, seed = Math.floor(Math.random() * 2 ** 31)): CareerState {
-  return { v: 1, seed: seed | 0, season: 1, division: 0, club, squad: [], roster: {}, money: 0, stadium: 1, history: [], titles: 0 };
+export function newCareer(club: { name: string; crest?: CrestDesign }, seed = Math.floor(Math.random() * 2 ** 31), league: League = 'masculina'): CareerState {
+  return { v: 1, seed: seed | 0, season: 1, division: 0, club, squad: [], roster: {}, money: 0, stadium: 1, history: [], titles: 0, league };
 }
 
 /** Los rivales de una división en esta carrera: siempre los mismos, con nombre, escudo y estilo. */
@@ -123,6 +125,7 @@ export function createCareerSeason(c: CareerState): GameState {
     seed: (c.seed ^ Math.imul(c.season, 0x85ebca6b)) | 0,
     jornadas: CAREER.jornadas,
     career: { division: c.division, season: c.season },
+    league: c.league,
     roster: c.roster,
     players: [
       { name: c.club.name, isBot: false, crest: c.club.crest, money: careerBudget(c), stadium: c.stadium, squad: c.squad },

@@ -433,7 +433,7 @@ export function createGame(opts: NewGameOptions): GameState {
     seed,
     gameId: `g${(seed >>> 0).toString(36)}${n}`,
     roster: { ...generateRoster(FOOTBALLERS.map((f) => f.id), seed, opts.league), ...(opts.roster ?? {}) },
-    ...(opts.league === 'femenina' ? { league: 'femenina' as const } : {}),
+    ...(opts.league && opts.league !== 'masculina' ? { league: opts.league } : {}),
     ...(opts.daily ? { daily: opts.daily } : {}),
     ...(opts.career ? { career: opts.career } : {}),
     totalJornadas: opts.jornadas ?? CONFIG.seasonLengths[opts.season ?? 'estandar'],
@@ -764,7 +764,7 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
     case 'amarilla':
       if (isBooked(theirs!, J)) {
         theirs!.outUntil = Math.max(theirs!.outUntil, J);
-        say(state, `Segunda amarilla a ${cardName(state, theirs!.cardId)} (${rival!.name}): ${words(state).sentOff} esta jornada.`, [rival!.id]);
+        say(state, `Segunda amarilla a ${cardName(state, theirs!.cardId)} (${rival!.name}): ${words(state, theirs!.cardId).sentOff} esta jornada.`, [rival!.id]);
       } else {
         theirs!.yellowUntil = J;
         say(state, `Amarilla a ${cardName(state, theirs!.cardId)} (${rival!.name}): juega esta jornada con menos fuerza.`, [rival!.id]);
@@ -772,7 +772,7 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
       break;
     case 'roja':
       theirs!.outUntil = J + S.redCardRounds - 1;
-      say(state, `Roja a ${cardName(state, theirs!.cardId)} (${rival!.name}): ${words(state).sentOff} esta jornada y la siguiente.`, [rival!.id]);
+      say(state, `Roja a ${cardName(state, theirs!.cardId)} (${rival!.name}): ${words(state, theirs!.cardId).sentOff} esta jornada y la siguiente.`, [rival!.id]);
       break;
     case 'penalti':
       me.penalties = [...(me.penalties ?? []).filter((x) => x.jornada >= J), { jornada: J, rival: rival!.id }];
@@ -1111,7 +1111,7 @@ function playMatchCard(state: GameState, action: Extract<Action, { type: 'matchC
       if (isBooked(theirs!, J)) {
         theirs!.outUntil = Math.max(theirs!.outUntil, J);
         ev.secondYellow = true;
-        say(state, `Segunda amarilla a ${who}: ${words(state).sentOff}.`, [rival.id]);
+        say(state, `Segunda amarilla a ${who}: ${words(state, theirs?.cardId).sentOff}.`, [rival.id]);
       } else {
         theirs!.yellowUntil = J;
         say(state, `Amarilla a ${who}: juega el resto del partido con menos fuerza.`, [rival.id]);
@@ -1119,7 +1119,7 @@ function playMatchCard(state: GameState, action: Extract<Action, { type: 'matchC
       break;
     case 'roja':
       theirs!.outUntil = J + S.redCardRounds - 1;
-      say(state, `¡Roja directa a ${who}! ${words(state).sentOff} esta jornada y la siguiente.`, [rival.id]);
+      say(state, `¡Roja directa a ${who}! ${words(state, theirs?.cardId).sentOff} esta jornada y la siguiente.`, [rival.id]);
       break;
     case 'lesion':
       theirs!.outUntil = J + S.injuryRounds - 1;

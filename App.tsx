@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler, Platform, Text, View } from 'react-native';
 import { backendEnabled, browserLocation, getAccount, initAccount, refreshProfile, signOut, subscribeAccount } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
-import { Action, CrestDesign, GameState, apply, botAction, check, styleOf, createCareerSeason, createDailyGame, createGame, currentPlayer, dailyKey } from './src/engine';
+import { Action, CrestDesign, GameState, apply, botAction, check, styleOf, createCareerSeason, createDailyGame, createGame, currentPlayer, dailyKey, League } from './src/engine';
 import { saveDailyGame, savedDailyGame, submitPending } from './src/account/daily';
 import { DailyEnd, DailyResultScreen } from './src/ui/DailyScreen';
 import { CareerEnd, CareerOverview } from './src/ui/CareerScreen';
@@ -31,7 +31,7 @@ import { OnlineGuest, OnlineHost } from './src/ui/Online';
 import { SetupScreen } from './src/ui/SetupScreen';
 import { SideMenu } from './src/ui/SideMenu';
 import { WelcomeScreen } from './src/ui/WelcomeScreen';
-import { BackContext, Btn, NavContext, Popup, s } from './src/ui/components';
+import { BackContext, Btn, LeagueChooser, NavContext, Popup, s } from './src/ui/components';
 import { C, TOP_INSET } from './src/ui/theme';
 import DerbyNearby from './modules/derby-nearby';
 import { NearbyNative, setNearbyNative } from './src/net/nearby';
@@ -156,6 +156,7 @@ export default function App() {
       { open: !!legal, close: () => setLegal(null) },
       { open: help, close: () => setHelp(false) },
       { open: historyOpen, close: () => setHistoryOpen(false) },
+      { open: careerAsk, close: () => setCareerAsk(false) },
       { open: achievementsOpen, close: () => setAchievementsOpen(false) },
       { open: clubOpen, close: () => setClubOpen(false) },
       { open: accountOpen, close: () => setAccountOpen(false) },
@@ -220,9 +221,12 @@ export default function App() {
   };
   const onHelp = () => setHelp(true);
   /** Modo carrera: sigue la temporada a medias o empieza la que toca (y la carrera, si no hay). */
-  const playCareer = () => {
+  /** Carrera nueva: antes de empezar se elige la liga (vale para toda la carrera). */
+  const [careerAsk, setCareerAsk] = useState(false);
+  const playCareer = (league?: League) => {
     const saved = loadCareer();
-    const career = saved?.career ?? (club ? startCareer({ name: club.name, crest: club.crest }) : null);
+    if (!saved?.career && !league) return setCareerAsk(true);
+    const career = saved?.career ?? (club ? startCareer({ name: club.name, crest: club.crest }, league) : null);
     if (!career) return;
     setGame(saved?.game && saved.game.phase !== 'finished' ? saved.game : createCareerSeason(career));
     setMode({ kind: 'local' });
@@ -268,7 +272,7 @@ export default function App() {
         onHelp={onHelp}
         onExit={toMenu}
         exitText={game.daily ? 'El reto queda guardado: puedes seguirlo hoy desde el menú.' : game.career ? 'La temporada queda guardada: la sigues desde «Modo carrera».' : 'La partida queda guardada en este dispositivo: podrás continuarla desde el menú.'}
-        endExtra={game.daily ? <DailyEnd game={game} /> : game.career ? <CareerEnd game={game} onNext={playCareer} /> : undefined}
+        endExtra={game.daily ? <DailyEnd game={game} /> : game.career ? <CareerEnd game={game} onNext={() => playCareer()} /> : undefined}
       />
     );
   } else if (backendEnabled() && !account.session && !guestMode) {
@@ -303,7 +307,7 @@ export default function App() {
           setMode({ kind: 'local' });
         }}
         onDailyResult={() => setDailyOpen(true)}
-        onCareer={playCareer}
+        onCareer={() => playCareer()}
         onCareerOpen={() => setCareerOpen(true)}
         onEditClub={() => setClubOpen(true)}
         onHost={() => setMode({ kind: 'host', name: club.name, crest: club.crest, resume: null })}
@@ -393,6 +397,17 @@ export default function App() {
             onHelp={onHelp}
             onLegal={setLegal}
             onLeave={backendEnabled() ? () => (getAccount().session ? setLeaving(true) : leave()) : undefined}
+          />
+        ) : null}
+        {careerAsk ? (
+          <LeagueChooser
+            title="¿En qué liga haces carrera?"
+            note="La liga es la misma toda la carrera."
+            onClose={() => setCareerAsk(false)}
+            onPick={(l) => {
+              setCareerAsk(false);
+              playCareer(l);
+            }}
           />
         ) : null}
         <AchievementToast />

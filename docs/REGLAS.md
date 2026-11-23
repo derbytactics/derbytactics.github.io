@@ -156,6 +156,10 @@ Cada club juega como mucho **2 cartas de árbitro o de jugada por partido**. Las
 
 Para añadir cartas nuevas basta con una entrada en `SPECIAL_INFO` (`src/engine/cards.ts`) con su tipo, sus copias y su efecto en el motor.
 
+## Liga masculina, femenina o mixta
+
+Al pulsar «Jugar contra la IA» se elige la liga: **masculina** (todos jugadores), **femenina** (todas jugadoras) o **mixta** (jugadores y jugadoras en todos los equipos, a partes iguales). Cambian los nombres, las caras y los textos; las reglas son las mismas. En la carrera se elige al empezarla y vale para toda; en las salas (en línea o cercanas), la elige el anfitrión en la sala de espera. El reto diario cambia de liga cada día, la misma para todo el mundo.
+
 ## Reto diario
 
 Cada día, la misma partida para todo el mundo: **4 jornadas contra 3 clubes de la IA**, con el mismo mercado, los mismos rivales y el mismo orden de dados. Un intento al día. Al terminar se apunta tu puesto, tus puntos y tus goles, se lleva la cuenta de los **días seguidos** (racha) y puedes **compartir el resultado** con un texto corto. Con cuenta, sale en el **ranking del día** (cuenta el primer intento).

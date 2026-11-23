@@ -19,7 +19,7 @@ Eres el presidente de un club recién ascendido. Con 80M en caja tienes que mont
 - **Tu club:** cada persona funda un único club (nombre y escudo a medida: forma, dibujo, emblema y colores) que se guarda en el dispositivo y la acompaña a todas sus partidas. Desde el menú lateral se cambia el nombre o el escudo y se consulta el historial de temporadas terminadas.
 - **Reto diario, modo carrera, logros y álbum de futbolistas** (ver [docs/REGLAS.md](docs/REGLAS.md)).
 - Futbolistas con nombres y caras nuevos en cada partida, de todas las procedencias (`src/engine/identity.ts`). Los rivales de la IA también reciben nombre y escudo al azar.
-- **Liga masculina o femenina** a elegir en cada partida (también en las salas en línea): cambian los nombres, las caras y los textos; las reglas son las mismas. Hay avatares de usuario de hombre y de mujer.
+- **Liga masculina, femenina o mixta**, que se elige al pulsar «Jugar» (y en la carrera, al empezarla; en las salas, en la sala de espera). En la mixta cada futbolista es jugador o jugadora y los textos concuerdan con cada uno. El reto diario cambia de liga cada día. Las reglas son las mismas. Hay avatares de usuario de hombre y de mujer.
 - Ilustraciones vectoriales generadas por código (retratos con volumen, escudos, dados, estadio) y guía de pasos en pantalla.
 - Motor de reglas independiente de la interfaz (`src/engine`), determinista y con tests.
 - Simulador de partidas entre bots para medir el equilibrio (`npm run simulate`).

@@ -1,5 +1,5 @@
 /** Modo carrera en este dispositivo: la carrera y la temporada a medias se guardan aparte. */
-import { CareerState, CrestDesign, GameState, finishCareerSeason, newCareer } from '../engine';
+import { CareerState, CrestDesign, GameState, League, finishCareerSeason, newCareer } from '../engine';
 import { load, remove, save } from '../net/storage';
 
 const KEY = 'futcards.career.v1';
@@ -12,8 +12,8 @@ interface Saved {
 
 export const loadCareer = (): Saved | null => load<Saved>(KEY);
 
-export function startCareer(club: { name: string; crest?: CrestDesign }): CareerState {
-  const career = newCareer(club);
+export function startCareer(club: { name: string; crest?: CrestDesign }, league: League = 'masculina'): CareerState {
+  const career = newCareer(club, undefined, league);
   save(KEY, { career, game: null });
   return career;
 }

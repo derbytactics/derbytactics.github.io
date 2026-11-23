@@ -9,7 +9,7 @@ import { isNearbyCode } from '../net/nearby';
 import { deviceId } from '../net/storage';
 import { Stars } from './AccountScreen';
 import { Crest } from './art';
-import { Btn, LeaguePicker, NavBar, Overline, s, useBack } from './components';
+import { Btn, LeaguePicker, NavBar, Overline, leagueLabel, s, useBack } from './components';
 import { GameView } from './GameView';
 import { C, clubColor, DISPLAY } from './theme';
 
@@ -412,7 +412,7 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
           ) : null}
           {backendEnabled() && !account ? <Text style={[s.p, { fontSize: 12, marginBottom: 10 }]}>Juegas sin cuenta: esta partida no contará en tu historial ni en el ranking.</Text> : null}
           <Text style={[s.p, { marginBottom: 10 }]}>
-            {room.league === 'femenina' ? 'Liga femenina' : 'Liga masculina'} · {room.clubs} clubes · {SEASONS.find((x) => x.key === room.season)?.label ?? ''} jornadas
+            {leagueLabel(room.league)} · {room.clubs} clubes · {SEASONS.find((x) => x.key === room.season)?.label ?? ''} jornadas
           </Text>
           <Seats room={room} mine={seat} />
           <Btn kind="ghost" label="Salir de la sala" onPress={exit} style={{ marginTop: 10 }} />

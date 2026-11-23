@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import {
   GameState,
+  LEAGUES,
+  League,
   Player,
   SquadEntry,
   activeNumbers,
@@ -409,19 +411,50 @@ export const s = StyleSheet.create({
   td: { color: C.dim, textAlign: 'right', fontSize: 13 },
 });
 
-/** Selector de liga: masculina o femenina. */
-export function LeaguePicker({ value, onPick }: { value: 'masculina' | 'femenina'; onPick: (l: 'masculina' | 'femenina') => void }) {
+const LEAGUE_INFO: Record<League, { label: string; text: string; icon: IconName }> = {
+  masculina: { label: 'Masculina', text: 'Todos los futbolistas son jugadores.', icon: 'gender-male' },
+  femenina: { label: 'Femenina', text: 'Todas las futbolistas son jugadoras.', icon: 'gender-female' },
+  mixta: { label: 'Mixta', text: 'Jugadores y jugadoras en todos los equipos.', icon: 'gender-male-female' },
+};
+export const leagueLabel = (l: League | undefined) => `Liga ${LEAGUE_INFO[l ?? 'masculina'].label.toLowerCase()}`;
+
+/** Selector de liga (en la sala de espera): masculina, femenina o mixta. */
+export function LeaguePicker({ value, onPick }: { value: League; onPick: (l: League) => void }) {
   return (
     <View style={{ marginTop: 6, marginBottom: 16 }}>
       <Overline>LIGA</Overline>
       <View style={[s.row, { gap: 8, marginTop: 8 }]}>
-        <Btn small kind={value === 'masculina' ? 'selected' : 'ghost'} label="Masculina" onPress={() => onPick('masculina')} style={{ flex: 1 }} />
-        <Btn small kind={value === 'femenina' ? 'selected' : 'ghost'} label="Femenina" onPress={() => onPick('femenina')} style={{ flex: 1 }} />
+        {LEAGUES.map((l) => (
+          <Btn key={l} small kind={value === l ? 'selected' : 'ghost'} label={LEAGUE_INFO[l].label} onPress={() => onPick(l)} style={{ flex: 1 }} />
+        ))}
       </View>
-      <Text style={{ color: C.faint, fontSize: 12, marginTop: 4 }}>
-        {value === 'femenina' ? 'Todas las futbolistas son jugadoras. Las reglas son las mismas.' : 'Todos los futbolistas son jugadores. Las reglas son las mismas.'}
-      </Text>
+      <Text style={{ color: C.faint, fontSize: 12, marginTop: 4 }}>{LEAGUE_INFO[value].text} Las reglas son las mismas.</Text>
     </View>
+  );
+}
+
+/** Ventana «¿Qué liga jugamos?», tras pulsar jugar: masculina, femenina o mixta. */
+export function LeagueChooser({ title = '¿Qué liga jugamos?', note, onPick, onClose }: { title?: string; note?: string; onPick: (l: League) => void; onClose: () => void }) {
+  return (
+    <Popup overline="ELIGE LA LIGA" title={title} button="Cancelar" onClose={onClose}>
+      {note ? <Text style={[s.p, { textAlign: 'center', marginBottom: 10 }]}>{note}</Text> : null}
+      {LEAGUES.map((l) => (
+        <Pressable
+          key={l}
+          accessibilityRole="button"
+          accessibilityLabel={`Liga ${LEAGUE_INFO[l].label}`}
+          onPress={() => onPick(l)}
+          style={({ pressed }) => [s.row, { padding: 12, borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: pressed ? C.sel : C.panelAlt, marginBottom: 8 }]}
+        >
+          <Icon name={LEAGUE_INFO[l].icon} size={26} color={C.accent} style={{ marginRight: 12 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: C.text, fontWeight: '900', fontSize: 17 }}>{LEAGUE_INFO[l].label}</Text>
+            <Text style={{ color: C.dim, fontSize: 12, marginTop: 1 }}>{LEAGUE_INFO[l].text}</Text>
+          </View>
+        </Pressable>
+      ))}
+      <Text style={{ color: C.faint, fontSize: 12, textAlign: 'center', marginBottom: 6 }}>Las reglas son las mismas en las tres.</Text>
+    </Popup>
   );
 }
 

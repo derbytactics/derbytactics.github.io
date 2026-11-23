@@ -20,7 +20,7 @@ export interface RoomState {
   seq: number;
   clubs: number;
   season: SeasonLength;
-  /** Liga femenina o masculina (por defecto). */
+  /** Liga masculina (por defecto), femenina o mixta. */
   league?: League;
   seats: Seat[];
   game: GameState | null;

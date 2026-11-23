@@ -4,7 +4,7 @@ import { CAREER, CareerState, DIVISIONS, GameState, OUTCOME_TEXT, STYLE_MOTTO, c
 import { closeCareerSeason, loadCareer } from '../account/career';
 import { unlock } from '../account/achievements';
 import { Crest } from './art';
-import { Btn, Overline, s } from './components';
+import { Btn, Overline, leagueLabel, s } from './components';
 import { I, Icon } from './icons';
 import { C, DISPLAY, clubColor } from './theme';
 
@@ -90,7 +90,7 @@ export function CareerOverview({ onClose, onAbandon }: { onClose: () => void; on
           <View style={[s.panel, { alignItems: 'center', borderColor: C.good }]}>
             <Overline>{c.club.name.toUpperCase()}</Overline>
             <Text style={{ color: C.text, fontSize: 26, ...DISPLAY, marginTop: 4 }}>{DIVISIONS[c.division].name}</Text>
-            <Text style={{ color: C.dim, marginTop: 2 }}>Temporada {c.season} · empiezas con {careerBudget(c)}M</Text>
+            <Text style={{ color: C.dim, marginTop: 2 }}>{leagueLabel(c.league)} · temporada {c.season} · empiezas con {careerBudget(c)}M</Text>
             <Text style={{ color: C.accent, fontWeight: '900', fontSize: 18, marginTop: 8 }}>🏆 {c.titles} título{c.titles === 1 ? '' : 's'} de la Liga de Campeones</Text>
             <View style={[s.row, { gap: 6, marginTop: 10 }]}>
               {DIVISIONS.map((d, i) => (

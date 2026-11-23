@@ -32,7 +32,7 @@ function Game({ g }: { g: HistoryEntry }) {
         <Crest name={g.club} color={clubColor(0)} design={g.crest} size={40} />
         <View style={{ flex: 1, marginLeft: 10 }}>
           <Overline>
-            {when(g.date)} · {g.online ? 'EN LÍNEA' : 'UN DISPOSITIVO'}{g.league === 'femenina' ? ' · FEMENINA' : ''} · {g.jornadas} JORNADAS
+            {when(g.date)} · {g.online ? 'EN LÍNEA' : 'UN DISPOSITIVO'}{g.league === 'femenina' ? ' · FEMENINA' : g.league === 'mixta' ? ' · MIXTA' : ''} · {g.jornadas} JORNADAS
           </Overline>
           <Text style={{ color: won ? C.accent : C.text, fontSize: 20, ...DISPLAY, marginTop: 2 }}>
             {won ? <Icon name={I.trophy} size={18} color={C.accent} /> : null}

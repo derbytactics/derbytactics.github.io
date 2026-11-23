@@ -3,9 +3,9 @@ import { Platform, ScrollView, Share, Text, View } from 'react-native';
 import { backendEnabled } from '../account/api';
 import { useAccount } from '../account/useAccount';
 import { unlock } from '../account/achievements';
-import { DAILY, GameState, dailyKey, dailyNumber } from '../engine';
+import { DAILY, GameState, dailyKey, dailyLeague, dailyNumber } from '../engine';
 import { DailyRankingRow, DailyResult, dailyRanking, dailyStreak, recordDaily, shareText, todayResult } from '../account/daily';
-import { Btn, Overline, s } from './components';
+import { Btn, Overline, leagueLabel, s } from './components';
 import { I, Icon } from './icons';
 import { C, DISPLAY } from './theme';
 
@@ -21,7 +21,7 @@ export function DailyCard({ playing, onPlay, onResult }: { playing: boolean; onP
       <View style={s.row}>
         <Icon name="calendar-star" size={22} color={C.accent} style={{ marginRight: 8 }} />
         <View style={{ flex: 1 }}>
-          <Overline>RETO DIARIO #{dailyNumber(day)}</Overline>
+          <Overline>RETO DIARIO #{dailyNumber(day)} · {leagueLabel(dailyLeague(day)).toUpperCase()}</Overline>
           <Text style={{ color: C.text, fontWeight: '800', marginTop: 1 }}>
             {DAILY.jornadas} jornadas contra {DAILY.clubs - 1} rivales: el mismo partido para todo el mundo
           </Text>
