@@ -2,7 +2,7 @@
  * Crónica de cada tirada, contada desde el punto de vista de un club (o neutral).
  * Devuelve las noticias en el orden en que deben aparecer, una a una.
  */
-import { GameState, Play, RollReport, activeNumbers, cardName, effectivePlays, fielded, footballer, isOut, words } from '../engine';
+import { GameState, Play, RollReport, SpecialKind, activeNumbers, cardName, effectivePlays, fielded, footballer, isOut, words } from '../engine';
 
 /*
  * Género en la crónica: lo que habla de un futbolista concreto concuerda con él o ella (en la liga
@@ -21,7 +21,7 @@ const someBack = (state: GameState, club: string) =>
 /** Futbolista con el nombre que lleva en esta partida. */
 const fb = (state: GameState, id: string) => ({ ...footballer(id), name: cardName(state, id) });
 
-export type NewsKind = 'attack' | 'goal' | 'stopped' | 'concede' | 'save' | 'info' | 'var' | 'card';
+export type NewsKind = 'attack' | 'goal' | 'stopped' | 'concede' | 'save' | 'info' | 'var' | 'card' | 'referee';
 
 export interface News {
   kind: NewsKind;
@@ -31,6 +31,8 @@ export interface News {
   cards?: string[];
   /** Club al que pertenecen esos futbolistas. */
   club?: number;
+  /** Carta de árbitro o de jugada lanzada en el partido (tarjeta, lesión, penalti): su icono. */
+  special?: SpecialKind;
   /** Carta especial robada (solo se enseña a quien la roba). */
   specialCardId?: string;
 }

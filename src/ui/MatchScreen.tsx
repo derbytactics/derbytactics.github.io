@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, Text, View } from 'react-native';
-import { Action, CONFIG, GameState, MatchCardEvent, MatchResult, Player, ReactionOffer, RollReport, SPECIAL_INFO, cardName, currentRoller, fielded, footballer, isOut, penaltiesOf, specialCard, standings, substitution, ticketPerGoal, words, ruleWords } from '../engine';
+import { Action, CONFIG, GameState, MatchCardEvent, MatchResult, Player, ReactionOffer, RollReport, SPECIAL_INFO, SpecialKind, cardName, currentRoller, fielded, footballer, isOut, specialCard, standings, substitution, ticketPerGoal, words, ruleWords } from '../engine';
 import { PACES, PACE_FACTOR, getPace, setPace, usePace } from './pace';
 import { CARD_TYPE } from './cardTypes';
 import { Avatar, Crest, Die } from './art';
@@ -108,6 +108,7 @@ const NEWS_STYLE: Record<NewsKind, { color: string; icon: IconName }> = {
   info: { color: C.selLine, icon: 'circle-small' },
   var: { color: C.danger, icon: I.var },
   card: { color: C.good, icon: I.card },
+  referee: { color: CARD_TYPE.arbitro.color, icon: CARD_TYPE.arbitro.icon },
 };
 
 /** Una noticia de la tirada: aparece con una pequeña animación. */
@@ -128,6 +129,8 @@ function NewsCard({ news, big, action }: { news: News; big: boolean; action?: Re
                 </View>
               ))}
             </View>
+          ) : news.special ? (
+            <Icon name={SPECIAL_ICON[news.special]} size={26} color={specialColor(news.special)} style={{ marginRight: 10 }} />
           ) : (
             <Icon name={st.icon} size={24} color={st.color} style={{ marginRight: 10 }} />
           )}
@@ -284,7 +287,12 @@ export function MatchScreen(props: {
   const [showCards, setShowCards] = useState(false);
 
   const roll = cur >= 0 ? rolls[cur] ?? null : null;
-  const news = roll ? rollNews(state, roll, state.jornada * 100 + cur, viewer) : [];
+  const events = (live ? state.match!.events : report?.events) ?? [];
+  // Las cartas del partido se cuentan en la crónica, cuando pasan: las lanzadas antes de empezar,
+  // al principio de la primera tirada; las demás, al final de la tirada tras la que se lanzaron.
+  const before = cur === 0 ? events.filter((e) => e.beforeRoll === 0).map((e) => eventNews(state, e, viewer)) : [];
+  const after = cur >= 0 ? events.filter((e) => e.beforeRoll >= 1 && e.beforeRoll - 1 === cur).map((e) => eventNews(state, e, viewer)) : [];
+  const news = roll ? [...before, ...rollNews(state, roll, state.jornada * 100 + cur, viewer), ...after] : [];
   // Giro pendiente: el partido espera a que alguien decida si juega su carta.
   const offer = live ? state.match!.pending?.[0] ?? null : null;
   const answers = (id: number) => (viewer === null ? !state.players[id].isBot : viewer === id);
@@ -292,8 +300,6 @@ export function MatchScreen(props: {
   const answer = (use: boolean) => myOffer && props.act?.({ type: 'react', playerId: myOffer.playerId, use });
   // La noticia sobre la que se ofrece el giro: el gol que te marcan o la jugada que te paran.
   const offerNews = myOffer ? news.findIndex((nw) => (myOffer.kind === 'salvada' ? nw.kind === 'concede' && nw.club === myOffer.attacker : nw.kind === 'stopped')) : -1;
-  const events = (live ? state.match!.events : report?.events) ?? [];
-  const seenEvents = events.filter((e) => e.beforeRoll <= cur + 1);
 
   const advance = (forced: boolean) => {
     if (cur >= rolls.length - 1) return;
@@ -335,7 +341,7 @@ export function MatchScreen(props: {
   useEffect(() => {
     const nw = !rolling && revealed > 0 ? news[revealed - 1] : null;
     if (!nw) return;
-    const map: Partial<Record<string, Sfx>> = { goal: 'goal', concede: 'concede', save: 'save', stopped: 'stopped', var: 'whistle', card: 'card' };
+    const map: Partial<Record<string, Sfx>> = { goal: 'goal', concede: 'concede', save: 'save', stopped: 'stopped', var: 'whistle', card: 'card', referee: 'whistle' };
     const sfx = map[nw.kind];
     if (sfx) play(sfx);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -369,8 +375,11 @@ export function MatchScreen(props: {
     props.onRoll();
   };
   const counted = rolls.slice(0, rolling ? cur : cur + 1);
-  // Los penaltis (cartas) abren el marcador antes de la primera tirada.
-  const penalties = penaltiesOf(state, state.jornada);
+  // Los penaltis (cartas) suben al marcador cuando la crónica los cuenta.
+  const toldAt = (e: MatchCardEvent) => Math.max(0, e.beforeRoll - 1);
+  const penalties = events
+    .filter((e) => !e.blocked && specialCard(e.cardId).kind === 'penalti' && (toldAt(e) < cur || (toldAt(e) === cur && !rolling)))
+    .map((e) => ({ playerId: e.playerId, rival: e.targetPlayerId! }));
   const score = (id: number) =>
     counted.reduce((a, r) => ({ gf: a.gf + rollScore(r, id).gf, gc: a.gc + rollScore(r, id).gc }), {
       gf: penalties.filter((x) => x.playerId === id).length,
@@ -437,14 +446,6 @@ export function MatchScreen(props: {
             <Text style={[s.p, { marginTop: 6, marginBottom: 12 }]}>
               {`Un partido de todos contra todos: cada club tira los dados una vez (${total} tiradas). Si te sale un 7, no hay jugada pero robas una carta especial. Con el número que salga atacan ${rw.theForwards} y ${rw.mids} que lo tengan, y cada rival lo para si ${rw.yourKeeper} y ${rw.yourBacks} con ese número suman al menos la misma fuerza.`}
             </Text>
-            {penalties.map((pen, i) => (
-              <View key={i} style={[s.panel, s.row, { borderColor: isMine(pen.playerId) ? C.accent : isMine(pen.rival) ? C.danger : C.line }]}>
-                <Icon name={I.goal} size={26} color={C.accent} style={{ marginRight: 10 }} />
-                <Text style={{ color: C.text, fontWeight: '700', flex: 1 }}>
-                  Penalti a favor de {name(pen.playerId)}: lo transforma y marca a {name(pen.rival)}.
-                </Text>
-              </View>
-            ))}
             <Lineups state={state} highlight={(id) => isMine(id)} />
             {state.players.filter((p) => isMine(p.id)).map((p) => (
               <View key={p.id} style={[s.panel, { borderColor: clubColor(p.id) + '88' }]}>
@@ -497,7 +498,6 @@ export function MatchScreen(props: {
         )}
 
         {/* Qué toca ahora: leer, seguir, tirar los dados, esperar o pasar al reparto. */}
-        <MatchEvents state={state} events={seenEvents} viewer={viewer} />
         <View style={[s.panel, { borderColor: ready && !awaiting ? C.accent : C.line }]}>
           {offer && !queued && ready ? (
             <View style={[s.row, { justifyContent: 'center' }]}>
@@ -742,26 +742,47 @@ function eventText(state: GameState, e: MatchCardEvent, viewer: number | null): 
   }
 }
 
-/** Cartas de árbitro y de jugada lanzadas hasta ahora en el partido. */
-function MatchEvents({ state, events, viewer }: { state: GameState; events: MatchCardEvent[]; viewer: number | null }) {
-  if (!events.length) return null;
-  return (
-    <View style={[s.panel, { borderColor: CARD_TYPE.arbitro.color + '88' }]}>
-      <View style={[s.row, { marginBottom: 4 }]}>
-        <Icon name={CARD_TYPE.arbitro.icon} size={16} color={CARD_TYPE.arbitro.color} style={{ marginRight: 6 }} />
-        <Overline>CARTAS DEL PARTIDO</Overline>
-      </View>
-      {[...events].reverse().map((e, i) => {
-        const kind = specialCard(e.cardId).kind;
-        return (
-          <View key={`${e.cardId}-${i}`} style={[s.row, { marginTop: 6, alignItems: 'flex-start' }]}>
-            <Icon name={SPECIAL_ICON[kind]} size={18} color={kind === 'roja' ? C.danger : kind === 'amarilla' ? '#F5C542' : CARD_TYPE[SPECIAL_INFO[kind].timing].color} style={{ marginRight: 8, marginTop: 1 }} />
-            <Text style={{ color: e.playerId === viewer || e.targetPlayerId === viewer ? C.text : C.dim, flex: 1, fontWeight: e.targetPlayerId === viewer ? '800' : '600' }}>{eventText(state, e, viewer)}</Text>
-          </View>
-        );
-      })}
-    </View>
-  );
+/** Color del icono de una carta del partido. */
+const specialColor = (kind: SpecialKind) => (kind === 'roja' ? C.danger : kind === 'amarilla' ? '#F5C542' : CARD_TYPE[SPECIAL_INFO[kind].timing].color);
+
+/** Texto de la noticia (el título ya dice qué carta es, así que no se repite). */
+function eventBody(state: GameState, e: MatchCardEvent, viewer: number | null): string {
+  const kind = specialCard(e.cardId).kind;
+  const club = (id: number) => (id === viewer ? 'tu club' : state.players[id].name);
+  const by = e.playerId === viewer ? 'La pediste tú' : `La pidió ${state.players[e.playerId].name}`;
+  const target = e.targetCardId ? `${cardName(state, e.targetCardId)} (${club(e.targetPlayerId!)})` : club(e.targetPlayerId!);
+  if (e.blocked) return eventText(state, e, viewer);
+  switch (kind) {
+    case 'amarilla':
+      return e.secondYellow ? `${target} ya tenía una: a la calle. ${by}.` : `${target} jugará con menos fuerza. ${by}.`;
+    case 'roja':
+      return `${target}, fuera del partido y de la jornada siguiente. ${by}.`;
+    case 'lesion':
+      return `${target} se retira ${words(state, e.targetCardId).injured}: ${CONFIG.special.injuryRounds} jornadas de baja.`;
+    case 'penalti':
+      return e.playerId === viewer ? `Lo lanzas y no fallas: gol a ${state.players[e.targetPlayerId!].name}.` : `${state.players[e.playerId].name} lo transforma: gol a ${club(e.targetPlayerId!)}.`;
+    default:
+      return eventText(state, e, viewer);
+  }
+}
+
+/** Una carta del partido contada como noticia de la crónica. */
+function eventNews(state: GameState, e: MatchCardEvent, viewer: number | null): News {
+  const kind = specialCard(e.cardId).kind;
+  const title = e.blocked
+    ? 'Recurso aceptado'
+    : kind === 'amarilla'
+      ? e.secondYellow ? '¡Segunda amarilla!' : 'Tarjeta amarilla'
+      : kind === 'roja'
+        ? '¡Roja directa!'
+        : kind === 'lesion'
+          ? 'Lesión'
+          : kind === 'penalti'
+            ? '¡Penalti!'
+            : SPECIAL_INFO[kind].title;
+  // Si te afecta a ti, se cuenta como un golpe; si es tuya y entra, como un acierto.
+  const tone: NewsKind = kind === 'penalti' && !e.blocked ? (e.playerId === viewer ? 'goal' : e.targetPlayerId === viewer ? 'concede' : 'referee') : 'referee';
+  return { kind: tone, title, text: eventBody(state, e, viewer), special: kind };
 }
 
 /** Tus cartas especiales durante el partido: las de árbitro y de jugada se lanzan desde aquí. */
@@ -770,12 +791,19 @@ function MatchHand({ state, me, act }: { state: GameState; me: Player; act: (a: 
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState<{ index: number; rival: number | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Aviso tras jugar una carta: sale en la crónica, no aquí. */
+  const [played, setPlayed] = useState<string | null>(null);
   const J = state.jornada;
   const playable = me.hand.filter((id) => ['arbitro', 'jugada'].includes(SPECIAL_INFO[specialCard(id).kind].timing)).length;
   const fire = (a: Action) => {
+    const id = a.type === 'matchCard' ? me.hand[a.handIndex] : null;
     const why = act(a);
     setError(why);
-    if (!why) setPicking(null);
+    if (!why) {
+      setPicking(null);
+      setOpen(false);
+      setPlayed(id ? `${SPECIAL_INFO[specialCard(id).kind].title}: lo verás en la crónica del partido.` : null);
+    }
   };
   return (
     <View style={[s.panel, { borderColor: playable ? CARD_TYPE.arbitro.color : C.line }]}>
@@ -785,8 +813,14 @@ function MatchHand({ state, me, act }: { state: GameState; me: Player; act: (a: 
           Mis cartas · {me.hand.length}
           {playable ? <Text style={{ color: CARD_TYPE.arbitro.color }}> · {playable} para jugar ahora</Text> : null}
         </Text>
-        <Btn small kind={playable ? 'primary' : 'ghost'} label={open ? 'Cerrar' : 'Ver'} onPress={() => { setOpen((x) => !x); setPicking(null); setError(null); }} />
+        <Btn small kind={playable ? 'primary' : 'ghost'} label={open ? 'Cerrar' : 'Ver'} onPress={() => { setOpen((x) => !x); setPicking(null); setError(null); setPlayed(null); }} />
       </View>
+      {played && !open ? (
+        <View style={[s.row, { marginTop: 8 }]}>
+          <Icon name="check-circle" size={16} color={C.good} style={{ marginRight: 6 }} />
+          <Text style={{ color: C.good, fontWeight: '700', fontSize: 13, flex: 1 }}>{played}</Text>
+        </View>
+      ) : null}
       {open ? (
         <View style={{ marginTop: 10 }}>
           {me.hand.length === 0 ? <Text style={s.p}>No tienes cartas. Recibes una al empezar cada jornada.</Text> : null}
