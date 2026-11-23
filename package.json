@@ -10,6 +10,7 @@
     "expo": "~58.0.25",
     "expo-apple-authentication": "~58.0.3",
     "expo-audio": "~58.0.12",
+    "expo-constants": "~58.0.16",
     "expo-font": "~58.0.12",
     "expo-status-bar": "~58.0.5",
     "expo-system-ui": "~58.0.7",
@@ -43,7 +44,8 @@
     "legal:pages": "tsx scripts/legal-pages.ts",
     "pwa": "tsx scripts/pwa.ts",
     "sounds": "tsx scripts/sounds.ts",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "ios:rebuild": "bash scripts/ios-rebuild.sh"
   },
   "private": true
 }

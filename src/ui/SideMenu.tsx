@@ -6,6 +6,7 @@ import { useHistory, useMyClub } from '../account/club';
 import { useAlbum, useUnlocked } from '../account/achievements';
 import { ACHIEVEMENTS, FOOTBALLERS } from '../engine';
 import { s } from './components';
+import { buildLabel } from './buildInfo';
 import { C, DISPLAY } from './theme';
 import { I, Icon, IconName } from './icons';
 
@@ -89,6 +90,7 @@ export function SideMenu(props: {
               <Text style={{ color: C.faint, fontSize: 12, textDecorationLine: 'underline' }}>Condiciones de uso</Text>
             </Pressable>
           </View>
+          <Text style={{ color: C.faint, fontSize: 11, paddingHorizontal: 14, marginTop: 10 }}>Versión {buildLabel()}</Text>
         </ScrollView>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="Cerrar el menú" onPress={props.onClose} style={{ flex: 1, backgroundColor: '#000000AA' }} />

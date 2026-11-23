@@ -33,6 +33,16 @@ npx eas-cli@latest submit -p ios    # la sube a App Store Connect → TestFlight
 
 Con TestFlight puedes invitar a amigos por correo sin publicar en la App Store. El plan gratuito de EAS compila en cola (puede tardar).
 
+## Actualizar la app del iPhone a la última versión (un solo comando)
+
+Con el iPhone conectado, en la carpeta del proyecto:
+
+```bash
+git pull; npm run ios:rebuild
+```
+
+Trae la última versión, regenera el proyecto nativo y compila en modo Release (el código va dentro de la app, sin depender del Mac). Al terminar, en el menú lateral de la app sale **Versión 1.0.1 · <código>**: tiene que coincidir con el último cambio de la rama. Si el iPhone sigue enseñando lo antiguo, borra la app del iPhone y repite.
+
 ## Tras añadir código nativo nuevo (p. ej. el modo sin internet)
 
 Si ya tenías la carpeta `ios/` de una compilación anterior, regenérala para que entren el módulo nuevo y sus permisos:
