@@ -213,6 +213,7 @@ function tellTwists(state: GameState, roll: RollReport, viewer: number | null): 
       return {
         kind: viewer === t.attacker ? 'stopped' : 'save',
         title: '¡Salvada in extremis!',
+        special: 'salvada',
         text: `${who} aparece de la nada y saca el balón sobre la línea cuando el gol estaba cantado. ${viewer === t.rival ? 'El gol' : `El gol de ${name(t.attacker)} a ${name(t.rival)}`} no sube al marcador.`,
         cards: hero ? [hero.id] : undefined,
         club: t.rival,
@@ -222,6 +223,7 @@ function tellTwists(state: GameState, roll: RollReport, viewer: number | null): 
     return {
       kind: viewer === t.rival ? 'concede' : 'goal',
       title: '¡Cantada terrible!',
+      special: 'cantada',
       text: `${keeper ? `${keeper.name} tenía el balón atrapado… y se le escurre entre las piernas.` : someKeeperBlunder(state, name(t.rival))} ${viewer === t.attacker ? '¡Gol tuyo!' : `Gol de ${name(t.attacker)}.`}`,
       cards: att?.cards,
       club: t.attacker,

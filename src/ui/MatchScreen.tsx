@@ -111,6 +111,17 @@ const NEWS_STYLE: Record<NewsKind, { color: string; icon: IconName }> = {
   referee: { color: CARD_TYPE.arbitro.color, icon: CARD_TYPE.arbitro.icon },
 };
 
+/** Etiqueta «CARTA DE …» en las noticias que nacen de una carta especial. */
+function CardBadge({ kind }: { kind: SpecialKind }) {
+  const type = CARD_TYPE[SPECIAL_INFO[kind].timing];
+  return (
+    <View style={[s.row, { alignSelf: 'flex-start', borderRadius: 6, backgroundColor: type.color + '2A', paddingHorizontal: 6, paddingVertical: 2, marginBottom: 4 }]}>
+      <Icon name={I.card} size={13} color={type.color} style={{ marginRight: 4 }} />
+      <Text style={{ color: type.color, fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>CARTA DE {type.label}</Text>
+    </View>
+  );
+}
+
 /** Una noticia de la tirada: aparece con una pequeña animación. */
 function NewsCard({ news, big, action }: { news: News; big: boolean; action?: React.ReactNode }) {
   const clubColor = useClubColor();
@@ -135,6 +146,7 @@ function NewsCard({ news, big, action }: { news: News; big: boolean; action?: Re
             <Icon name={st.icon} size={24} color={st.color} style={{ marginRight: 10 }} />
           )}
           <View style={{ flex: 1 }}>
+            {news.special ? <CardBadge kind={news.special} /> : null}
             <Text style={{ color: strong ? st.color : C.text, fontSize: strong ? 20 : 14, fontWeight: '900' }}>{news.title}</Text>
             <Text style={{ color: C.text, fontSize: 14, lineHeight: 20, marginTop: 2 }}>{news.text}</Text>
           </View>
