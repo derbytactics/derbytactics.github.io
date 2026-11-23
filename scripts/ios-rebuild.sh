@@ -8,6 +8,11 @@ BRANCH=claude/football-card-game-repo-q6v9z2
 echo "▶ Carpeta: $(pwd)"
 # Lo que cambia solo al compilar no debe impedir traer la versión nueva.
 git checkout -- package.json package-lock.json 2>/dev/null || true
+# app.json puede quedar retocado al compilar: se aparta (recuperable con «git stash pop»), no se pierde.
+if ! git diff --quiet -- app.json; then
+  git stash push -m "app.json antes de ios:rebuild" -- app.json
+  echo "▶ Tus cambios en app.json quedan apartados (git stash list)."
+fi
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "✖ Hay cambios sin guardar en esta carpeta (git status). Guárdalos o descártalos y vuelve a probar."
   git status --short
