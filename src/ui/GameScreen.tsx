@@ -332,13 +332,19 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
 
         {tab === 'cartas' ? (
           <>
-            {pendingCard ? (
-              <View style={[s.panel, { borderColor: C.accent }]}>
-                <Overline>ELIGE OBJETIVO</Overline>
-                <View style={[s.row, { marginTop: 4 }]}>
-                  <Icon name={SPECIAL_ICON[pendingCard.kind]} size={22} color={SPECIAL_ICON_COLOR[pendingCard.kind] ?? C.text} style={{ marginRight: 8 }} />
-                  <Text style={s.h2}>{SPECIAL_INFO[pendingCard.kind].title}</Text>
-                </View>
+            {me.hand.length === 0 ? <Text style={[s.p, { marginBottom: 10 }]}>No tienes cartas especiales. Cómpralas aquí o consíguelas gratis cuando salga un 7 y vayas en la mitad baja de la tabla.</Text> : null}
+            {me.hand.map((id, i) => {
+              const info = SPECIAL_INFO[specialCard(id).kind];
+              const needsTarget = info.target !== 'self' && info.target !== 'passive';
+              // En el mercado solo se juegan las de despacho; el resto se guarda para el partido.
+              const now = info.timing === 'despacho' && info.target !== 'passive';
+              return (
+                <SpecialCardFace key={id} id={id}>
+                  {now && pending !== i ? <Btn small label="Jugar" onPress={() => (needsTarget ? setPending(i) : act({ type: 'playCard', handIndex: i }))} /> : null}
+                  {pending === i ? (
+                    <View style={{ flexBasis: '100%' }}>
+                      <Overline>{pendingTarget === 'ownFootballer' ? '¿A CUÁL DE LOS TUYOS?' : pendingTarget === 'rival' ? '¿CONTRA QUÉ CLUB?' : '¿A QUÉ FUTBOLISTA RIVAL?'}</Overline>
+                      <View style={{ height: 8 }} />
                 {pendingTarget === 'ownFootballer'
                   ? me.squad.map((e) => (
                       <FootballerCard key={e.cardId} cardId={e.cardId} entry={e} state={state} owner={me}>
@@ -368,25 +374,16 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
                       </View>
                     ))
                   : null}
-                <Btn small kind="ghost" label="Cancelar" onPress={() => setPending(null)} />
-              </View>
-            ) : null}
+                      <Btn small kind="ghost" label="Cancelar" onPress={() => setPending(null)} />
+                    </View>
+                  ) : null}
 
-            {me.hand.length === 0 ? <Text style={[s.p, { marginBottom: 10 }]}>No tienes cartas especiales. Cómpralas aquí o consíguelas gratis cuando salga un 7 y vayas en la mitad baja de la tabla.</Text> : null}
-            {me.hand.map((id, i) => {
-              const info = SPECIAL_INFO[specialCard(id).kind];
-              const needsTarget = info.target !== 'self' && info.target !== 'passive';
-              // En el mercado solo se juegan las de despacho; el resto se guarda para el partido.
-              const now = info.timing === 'despacho' && info.target !== 'passive';
-              return (
-                <SpecialCardFace key={id} id={id}>
-                  {now ? <Btn small label="Jugar" onPress={() => (needsTarget ? setPending(i) : act({ type: 'playCard', handIndex: i }))} /> : null}
                   {info.timing !== 'despacho' ? (
                     <Text style={{ color: CARD_TYPE[info.timing].color, fontSize: 12, fontWeight: '800', flex: 1 }}>
                       {info.timing === 'giro' ? 'Para el partido: cuando una jugada te afecte' : 'Para el partido: juégala desde «Mis cartas»'}
                     </Text>
                   ) : null}
-                  <Btn small kind="ghost" label="Descartar" onPress={() => act({ type: 'discardCard', handIndex: i })} />
+                  {pending !== i ? <Btn small kind="ghost" label="Descartar" onPress={() => act({ type: 'discardCard', handIndex: i })} /> : null}
                 </SpecialCardFace>
               );
             })}

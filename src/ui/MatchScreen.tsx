@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, ScrollView, Text, View } from 'react-native';
+import { Animated, Easing, ScrollView, ScrollViewInstance, Text, View } from 'react-native';
 import { Action, CONFIG, GameState, MatchCardEvent, MatchResult, Player, ReactionOffer, RollReport, SPECIAL_INFO, SpecialKind, cardName, currentRoller, fielded, footballer, isOut, specialCard, standings, substitution, ticketPerGoal, words, ruleWords } from '../engine';
 import { PACES, PACE_FACTOR, getPace, setPace, usePace } from './pace';
 import { CARD_TYPE } from './cardTypes';
@@ -346,6 +346,12 @@ export function MatchScreen(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cur, rolling, revealed, ready, rolls.length, reparto, awaiting]);
 
+  // Al tirar, la pantalla vuelve arriba para seguir la crónica desde los dados.
+  const scroller = useRef<ScrollViewInstance>(null);
+  useEffect(() => {
+    if (cur >= 0) scroller.current?.scrollTo({ y: 0, animated: true });
+  }, [cur]);
+
   // Sonido: dados al tirar y un efecto por cada noticia que aparece.
   useEffect(() => {
     if (rolling) play('dice');
@@ -448,7 +454,7 @@ export function MatchScreen(props: {
   return (
     <View style={{ flex: 1 }}>
       <PhaseStepper step={1} label="DÍA DE PARTIDO" />
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <ScrollView ref={scroller} contentContainerStyle={{ padding: 16 }}>
         {cur < 0 ? (
           <>
             <Tip id="partido" title="Así se juega el partido">
@@ -847,7 +853,7 @@ function MatchHand({ state, me, act }: { state: GameState; me: Player; act: (a: 
                 ) : !pick ? (
                   <Btn small label="Jugar" onPress={() => { setError(null); setPicking({ index, rival: null }); }} />
                 ) : pick.rival === null ? (
-                  <View>
+                  <View style={{ flexBasis: '100%' }}>
                     <Text style={{ color: C.dim, fontWeight: '700', marginBottom: 6 }}>¿Contra qué club?</Text>
                     <View style={[s.row, { flexWrap: 'wrap', gap: 6 }]}>
                       {state.players.filter((p) => p.id !== me.id).map((p) => (
@@ -857,7 +863,7 @@ function MatchHand({ state, me, act }: { state: GameState; me: Player; act: (a: 
                     </View>
                   </View>
                 ) : (
-                  <View>
+                  <View style={{ flexBasis: '100%' }}>
                     <Text style={{ color: C.dim, fontWeight: '700', marginBottom: 6 }}>¿A qué titular de {state.players[pick.rival].name}?</Text>
                     <View style={[s.row, { flexWrap: 'wrap', gap: 6 }]}>
                       {fielded(state.players[pick.rival]).filter((e) => !isOut(e, J)).map((e) => (
