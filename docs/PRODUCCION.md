@@ -56,11 +56,16 @@ Tu nombre seguirá apareciendo como titular en los textos legales: la ley exige 
 
 ## Tu parte
 
-### Ahora mismo (para lo último que se ha hecho)
+### Ahora mismo: salir con la 1.0.1
 
-1. **Vuelve a ejecutar `supabase/schema.sql`** entero en el editor SQL. Añade el filtro de nombres, las denuncias y la petición de nombre a quien entra con Google o Apple. No borra datos.
-2. **Supabase → Authentication → Sign In / Providers → Apple → Client IDs:** deja tu Services ID primero y añade detrás, separado por coma, `com.derbytactics.app`. Es lo que permite el acceso nativo con Apple en iPhone.
-3. **Vuelve a compilar la app en el iPhone**: hay módulos nativos nuevos (Apple, sonido). En la carpeta del proyecto: `git pull`, `npm install`, `rm -rf ios` y `npx expo run:ios --device --configuration Release`.
+1. **Probar en el iPhone** (`git pull` y `npm run ios:rebuild`; la versión sale al final del menú lateral):
+   - **Sin internet con dos iPhone:** «Con amigos» → «Crear una sala cercana» en uno y «Entrar» en el otro; jugar al menos una jornada. Es lo único con código nativo nuevo sin probar en dispositivos.
+   - **Una partida en línea completa con otra persona:** convocatoria secreta, cartas en el partido, giros y cambio.
+   - **Logros y álbum en la cuenta:** entrar, fichar, borrar la app, volver a entrar y comprobar que siguen.
+2. **Compilar y subir a TestFlight** con EAS (comandos al final de [`APP_STORE.md`](APP_STORE.md)).
+3. **App Store Connect:** versión 1.0.1 (o 1.0.0 si aún no se ha publicado ninguna), textos y novedades de [`APP_STORE.md`](APP_STORE.md), capturas de `store/capturas-1.0.1/`, compilación de TestFlight y enviar a revisión.
+
+Ya hecho de lo anterior: `schema.sql` ejecutado (reto diario, denuncias, logros y álbum), acceso con Google y Apple funcionando y la app compilada en el iPhone.
 
 ### 1. Nombre
 
