@@ -209,7 +209,9 @@ function tellTwists(state: GameState, roll: RollReport, viewer: number | null): 
     const att = roll.plays.find((pl) => pl.playerId === t.attacker);
     if (t.kind === 'salvada') {
       const hero = defenders(state, t.rival, roll.sum).backs[0] ?? defenders(state, t.rival, roll.sum).keeper;
-      const who = hero ? hero.name : someBack(state, name(t.rival));
+      const anon = someBack(state, name(t.rival));
+      // Abre la frase: con mayúscula aunque sea «alguien de la defensa…».
+      const who = hero ? hero.name : anon[0].toUpperCase() + anon.slice(1);
       return {
         kind: viewer === t.attacker ? 'stopped' : 'save',
         title: '¡Salvada in extremis!',

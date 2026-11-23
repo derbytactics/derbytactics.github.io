@@ -99,9 +99,9 @@ App Store Connect acepta capturas de 6,1"/6,3" (1179 × 2556). En `store/captura
 1. `1-partido.png`: la crónica del partido con un gol.
 2. `2-convocatoria.png`: la convocatoria secreta de 5 titulares.
 3. `3-reparto.png`: el reparto de la jornada.
-4. `4-mercado.png`: el mercado, en una liga mixta.
-5. `5-jugar-aqui.png`: reto diario y modo carrera.
-6. `6-album.png`: el álbum de futbolistas.
+4. `4-mercado.png`: el mercado, con el orden de turno y dos porteras.
+5. `5-jugar-aqui.png`: tu club, reto diario, modo carrera y amistoso.
+6. `6-album.png`: el álbum de futbolistas (41 de 105).
 7. `7-elige-liga.png`: masculina, femenina o mixta.
 
 Las de la versión anterior siguen en `store/capturas-6.3/` (6,3") y `store/capturas/` (6,9"). Si App Store Connect te pide 6,9" (1320 × 2868), avísame y las saco en ese tamaño.
