@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { CONFIG, CrestDesign, League, NewGameOptions, SeasonLength, randomClubName, randomCrest } from '../engine';
-import { Crest, Logo } from './art';
+import { Crest } from './art';
 import { MyClub } from '../account/club';
-import { Btn, LeagueChooser, Wordmark, LegalLinks, NavBar, Overline, s, useBack } from './components';
+import { Btn, LeagueChooser, LegalLinks, NavBar, Overline, s, useBack } from './components';
 import { C, clubColor, DISPLAY } from './theme';
 import { I, Icon } from './icons';
 import { DailyCard } from './DailyScreen';
@@ -64,6 +64,8 @@ export function SetupScreen(props: {
   const [season, setSeason] = useState<SeasonLength>('estandar');
   /** Tras pulsar «Jugar», se elige la liga. */
   const [asking, setAsking] = useState(false);
+  /** Amistoso abierto: se ven sus opciones. */
+  const [friendly, setFriendly] = useState(false);
   const [rivals, setRivals] = useState(() => randomRivals(club.name));
   const patch = (i: number, p: Partial<Rival>) => setRivals((all) => all.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const reroll = (i: number) =>
@@ -93,13 +95,8 @@ export function SetupScreen(props: {
     <NavBar />
     {/* En iPhone, al abrirse el teclado la lista deja sitio y sube la casilla activa a la vista. */}
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-      <View style={{ alignItems: 'center', marginTop: 4, marginBottom: 16 }}>
-        <Logo size={88} />
-        <View style={{ marginTop: 6 }}>
-          <Wordmark size={40} />
-        </View>
-        <Text style={[s.p, { textAlign: 'center', marginTop: 2 }]}>Ficha, amplía tu estadio y gana la liga a golpe de dado.</Text>
-      </View>
+      {/* Tu club, arriba del todo: es el que llevas a cualquier modo de juego. */}
+      {myClubCard}
 
       <View accessibilityRole="tablist" style={[s.row, { marginBottom: 16, backgroundColor: C.panel, borderRadius: 12, padding: 3, borderWidth: 1, borderColor: C.line }]}>
         {(['local', 'online'] as const).map((m) => (
@@ -121,7 +118,6 @@ export function SetupScreen(props: {
       {mode === 'online' ? (
         <>
           <Text style={[s.p, { marginBottom: 14 }]}>Cada persona juega desde su móvil. Una crea la sala y pasa el código a las demás.</Text>
-          {myClubCard}
           {warn ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{warn}</Text> : null}
 
           <Btn label="Crear una sala" onPress={() => props.hostGate().then((why) => (why ? setWarn(why) : props.onHost()))} />
@@ -156,8 +152,6 @@ export function SetupScreen(props: {
         </>
       ) : (
         <>
-          <DailyCard playing={props.dailyPlaying} onPlay={props.onDaily} onResult={props.onDailyResult} />
-          <CareerCard onPlay={props.onCareer} onOpen={props.onCareerOpen} />
           {props.savedLocal ? (
             <View style={[s.panel, { borderColor: C.accent }]}>
               <Overline>PARTIDA A MEDIAS</Overline>
@@ -165,9 +159,23 @@ export function SetupScreen(props: {
               <Btn label="Continuar la partida" onPress={props.onContinueLocal} />
             </View>
           ) : null}
-          {myClubCard}
+          <DailyCard playing={props.dailyPlaying} onPlay={props.onDaily} onResult={props.onDailyResult} />
+          <CareerCard onPlay={props.onCareer} onOpen={props.onCareerOpen} />
 
-          <View style={[s.panel, { paddingBottom: 4 }]}>
+          {/* Amistoso: una liga a tu medida contra la IA. Se configura al abrirlo. */}
+          <View style={[s.panel, { borderColor: '#7FB2FF' }]}>
+            <View style={s.row}>
+              <Icon name={I.ball} size={22} color="#7FB2FF" style={{ marginRight: 8 }} />
+              <View style={{ flex: 1 }}>
+                <Overline>AMISTOSO CONTRA LA IA</Overline>
+                <Text style={{ color: C.text, fontWeight: '800', marginTop: 1 }}>Una liga a tu medida</Text>
+                <Text style={{ color: C.dim, fontSize: 12, marginTop: 2 }}>Elige cuántos clubes, los rivales y la duración.</Text>
+              </View>
+            </View>
+            {!friendly ? (
+              <Btn label="Jugar un amistoso" onPress={() => setFriendly(true)} style={{ marginTop: 10 }} />
+            ) : (
+              <View style={{ marginTop: 12 }}>
               <View style={[s.row, { marginBottom: 10 }]}>
                 <View style={{ flex: 1 }}>
                   <Overline>CLUBES EN LA LIGA</Overline>
@@ -196,7 +204,7 @@ export function SetupScreen(props: {
                   </Pressable>
                 </View>
               ))}
-              <Text style={[s.p, { fontSize: 13, marginBottom: 8 }]}>Los rivales los lleva la IA. Para jugar con amigos, cada uno en su móvil: «Con amigos en línea».</Text>
+              <Text style={[s.p, { fontSize: 13, marginBottom: 8 }]}>Los rivales los lleva la IA. Para jugar con amigos, cada uno en su móvil: «Con amigos».</Text>
 
               <View style={{ height: 6 }} />
               <View style={{ marginBottom: 12 }}>
@@ -210,23 +218,17 @@ export function SetupScreen(props: {
                   ))}
                 </View>
               </View>
-            </View>
+                <Btn icon={I.ball} label="Elegir liga y empezar" onPress={() => setAsking(true)} />
+                {props.savedLocal ? <Text style={[s.p, { fontSize: 12, marginTop: 4, textAlign: 'center' }]}>Sustituye a la partida a medias.</Text> : null}
+                <Btn small kind="ghost" label="Cancelar" onPress={() => setFriendly(false)} style={{ marginTop: 8 }} />
+              </View>
+            )}
+          </View>
         </>
       )}
 
       <LegalLinks />
     </ScrollView>
-    {mode === 'local' ? (
-      <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: C.bg }}>
-        <Btn
-          kind={props.savedLocal ? 'ghost' : 'primary'}
-          icon={I.ball}
-          label={props.savedLocal ? 'Empezar una nueva partida' : 'Jugar contra la IA'}
-          onPress={() => setAsking(true)}
-        />
-        {props.savedLocal ? <Text style={[s.p, { fontSize: 13, marginTop: 4, textAlign: 'center' }]}>Sustituye a la partida a medias.</Text> : null}
-      </View>
-    ) : null}
     {asking ? (
       <LeagueChooser
         onClose={() => setAsking(false)}

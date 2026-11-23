@@ -83,7 +83,7 @@ Responde **Ninguno/No** a violencia, contenido sexual, lenguaje soez, drogas, te
 
 ## Notas para la revisión
 
-> Se puede jugar sin cuenta: en la portada, «Jugar sin cuenta» → «Jugar contra la IA».
+> Se puede jugar sin cuenta: en la portada, «Jugar sin cuenta» → «Jugar un amistoso».
 > Las salas en línea necesitan dos dispositivos; crear una sala pide entrar con Apple (vale el Apple ID del revisor). Para unirse a una sala no hace falta cuenta.
 > Los millones del juego son ficticios: no hay compras ni dinero real.
 > Borrar la cuenta: menú ☰ → «Mi cuenta» → «Borrar mi cuenta».
