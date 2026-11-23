@@ -182,7 +182,7 @@ export const SPECIAL_INFO: Record<
     target: 'rivalFootballer',
     sanction: true,
     copies: 2,
-    text: () => `En el partido: un titular rival se retira lesionado y se pierde ${S.injuryRounds} jornadas (esta incluida).`,
+    text: () => `En el partido: alguien de la alineación rival se lesiona y se pierde ${S.injuryRounds} jornadas (esta incluida).`,
   },
   amarilla: {
     title: 'Tarjeta amarilla',
@@ -190,7 +190,7 @@ export const SPECIAL_INFO: Record<
     target: 'rivalFootballer',
     sanction: true,
     copies: 4,
-    text: () => `En el partido: un titular rival juega el resto de la jornada con ${S.yellowPenalty} menos de fuerza. Si ya tenía amarilla, es expulsado.`,
+    text: () => `En el partido: alguien de la alineación rival juega el resto de la jornada con ${S.yellowPenalty} menos de fuerza. Si ya tenía amarilla, se va a la calle.`,
   },
   roja: {
     title: 'Tarjeta roja',
@@ -198,7 +198,7 @@ export const SPECIAL_INFO: Record<
     target: 'rivalFootballer',
     sanction: true,
     copies: 2,
-    text: () => `En el partido: expulsas a un titular rival. Ni ataca ni defiende el resto de la jornada ni la siguiente.`,
+    text: () => `En el partido: mandas a la calle a alguien de la alineación rival. Ni ataca ni defiende el resto de la jornada ni la siguiente.`,
   },
   penalti: {
     title: 'Penalti a favor',
@@ -214,7 +214,7 @@ export const SPECIAL_INFO: Record<
     target: 'ownFootballer',
     sanction: false,
     copies: 4,
-    text: () => `Uno de tus futbolistas juega con el doble de fuerza (ataque y defensa) durante ${S.streakRounds} jornadas.`,
+    text: () => `Alguien de tu plantilla juega con el doble de fuerza (ataque y defensa) durante ${S.streakRounds} jornadas.`,
   },
   olfato: {
     title: 'Olfato de gol',
@@ -222,7 +222,7 @@ export const SPECIAL_INFO: Record<
     target: 'ownFootballer',
     sanction: false,
     copies: 6,
-    text: (c) => `Uno de tus futbolistas también actúa con el ${c.value} durante ${S.extraNumberRounds} jornadas.`,
+    text: (c) => `Alguien de tu plantilla también actúa con el ${c.value} durante ${S.extraNumberRounds} jornadas.`,
   },
   cantera: {
     title: 'Jugador de cantera',
@@ -230,7 +230,7 @@ export const SPECIAL_INFO: Record<
     target: 'ownFootballer',
     sanction: false,
     copies: 3,
-    text: () => `Nadie puede pagar la cláusula de uno de tus futbolistas durante ${S.academyRounds} jornadas.`,
+    text: () => `Nadie puede pagar la cláusula de alguien de tu plantilla durante ${S.academyRounds} jornadas.`,
   },
   patrocinador: {
     title: 'Nuevo patrocinador',
@@ -278,7 +278,7 @@ export const SPECIAL_INFO: Record<
     target: 'reaction',
     sanction: false,
     copies: 4,
-    text: () => 'Cuando te van a marcar: uno de los tuyos saca el balón sobre la línea y el gol no sube al marcador.',
+    text: () => 'Cuando te van a marcar: alguien de tu defensa saca el balón sobre la línea y el gol no sube al marcador.',
   },
   cantada: {
     title: 'Cantada terrible',

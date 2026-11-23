@@ -376,16 +376,23 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
             {me.hand.map((id, i) => {
               const info = SPECIAL_INFO[specialCard(id).kind];
               const needsTarget = info.target !== 'self' && info.target !== 'passive';
+              // En el mercado solo se juegan las de despacho; el resto se guarda para el partido.
+              const now = info.timing === 'despacho' && info.target !== 'passive';
               return (
                 <SpecialCardFace key={id} id={id}>
-                  {info.target !== 'passive' ? <Btn small label="Jugar" onPress={() => (needsTarget ? setPending(i) : act({ type: 'playCard', handIndex: i }))} /> : null}
+                  {now ? <Btn small label="Jugar" onPress={() => (needsTarget ? setPending(i) : act({ type: 'playCard', handIndex: i }))} /> : null}
+                  {info.timing !== 'despacho' ? (
+                    <Text style={{ color: CARD_TYPE[info.timing].color, fontSize: 12, fontWeight: '800', flex: 1 }}>
+                      {info.timing === 'giro' ? 'Para el partido: cuando una jugada te afecte' : 'Para el partido: juégala desde «Mis cartas»'}
+                    </Text>
+                  ) : null}
                   <Btn small kind="ghost" label="Descartar" onPress={() => act({ type: 'discardCard', handIndex: i })} />
                 </SpecialCardFace>
               );
             })}
             <Btn kind={why({ type: 'buySpecial' }) ? 'muted' : 'primary'} label={`Comprar carta especial · ${CONFIG.special.cost}M`} onPress={() => act({ type: 'buySpecial' })} />
             <Text style={[s.p, { marginTop: 8 }]}>
-              Se roba boca abajo. Máximo {CONFIG.special.handLimit} en mano y {CONFIG.special.maxPlayedPerTurn} jugadas por turno.
+              Se roba boca abajo. Máximo {CONFIG.special.handLimit} en mano. Las de despacho se juegan aquí (hasta {CONFIG.special.maxPlayedPerTurn} por turno); las de árbitro, jugada y giro, durante el partido.
             </Text>
           </>
         ) : null}
