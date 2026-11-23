@@ -1123,7 +1123,7 @@ function playMatchCard(state: GameState, action: Extract<Action, { type: 'matchC
       break;
     case 'lesion':
       theirs!.outUntil = J + S.injuryRounds - 1;
-      say(state, `${who} se retira lesionado: ${S.injuryRounds} jornadas de baja.`, [rival.id]);
+      say(state, `${who} se retira ${words(state, theirs?.cardId).injured}: ${S.injuryRounds} jornadas de baja.`, [rival.id]);
       break;
     case 'penalti':
       me.penalties = [...(me.penalties ?? []).filter((x) => x.jornada >= J), { jornada: J, rival: rival.id }];

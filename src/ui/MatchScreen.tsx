@@ -86,10 +86,10 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
           {r.closedDoors
             ? 'taquilla 0M (puerta cerrada)'
             : `taquilla ${r.ticket}M (${r.scoringPlays} ${r.scoringPlays === 1 ? 'jugada de gol' : 'jugadas de gol'} × ${ticketPerGoal(p.stadium)}M${r.clubDay ? ' × 2 Día del club' : ''})`}
-          {r.saves ? ` · ${r.saves} ${r.saves === 1 ? 'parada' : 'paradas'} ${words(state).fem ? 'de la portera' : 'del portero'}: ${r.saveBonus}M` : ''}
+          {r.saves ? ` · ${r.saves} ${r.saves === 1 ? 'parada' : 'paradas'} ${words(state, keeperOf(p)).fem ? 'de la portera' : 'del portero'}: ${r.saveBonus}M` : ''}
         </Text>
         {r.keeperCard ? (
-          <Text style={{ color: C.good, fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Tu {words(state).keeper} gana una carta especial por sus paradas</Text>
+          <Text style={{ color: C.good, fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Tu {words(state, keeperOf(p)).keeper} gana una carta especial por sus paradas</Text>
         ) : null}
         <Text style={{ color: C.text, fontSize: 13, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
           Llevas {p.points} puntos · vas {ordinal(leaguePos)} en la liga · {p.money}M en caja
@@ -717,6 +717,9 @@ function ReactButton({ offer, onUse, onPass }: { offer: ReactionOffer; onUse: ()
   );
 }
 
+/** Portero (o portera) de un club, para que el texto concuerde. */
+const keeperOf = (p: Player) => p.squad.find((e) => footballer(e.cardId).position === 'POR')?.cardId;
+
 /** Texto de una carta jugada en el partido. */
 function eventText(state: GameState, e: MatchCardEvent, viewer: number | null): string {
   const name = (id: number) => (id === viewer ? 'tú' : state.players[id].name);
@@ -730,7 +733,7 @@ function eventText(state: GameState, e: MatchCardEvent, viewer: number | null): 
     case 'roja':
       return `¡Roja directa a ${target}! Fuera del partido y de la jornada siguiente. La pidió ${by}.`;
     case 'lesion':
-      return `${target} se retira lesionado. Estará ${CONFIG.special.injuryRounds} jornadas de baja.`;
+      return `${target} se retira ${words(state, e.targetCardId).injured}. Estará ${CONFIG.special.injuryRounds} jornadas de baja.`;
     case 'penalti':
       return `¡Penalti a favor de ${by}! Gol a ${state.players[e.targetPlayerId!].name}.`;
     default:

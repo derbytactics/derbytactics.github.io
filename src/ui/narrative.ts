@@ -2,7 +2,21 @@
  * Crónica de cada tirada, contada desde el punto de vista de un club (o neutral).
  * Devuelve las noticias en el orden en que deben aparecer, una a una.
  */
-import { GameState, Play, RollReport, activeNumbers, cardName, effectivePlays, fielded, footballer, isOut } from '../engine';
+import { GameState, Play, RollReport, activeNumbers, cardName, effectivePlays, fielded, footballer, isOut, words } from '../engine';
+
+/*
+ * Género en la crónica: lo que habla de un futbolista concreto concuerda con él o ella (en la liga
+ * mixta, cada uno el suyo); lo que habla de alguien sin nombre se cuenta en neutro o según la liga.
+ */
+const fem = (state: GameState, cardId: string) => words(state, cardId).fem;
+/** La cantada, cuando no se sabe quién está en la portería. */
+const someKeeperBlunder = (state: GameState, club: string) =>
+  state.league === 'mixta'
+    ? `En la portería de ${club} el balón parecía atrapado… y se escurre entre las piernas.`
+    : `${state.league === 'femenina' ? 'La portera' : 'El portero'} de ${club} tenía el balón atrapado… y se le escurre entre las piernas.`;
+/** «Un defensa de X» cuando no se sabe quién es. */
+const someBack = (state: GameState, club: string) =>
+  state.league === 'femenina' ? `una defensa de ${club}` : state.league === 'mixta' ? `alguien de la defensa de ${club}` : `un defensa de ${club}`;
 
 /** Futbolista con el nombre que lleva en esta partida. */
 const fb = (state: GameState, id: string) => ({ ...footballer(id), name: cardName(state, id) });
@@ -32,13 +46,13 @@ function picker(seed: number) {
   };
 }
 
-const SHOT = ['remata de primeras', 'se planta ante el portero y dispara', 'engancha una volea', 'cabecea al segundo palo', 'define con la zurda', 'chuta raso y cruzado', 'fusila desde el punto de penalti'];
+const SHOT = ['remata de primeras', 'se planta ante la portería y dispara', 'engancha una volea', 'cabecea al segundo palo', 'define con la zurda', 'chuta raso y cruzado', 'fusila desde el punto de penalti'];
 const LONG_SHOT = ['arma la pierna desde la frontal', 'prueba suerte desde fuera del área', 'se saca un zapatazo lejano', 'dispara desde treinta metros'];
 const PASS = ['filtra un pase espectacular', 'pone un centro medido', 'se inventa una asistencia de tacón', 'rompe líneas con un pase al hueco', 'cuelga un balón perfecto al área', 'da el pase de la muerte'];
 const WALL = ['tiran una pared en el área', 'combinan al primer toque', 'se asocian en la frontal'];
 const GOAL_TITLE = ['¡GOOOL!', '¡Golazo!', '¡A la red!', '¡Gol!'];
 const BEAT = ['Bates a', 'Superas a', 'La mandas a la red de', 'Perforas la portería de'];
-const KEEPER_SAVE = ['vuela y la saca con la manopla', 'detiene abajo, muy seguro', 'despeja a córner con una mano salvadora', 'adivina el lado y la atrapa', 'saca un pie milagroso'];
+const KEEPER_SAVE = ['vuela y la saca con la manopla', 'detiene abajo con seguridad', 'despeja a córner con una mano salvadora', 'adivina el lado y la atrapa', 'saca un pie milagroso'];
 const DEF_STOP = ['se anticipa y corta el pase', 'roba la pelota con un cruce perfecto', 'mete la pierna y despeja', 'gana el duelo y recupera', 'tapa el disparo con el cuerpo'];
 /** Tras una parada propia, cómo sale el balón hacia el ataque. */
 const OUTLET_KEEPER = ['saca rápido con la mano', 'pone el balón en juego en largo', 'no se lo piensa y lanza la contra'];
@@ -96,19 +110,8 @@ function neutral(state: GameState, sum: number, play: Play, pick: ReturnType<typ
  * `seed` debe ser estable para la tirada (por ejemplo, jornada × 100 + número de tirada).
  */
 export function rollNews(state: GameState, roll: RollReport, seed: number, viewer: number | null): News[] {
-  const news = [...tellRoll(state, roll, seed, viewer), ...tellTwists(state, roll, viewer)];
-  return state.league === 'femenina' ? news.map((x) => ({ ...x, title: inFeminine(x.title), text: inFeminine(x.text) })) : news;
+  return [...tellRoll(state, roll, seed, viewer), ...tellTwists(state, roll, viewer)];
 }
-
-/** Pasa al femenino las frases de la crónica que hablan de las jugadoras. */
-const FEMININE: [RegExp, string][] = [
-  [/\bal portero\b/g, 'a la portera'],
-  [/\bel portero\b/g, 'la portera'],
-  [/\btu portero\b/g, 'tu portera'],
-  [/\bsu portero\b/g, 'su portera'],
-  [/\bse planta solo\b/g, 'se planta sola'],
-];
-export const inFeminine = (text: string) => FEMININE.reduce((t, [re, to]) => t.replace(re, to), text);
 
 function tellRoll(state: GameState, roll: RollReport, seed: number, viewer: number | null): News[] {
   const pick = picker(seed + (viewer ?? 0) * 31);
@@ -152,7 +155,7 @@ function tellRoll(state: GameState, roll: RollReport, seed: number, viewer: numb
     const action = hero?.position === 'POR' ? pick(KEEPER_SAVE) : pick(DEF_STOP);
     out.push({
       kind: 'save',
-      title: hero?.position === 'POR' ? pick(['¡Paradón!', '¡Qué mano!', '¡Para tu portero!']) : pick(['¡Bien defendido!', '¡Balón recuperado!', '¡Corte providencial!']),
+      title: hero?.position === 'POR' ? pick(['¡Paradón!', '¡Qué mano!', fem(state, hero.id) ? '¡Para tu portera!' : '¡Para tu portero!']) : pick(['¡Bien defendido!', '¡Balón recuperado!', '¡Corte providencial!']),
       text: `${name(pl.playerId)}: ${b.text} Pero ${hero?.name ?? 'tu defensa'} ${action}.`,
       cards: hero ? [hero.id] : undefined,
       club: viewer,
@@ -171,10 +174,10 @@ function tellRoll(state: GameState, roll: RollReport, seed: number, viewer: numb
       const run = many ? pick(['combinan por banda', 'avanzan tocando hasta la frontal', 'se van en pared']) : pick(MID_RUN);
       const text =
         fwds.length === 0
-          ? `${outlet}: balón para ${list(mids)}, que ${run} y ${many ? pick(['disparan', 'chutan a puerta', 'prueban al portero']) : pick(['dispara', 'chuta a puerta', 'prueba al portero'])}.`
+          ? `${outlet}: balón para ${list(mids)}, que ${run} y ${many ? pick(['disparan', 'chutan a puerta', 'prueban fortuna a puerta']) : pick(['dispara', 'chuta a puerta', 'prueba fortuna a puerta'])}.`
           : mids.length > 0
             ? `${outlet}: ${list(mids)} ${run}, ${many ? pick(['centran al área', 'la ponen atrás', 'filtran el pase']) : pick(['centra al área', 'la pone atrás', 'filtra el pase'])} y ${list(fwds)} ${fwds.length > 1 ? 'rematan a puerta' : pick(SHOT)}.`
-            : `${outlet}: ${pick(THROUGH)} para ${list(fwds)}, que ${fwds.length > 1 ? pick(['encaran y disparan', 'combinan y rematan']) : pick(['encara y dispara', 'se planta solo y define', 'controla y remata'])}.`;
+            : `${outlet}: ${pick(THROUGH)} para ${list(fwds)}, que ${fwds.length > 1 ? pick(['encaran y disparan', 'combinan y rematan']) : pick(['encara y dispara', fem(state, mine.cards.find((id) => footballer(id).position === 'DEL')!) ? 'se planta sola y define' : 'se planta solo y define', 'controla y remata'])}.`;
       b = { title: '¡A la contra!', text };
     }
     out.push({ kind: 'attack', title: b.title, text: `${conceded.length ? pick(RESTART) + ' ' : ''}${b.text}`, cards: mine.cards, club: viewer });
@@ -204,7 +207,7 @@ function tellTwists(state: GameState, roll: RollReport, viewer: number | null): 
     const att = roll.plays.find((pl) => pl.playerId === t.attacker);
     if (t.kind === 'salvada') {
       const hero = defenders(state, t.rival, roll.sum).backs[0] ?? defenders(state, t.rival, roll.sum).keeper;
-      const who = hero ? hero.name : `un defensa de ${name(t.rival)}`;
+      const who = hero ? hero.name : someBack(state, name(t.rival));
       return {
         kind: viewer === t.attacker ? 'stopped' : 'save',
         title: '¡Salvada in extremis!',
@@ -217,7 +220,7 @@ function tellTwists(state: GameState, roll: RollReport, viewer: number | null): 
     return {
       kind: viewer === t.rival ? 'concede' : 'goal',
       title: '¡Cantada terrible!',
-      text: `${keeper ? keeper.name : `El portero de ${name(t.rival)}`} tenía el balón atrapado… y se le escurre entre las piernas. ${viewer === t.attacker ? '¡Gol tuyo!' : `Gol de ${name(t.attacker)}.`}`,
+      text: `${keeper ? `${keeper.name} tenía el balón atrapado… y se le escurre entre las piernas.` : someKeeperBlunder(state, name(t.rival))} ${viewer === t.attacker ? '¡Gol tuyo!' : `Gol de ${name(t.attacker)}.`}`,
       cards: att?.cards,
       club: t.attacker,
     };
