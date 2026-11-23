@@ -8,7 +8,7 @@ Tu club acaba de ascender y la directiva te ha dado 80 millones y una temporada 
 
 ## Componentes
 
-- **95 futbolistas:** 15 porteros, 28 defensas, 32 medios y 20 delanteros. Cada uno tiene números entre el 2 y el 12 (nunca el 7).
+- **105 futbolistas:** 25 porteros, 28 defensas, 32 medios y 20 delanteros. Cada uno tiene números entre el 2 y el 12 (nunca el 7).
 - **51 cartas especiales.**
 - **2 dados** y dinero (en millones, M).
 
@@ -181,7 +181,7 @@ En la app de iPhone, en «Con amigos», se puede jugar con quien tengas al lado 
 
 Desde el menú lateral, **Logros y álbum**:
 
-- **Álbum:** cada futbolista que fichas entra en tu álbum con el nombre y la cara que tenía la primera vez (en cada partida cambian). Hay 95 por coleccionar, ordenados por posición; los que faltan se ven en gris con su precio.
+- **Álbum:** cada futbolista que fichas entra en tu álbum con el nombre y la cara que tenía la primera vez (en cada partida cambian). Hay 105 por coleccionar, ordenados por posición; los que faltan se ven en gris con su precio.
 - **Logros:** 22 hitos que se desbloquean jugando, con un aviso en pantalla: marcar el primer gol, una goleada, acabar una jornada sin encajar, salvar un gol con una carta de giro, provocar una cantada, que expulsen a un rival, pagar una cláusula, ganar una liga (también sin portero o con 4 defensas), terminar una partida en línea, el reto diario y su racha de 7 días, ascender y ganar la Liga de Campeones en la carrera, y llenar el álbum.
 - Los logros de la jornada se comprueban al volver del partido, no durante la narración, para no destripar el resultado. Se guardan en el dispositivo y, con cuenta, también en ella: no se pierden al cambiar de móvil.
 

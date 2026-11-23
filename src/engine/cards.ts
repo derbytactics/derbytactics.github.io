@@ -87,6 +87,19 @@ const NAMES = [
   'Felipe Lara', 'Arnau Ribas', 'Darío Becerra', 'Ibai Zabala', 'César Blanco', 'Martín Cano', 'Jaime Palacios', 'Néstor Vega',
 ];
 
+const EXTRA_KEEPERS: [string, number[]][] = [
+  ['Iván Sotelo', [5, 6, 9, 10]],
+  ['Mikel Arana', [4, 5, 8, 9]],
+  ['Hugo Barral', [3, 6, 9, 11]],
+  ['Eloy Granados', [6, 8, 10]],
+  ['Fabio Cortés', [4, 8, 9]],
+  ['Sergi Pujol', [5, 6, 10]],
+  ['Rubén Llamas', [3, 5, 8, 11]],
+  ['Álvaro Seoane', [4, 6, 10]],
+  ['Lucas Riera', [2, 5, 8, 12]],
+  ['Dani Ocaña', [6, 9, 10]],
+];
+
 export const FOOTBALLERS: Footballer[] = (() => {
   const out: Footballer[] = [];
   // Se reparten los nombres alternando posiciones para que no queden agrupados.
@@ -99,6 +112,12 @@ export const FOOTBALLERS: Footballer[] = (() => {
       out.push({ id: `f${i + 1}`, name: NAMES[i], position: next.pos, numbers: [...next.numbers].sort((a, b) => a - b) });
       i++;
     }
+  }
+  // Porteros añadidos en la 1.0.1 (salían pocos en el mercado). Van al final para que los
+  // futbolistas de siempre conserven su identificador (partidas guardadas, carreras y álbum).
+  for (const [name, numbers] of EXTRA_KEEPERS) {
+    out.push({ id: `f${i + 1}`, name, position: 'POR', numbers: [...numbers].sort((a, b) => a - b) });
+    i++;
   }
   return out;
 })();

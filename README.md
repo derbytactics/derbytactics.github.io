@@ -60,7 +60,7 @@ npm run test:db    # pruebas de la base de datos (necesita PostgreSQL local)
 App.tsx              Decide la pantalla según la fase de la partida
 src/engine/
   config.ts          Todos los valores de equilibrio
-  cards.ts           95 futbolistas y 51 cartas especiales
+  cards.ts           105 futbolistas y 51 cartas especiales
   engine.ts          Estado, validación y aplicación de acciones
   bots.ts            IA con varias tácticas
   daily.ts, career.ts, achievements.ts  Reto diario, carrera y logros

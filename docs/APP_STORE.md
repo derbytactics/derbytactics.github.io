@@ -43,7 +43,7 @@ MODOS DE JUEGO
 TU CLUB
 • Funda tu club con su escudo y llévalo a todas tus partidas.
 • Liga masculina, femenina o mixta: tú eliges.
-• Colecciona a los 95 futbolistas en tu álbum y desbloquea logros.
+• Colecciona a los 105 futbolistas en tu álbum y desbloquea logros.
 • Historial de temporadas y ranking.
 
 SIN TRAMPAS NI PAGOS

@@ -474,7 +474,6 @@ export function createGame(opts: NewGameOptions): GameState {
   state.footballDeck = shuffle(state, FOOTBALLERS.filter((f) => !owned.has(f.id)).map((f) => f.id));
   state.specialDeck = shuffle(state, SPECIAL_CARDS.map((c) => c.id));
   state.market = state.footballDeck.splice(0, marketSize(n));
-  ensureKeeper(state);
   // Cada club empieza con unas cartas especiales en la mano.
   for (let k = 0; k < CONFIG.special.initialHand; k++) for (const p of state.players) drawSpecial(state, p);
   // Pretemporada: orden aleatorio en serpiente, dos turnos de mercado por club.
@@ -635,7 +634,6 @@ export function apply(prev: GameState, action: Action): GameState {
       const refill = state.footballDeck.shift();
       if (refill) state.market[i] = refill;
       else state.market.splice(i, 1);
-      ensureKeeper(state);
       say(state, `${me.name} ficha a ${cardName(state, action.cardId)} por ${price}M.`);
       break;
     }
@@ -1279,21 +1277,5 @@ function startNextJornada(state: GameState): GameState {
     state.footballDeck.push(state.market.shift()!);
     state.market.push(fresh);
   }
-  ensureKeeper(state);
   return state;
-}
-
-/**
- * Hay 15 porteros entre 95 futbolistas: el mercado podía pasar jornadas sin ninguno y dejar a
- * clubes sin poder ficharlo. Mientras algún club no tenga portero y queden en el mazo, el mercado
- * enseña al menos uno (sustituye al futbolista que más tiempo lleva expuesto).
- */
-function ensureKeeper(state: GameState) {
-  if (state.market.some((id) => footballer(id).position === 'POR')) return;
-  if (state.players.every(hasKeeper)) return;
-  const k = state.footballDeck.findIndex((id) => footballer(id).position === 'POR');
-  if (k < 0 || !state.market.length) return;
-  const [keeper] = state.footballDeck.splice(k, 1);
-  state.footballDeck.push(state.market.shift()!);
-  state.market.push(keeper);
 }
