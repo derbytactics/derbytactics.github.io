@@ -160,13 +160,6 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
     { key: 'rivales', label: 'Rivales' },
     { key: 'cartas', label: 'Cartas', badge: String(me.hand.length) },
   ];
-  const todo: { label: string; done: boolean; tab: Tab }[] = [
-    { label: 'Fichaje', done: state.turn.signed, tab: 'mercado' },
-    { label: 'Estadio', done: state.turn.upgraded || upCost === null, tab: 'plantilla' },
-    { label: 'Carta', done: state.turn.boughtCard, tab: 'cartas' },
-    { label: `Usar ${state.turn.cardsPlayed}/${CONFIG.special.maxPlayedPerTurn}`, done: state.turn.cardsPlayed >= CONFIG.special.maxPlayedPerTurn, tab: 'cartas' },
-  ];
-
   const pendingCard = pending !== null && me.hand[pending] ? specialCard(me.hand[pending]) : null;
   const pendingTarget = pendingCard ? SPECIAL_INFO[pendingCard.kind].target : null;
   const canStillSign = !state.turn.signed && me.squad.length < CONFIG.squadSize && state.market.some((id) => signPrice(state, id) <= me.money);
@@ -194,22 +187,6 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
           </View>
         </View>
 
-        <View style={[s.row, { marginTop: 8, gap: 6 }]}>
-          {todo.map((t, i) => (
-            <Pressable
-              key={t.label}
-              accessibilityRole="button"
-              accessibilityLabel={`${t.label}${t.done ? ', hecho' : i === 0 ? ', pendiente' : ', opcional'}`}
-              onPress={() => setTab(t.tab)}
-              style={{ flex: i === 0 ? 1.2 : 1, minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderWidth: 1, borderColor: t.done ? C.good : i === 0 ? C.accent : C.line, backgroundColor: t.done ? C.good + '22' : 'transparent', paddingHorizontal: 6 }}
-            >
-              <Text numberOfLines={1} style={{ color: t.done ? C.good : i === 0 ? C.accent : C.dim, fontSize: 12, fontWeight: '800' }}>
-                {t.done ? '✓ ' : ''}
-                {t.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
 
         {me.closedDoorsUntil >= J || me.clubDayJornada === J || state.turn.scout || me.subsidy ? (
           <View style={[s.row, { flexWrap: 'wrap', marginTop: 4 }]}>
@@ -265,7 +242,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
         {tab === 'mercado' ? (
           <>
             <Tip id="mercado" title={`Empieza por ${rw.aKeeper} y ${rw.aForward}`}>
-              {`Tienes 80M para montar un equipo de 7. Un buen comienzo: ${rw.aKeeper} con números que salgan mucho (6 y 8), ${rw.oneOrTwo} ${rw.forwards} y ${rw.mids} que compartan número con ${rw.fem ? 'ellas' : 'ellos'}. Solo puedes hacer un fichaje por turno.`}
+              {`Tienes 80M para montar un equipo de 7. Un buen comienzo: ${rw.aKeeper} con números que salgan mucho (6 y 8), ${rw.oneOrTwo} ${rw.forwards} y ${rw.mids} que compartan número con ${rw.fem ? 'ellas' : 'ellos'}. En cada turno puedes fichar una vez, ampliar el estadio (en «Plantilla»), comprar una carta especial y jugar hasta ${CONFIG.special.maxPlayedPerTurn} (en «Cartas»). Cuando acabes, pasa el turno.`}
             </Tip>
             {state.market.map((id) => (
               <FootballerCard key={id} cardId={id}>

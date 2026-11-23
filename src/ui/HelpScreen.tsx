@@ -31,7 +31,7 @@ export function HelpScreen({ onClose, league = currentLeague() }: { onClose: () 
       <Step
         n={1}
         title="Monta tu equipo"
-        text={`Caben ${CONFIG.squadSize} futbolistas, con ${w.aKeeper} y dos ${w.forwards} como mucho; el resto, con la táctica que quieras. ${w.fem ? 'Cada una' : 'Cada uno'} actúa cuando sale uno de sus números (el 6 y el 8 son los que más salen). Un fichaje por turno. Antes de cada partido eliges en secreto ${CONFIG.starters} titulares: el resto se queda en el banquillo.`}
+        text={`Caben ${CONFIG.squadSize} futbolistas, con ${w.aKeeper} y dos ${w.forwards} como mucho; el resto, con la táctica que quieras. ${w.fem ? 'Cada una' : 'Cada uno'} actúa cuando sale uno de sus números (el 6 y el 8 son los que más salen). En tu turno de mercado puedes fichar una vez, ampliar el estadio, comprar una carta especial y jugar hasta ${CONFIG.special.maxPlayedPerTurn}. Antes de cada partido eliges en secreto ${CONFIG.starters} titulares: el resto se queda en el banquillo.`}
         art={
           <View style={{ alignItems: 'center' }}>
             <Avatar seed="f1" who={w.fem ? { ...faceFromSeed('f1'), fem: true } : undefined} size={50} jersey="#E5484D" ring={C.accent} />
