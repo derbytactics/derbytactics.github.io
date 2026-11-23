@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { GameState, Player, activeNumbers, autoLineup, footballer, isBooked, isOut, startersNeeded } from '../engine';
+import { GameState, Player, activeNumbers, autoLineup, footballer, isBooked, isOut, startersNeeded, ruleWords } from '../engine';
 import { Avatar } from './art';
 import { Btn, NumberToken, Overline, PhaseStepper, RosterContext, s } from './components';
 import { NumberLine } from './GameScreen';
@@ -22,6 +22,7 @@ export function LineupScreen({ state, me, onConfirm }: { state: GameState; me: P
   const [error, setError] = useState<string | null>(null);
   const suggestion = autoLineup(state, me);
   const J = state.jornada;
+  const rw = ruleWords(state.league);
 
   const toggle = (id: string) => {
     setError(null);
@@ -45,7 +46,7 @@ export function LineupScreen({ state, me, onConfirm }: { state: GameState; me: P
         <Text style={[s.h1, { marginTop: 2 }]}>Elige tus {need} titulares</Text>
         <Text style={[s.p, { marginTop: 6, marginBottom: 12 }]}>
           Los rivales eligen a la vez y en secreto: las alineaciones se descubren al empezar el partido.
-          {bench > 0 ? ` ${bench === 1 ? 'El que se quede' : `Los ${bench} que se queden`} en el banquillo no juega${bench === 1 ? '' : 'n'}.` : ''} Mira en «Rivales» con qué números atacan y defienden sus plantillas.
+          {bench > 0 ? ` ${bench === 1 ? `${rw.theOne} se quede` : `${rw.theOnes} ${bench} que se queden`} en el banquillo no juega${bench === 1 ? '' : 'n'}.` : ''} Mira en «Rivales» con qué números atacan y defienden sus plantillas.
         </Text>
 
         <View style={s.panel}>

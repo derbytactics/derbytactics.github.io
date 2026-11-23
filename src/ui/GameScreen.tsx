@@ -18,6 +18,7 @@ import {
   ticketPerGoal,
   upgradeCost,
   words,
+  ruleWords,
 } from '../engine';
 import { Crest, StadiumArt } from './art';
 import { Btn, Chronicle, FootballerCard, NumberToken, Overline, PhaseStepper, Popup, StandingsTable, Tag, s } from './components';
@@ -132,6 +133,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
   const [handSize, setHandSize] = useState(me.hand.length);
   const preseason = J_IS_PRESEASON(state);
   const J = state.jornada;
+  const rw = ruleWords(state.league);
   const color = clubColor(me.id);
   const rivals = state.players.filter((p) => p.id !== me.id);
 
@@ -262,8 +264,8 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
         {tab === 'mercado' ? (
           <>
-            <Tip id="mercado" title="Empieza por un portero y un delantero">
-              Tienes 80M para montar un equipo de 7. Un buen comienzo: un portero con números que salgan mucho (6 y 8), uno o dos delanteros y medios que compartan número con ellos. Solo puedes hacer un fichaje por turno.
+            <Tip id="mercado" title={`Empieza por ${rw.aKeeper} y ${rw.aForward}`}>
+              {`Tienes 80M para montar un equipo de 7. Un buen comienzo: ${rw.aKeeper} con números que salgan mucho (6 y 8), ${rw.oneOrTwo} ${rw.forwards} y ${rw.mids} que compartan número con ${rw.fem ? 'ellas' : 'ellos'}. Solo puedes hacer un fichaje por turno.`}
             </Tip>
             {state.market.map((id) => (
               <FootballerCard key={id} cardId={id}>
@@ -324,9 +326,9 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
         {tab === 'rivales' ? (
           <>
             <Tip id="rivales" title="Mira qué números tienen">
-              Aquí ves las plantillas rivales. Un delantero tuyo con el 6 vale poco si todos tienen portero con el 6. Y si un rival tiene una estrella sin blindar, puedes llevártela pagando su cláusula.
+              {`Aquí ves las plantillas rivales. ${rw.aForward[0].toUpperCase() + rw.aForward.slice(1)} ${rw.yours} con el 6 vale poco si todos tienen ${rw.keeper} con el 6. Y si un rival tiene una estrella sin blindar, puedes llevártela pagando su cláusula.`}
             </Tip>
-            <Text style={[s.p, { marginBottom: 10 }]}>Paga la cláusula de un rival y te lo llevas sin que pueda negarse. El dinero va a su club.</Text>
+            <Text style={[s.p, { marginBottom: 10 }]}>Paga la cláusula de {rw.fem ? 'una futbolista rival y te la llevas' : 'un futbolista rival y te lo llevas'} sin que su club pueda negarse. El dinero va a su club.</Text>
             {rivals.map((r) => (
               <View key={r.id} style={{ marginBottom: 14 }}>
                 <View style={[s.row, { marginBottom: 8 }]}>

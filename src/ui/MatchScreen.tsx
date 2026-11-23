@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, Text, View } from 'react-native';
-import { Action, CONFIG, GameState, MatchCardEvent, MatchResult, Player, ReactionOffer, RollReport, SPECIAL_INFO, cardName, currentRoller, fielded, footballer, isOut, penaltiesOf, specialCard, standings, substitution, ticketPerGoal, words } from '../engine';
+import { Action, CONFIG, GameState, MatchCardEvent, MatchResult, Player, ReactionOffer, RollReport, SPECIAL_INFO, cardName, currentRoller, fielded, footballer, isOut, penaltiesOf, specialCard, standings, substitution, ticketPerGoal, words, ruleWords } from '../engine';
 import { PACES, PACE_FACTOR, getPace, setPace, usePace } from './pace';
 import { CARD_TYPE } from './cardTypes';
 import { Avatar, Crest, Die } from './art';
@@ -262,6 +262,7 @@ export function MatchScreen(props: {
   const rolls = live ? state.match!.rolls : state.lastMatch?.rolls ?? [];
   const rollers = live ? state.match!.rollers : state.lastMatch?.rollers ?? [];
   const total = rollers.length;
+  const rw = ruleWords(state.league);
   const report = live ? null : state.lastMatch;
   const mine = focus ?? state.players.filter((p) => !p.isBot).map((p) => p.id);
   const isMine = (id: number) => mine.includes(id);
@@ -430,11 +431,11 @@ export function MatchScreen(props: {
         {cur < 0 ? (
           <>
             <Tip id="partido" title="Así se juega el partido">
-              Cada club tira los dados una vez. Con el número que salga atacan los delanteros y medios que lo tengan, y los porteros y defensas con ese mismo número intentan pararlo. Tú solo verás lo que te afecta; el resto queda en el acta.
+              {`Cada club tira los dados una vez. Con el número que salga atacan ${rw.theForwards} y ${rw.mids} que lo tengan, y ${rw.theKeepers} y defensas con ese mismo número intentan pararlo. Tú solo verás lo que te afecta; el resto queda en el acta.`}
             </Tip>
             <Text style={s.h1}>Mercado cerrado. ¡A jugar!</Text>
             <Text style={[s.p, { marginTop: 6, marginBottom: 12 }]}>
-              Un partido de todos contra todos: cada club tira los dados una vez ({total} tiradas). Si te sale un 7, no hay jugada pero robas una carta especial. Con el número que salga atacan los delanteros y medios que lo tengan, y cada rival lo para si su portero y sus defensas con ese número suman al menos la misma fuerza.
+              {`Un partido de todos contra todos: cada club tira los dados una vez (${total} tiradas). Si te sale un 7, no hay jugada pero robas una carta especial. Con el número que salga atacan ${rw.theForwards} y ${rw.mids} que lo tengan, y cada rival lo para si ${rw.yourKeeper} y ${rw.yourBacks} con ese número suman al menos la misma fuerza.`}
             </Text>
             {penalties.map((pen, i) => (
               <View key={i} style={[s.panel, s.row, { borderColor: isMine(pen.playerId) ? C.accent : isMine(pen.rival) ? C.danger : C.line }]}>

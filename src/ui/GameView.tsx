@@ -4,6 +4,7 @@ import { Action, GameState, currentPlayer, currentRoller } from '../engine';
 import { Crest } from './art';
 import { recordGame } from '../account/club';
 import { checkGame } from '../account/achievements';
+import { setCurrentLeague } from './currentLeague';
 import { Btn, Chronicle, ExitContext, NavBar, RosterContext, useBack, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
 import { EndScreen } from './EndScreen';
 import { GameScreen } from './GameScreen';
@@ -50,6 +51,12 @@ export function GameView(props: {
     setLeaving((x) => !x);
     return true;
   });
+  // Las reglas (abiertas desde la barra) hablan como la liga de esta partida.
+  const league = props.game.league;
+  useEffect(() => {
+    setCurrentLeague(league);
+    return () => setCurrentLeague(undefined);
+  }, [league]);
   const finished = props.game.phase === 'finished';
   // Al acabar la temporada, se apunta en el historial del club de este dispositivo.
   useEffect(() => {

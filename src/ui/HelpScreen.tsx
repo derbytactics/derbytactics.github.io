@@ -1,6 +1,8 @@
 import React from 'react';
 import { Platform, ScrollView, Text, View } from 'react-native';
-import { CONFIG } from '../engine';
+import { CONFIG, League, ruleWords } from '../engine';
+import { currentLeague } from './currentLeague';
+import { faceFromSeed } from './portrait';
 import { Avatar, Die, StadiumArt, Trophy } from './art';
 import { Btn, LegalLinks, NumberToken, Overline, s } from './components';
 import { resetTips } from './Tip';
@@ -20,7 +22,8 @@ function Step({ n, title, text, art }: { n: number; title: string; text: string;
   );
 }
 
-export function HelpScreen({ onClose }: { onClose: () => void }) {
+export function HelpScreen({ onClose, league = currentLeague() }: { onClose: () => void; league?: League }) {
+  const w = ruleWords(league);
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <Text style={s.h1}>Cómo se juega</Text>
@@ -28,10 +31,10 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Step
         n={1}
         title="Monta tu equipo"
-        text={`Caben ${CONFIG.squadSize} futbolistas, con un portero y dos delanteros como mucho; el resto, con la táctica que quieras. Cada uno actúa cuando sale uno de sus números (el 6 y el 8 son los que más salen). Un fichaje por turno. Antes de cada partido eliges en secreto ${CONFIG.starters} titulares: el resto se queda en el banquillo.`}
+        text={`Caben ${CONFIG.squadSize} futbolistas, con ${w.aKeeper} y dos ${w.forwards} como mucho; el resto, con la táctica que quieras. ${w.fem ? 'Cada una' : 'Cada uno'} actúa cuando sale uno de sus números (el 6 y el 8 son los que más salen). Un fichaje por turno. Antes de cada partido eliges en secreto ${CONFIG.starters} titulares: el resto se queda en el banquillo.`}
         art={
           <View style={{ alignItems: 'center' }}>
-            <Avatar seed="f1" size={50} jersey="#E5484D" ring={C.accent} />
+            <Avatar seed="f1" who={w.fem ? { ...faceFromSeed('f1'), fem: true } : undefined} size={50} jersey="#E5484D" ring={C.accent} />
             <View style={[s.row, { gap: 3, marginTop: 6 }]}>
               <NumberToken n={6} size={26} />
               <NumberToken n={8} size={26} />
@@ -43,7 +46,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Step
         n={2}
         title="Ataque contra defensa"
-        text="Un solo partido de todos contra todos. Cada club tira los dados una vez. Con el número que sale atacan los que lo tengan: cada delantero suma 2 y cada medio 1. Cada rival defiende con los suyos: el portero suma 2 y cada defensa 1. Tu jugada es gol contra cada rival cuya defensa en ese número sea menor que tu ataque."
+        text={`Un solo partido de todos contra todos. Cada club tira los dados una vez. Con el número que sale atacan ${w.fem ? 'las' : 'los'} que lo tengan: ${w.eachForward} suma 2 y ${w.eachMid} 1. Cada rival defiende con ${w.fem ? 'las suyas' : 'los suyos'}: ${w.theKeeper} suma 2 y ${w.eachBack} 1. Tu jugada es gol contra cada rival cuya defensa en ese número sea menor que tu ataque.`}
         art={
           <View style={[s.row, { gap: 6 }]}>
             <Die value={5} size={40} />
@@ -54,7 +57,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Step
         n={3}
         title="Qué hace cada posición"
-        text="Delantero: ataque 2; lo para el portero. Como mucho 2 por club. Medio: ataque 1; con un delantero forma la jugada combinada (fuerza 3), que solo paran el portero y un defensa juntos. Defensa: defensa 1 en tres o cuatro números; corta a los medios y completa al portero. Portero: defensa 2 en tres o cuatro números; cobra prima por parada y con 3 en una jornada gana una carta."
+        text={`${w.Forward}: ataque 2; ${w.it} para ${w.theKeeper}. Como mucho 2 por club. ${w.Mid}: ataque 1; con ${w.aForward} forma la jugada combinada (fuerza 3), que solo paran ${w.theKeeper} y ${w.aBack} juntos. Defensa: defensa 1 en tres o cuatro números; corta a ${w.fem ? 'las medias' : 'los medios'} y completa ${w.toTheKeeper}. ${w.Keeper}: defensa 2 en tres o cuatro números; cobra prima por parada y con 3 en una jornada gana una carta.`}
         art={<Icon name={I.save} size={44} color={C.accent} />}
       />
       <Step
@@ -66,7 +69,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
       <Step
         n={5}
         title="Juega sucio (con elegancia)"
-        text="Paga la cláusula de un rival y llévate a su estrella. Lanza sanciones con cartas especiales: multas, partidos a puerta cerrada, lesiones… O protégete blindando a tus jugadores."
+        text={`Paga la cláusula de un rival y llévate a su estrella. Lanza sanciones con cartas especiales: multas, partidos a puerta cerrada, lesiones… O protégete blindando a tus ${w.players}.`}
         art={<Icon name="alarm-light" size={44} color={C.danger} />}
       />
       <Step

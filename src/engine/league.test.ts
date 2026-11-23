@@ -39,3 +39,13 @@ describe('ligas masculina, femenina y mixta', () => {
     expect(Object.values(g.roster!).every((x) => x.fem)).toBe(true);
   });
 });
+
+describe('palabras de las reglas según la liga', () => {
+  it('en la femenina no queda nada en masculino; en la masculina y la mixta, el genérico', async () => {
+    const { ruleWords } = await import('./identity');
+    const f = Object.values(ruleWords('femenina')).filter((x) => typeof x === 'string').join(' ');
+    expect(f).not.toMatch(/\b(portero|porteros|delantero|delanteros|medio|medios|jugadores|un|uno|los|el|al)\b/i);
+    expect(ruleWords('mixta')).toEqual(ruleWords('masculina'));
+    expect(ruleWords(undefined).aKeeper).toBe('un portero');
+  });
+});

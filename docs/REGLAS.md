@@ -158,7 +158,7 @@ Para añadir cartas nuevas basta con una entrada en `SPECIAL_INFO` (`src/engine/
 
 ## Liga masculina, femenina o mixta
 
-Al pulsar «Jugar contra la IA» se elige la liga: **masculina** (todos jugadores), **femenina** (todas jugadoras) o **mixta** (jugadores y jugadoras en todos los equipos, a partes iguales). Cambian los nombres, las caras y los textos; las reglas son las mismas. En la carrera se elige al empezarla y vale para toda; en las salas (en línea o cercanas), la elige el anfitrión en la sala de espera. El reto diario cambia de liga cada día, la misma para todo el mundo.
+Al pulsar «Jugar contra la IA» se elige la liga: **masculina** (todos jugadores), **femenina** (todas jugadoras) o **mixta** (jugadores y jugadoras en todos los equipos, a partes iguales). Cambian los nombres, las caras y los textos (también la crónica del partido, los consejos y la pantalla de reglas, que concuerdan con cada futbolista); las reglas son las mismas. En la carrera se elige al empezarla y vale para toda; en las salas (en línea o cercanas), la elige el anfitrión en la sala de espera. El reto diario cambia de liga cada día, la misma para todo el mundo.
 
 ## Reto diario
 

@@ -250,6 +250,46 @@ export function words(state: { league?: League; roster?: Record<string, Identity
   };
 }
 
+/**
+ * Palabras de las reglas y los consejos según la liga. En la femenina, todo en femenino; en la
+ * masculina y en la mixta, el genérico (en castellano, el de un grupo mixto).
+ */
+export function ruleWords(league: League | undefined) {
+  const f = league === 'femenina';
+  return {
+    fem: f,
+    /** un portero / una portera */
+    aKeeper: f ? 'una portera' : 'un portero',
+    theKeeper: f ? 'la portera' : 'el portero',
+    theKeepers: f ? 'las porteras' : 'los porteros',
+    toTheKeeper: f ? 'a la portera' : 'al portero',
+    yourKeeper: f ? 'su portera' : 'su portero',
+    Keeper: f ? 'Portera' : 'Portero',
+    keeper: f ? 'portera' : 'portero',
+    aForward: f ? 'una delantera' : 'un delantero',
+    eachForward: f ? 'cada delantera' : 'cada delantero',
+    forwards: f ? 'delanteras' : 'delanteros',
+    theForwards: f ? 'las delanteras' : 'los delanteros',
+    Forward: f ? 'Delantera' : 'Delantero',
+    eachMid: f ? 'cada media' : 'cada medio',
+    mids: f ? 'medias' : 'medios',
+    Mid: f ? 'Media' : 'Medio',
+    aBack: f ? 'una defensa' : 'un defensa',
+    eachBack: f ? 'cada defensa' : 'cada defensa',
+    theBacks: f ? 'las defensas' : 'los defensas',
+    yourBacks: f ? 'sus defensas' : 'sus defensas',
+    players: f ? 'jugadoras' : 'jugadores',
+    /** «uno o dos» */
+    oneOrTwo: f ? 'una o dos' : 'uno o dos',
+    yours: f ? 'tuya' : 'tuyo',
+    /** «El que se quede» / «La que se quede» */
+    theOne: f ? 'La que' : 'El que',
+    theOnes: f ? 'Las' : 'Los',
+    /** «te lo llevas» / «te la llevas» */
+    it: f ? 'la' : 'lo',
+  };
+}
+
 // ---------------------------------------------------------------- Clubes
 
 const CLUB_PREFIX = ['Atlético', 'Real', 'Sporting', 'Unión', 'Deportivo', 'Racing', 'CF', 'Rayo', 'Athletic', 'Inter', 'Olímpico', 'Juventud', 'Recreativo', 'Club', 'CD', 'Estrella', 'Celtas', 'Albión'];
