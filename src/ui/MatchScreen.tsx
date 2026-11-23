@@ -464,6 +464,19 @@ export function MatchScreen(props: {
             <Text style={[s.p, { marginTop: 6, marginBottom: 12 }]}>
               {`Un partido de todos contra todos: cada club tira los dados una vez (${total} tiradas). Si te sale un 7, no hay jugada pero robas una carta especial. Con el número que salga atacan ${rw.theForwards} y ${rw.mids} que lo tengan, y cada rival lo para si ${rw.yourKeeper} y ${rw.yourBacks} con ese número suman al menos la misma fuerza.`}
             </Text>
+            <View style={s.panel}>
+              <Overline>ORDEN DE TIRADA</Overline>
+              <View style={[s.row, { flexWrap: 'wrap', gap: 6, marginTop: 8 }]}>
+                {rollers.map((id, i) => (
+                  <View key={i} style={s.row}>
+                    {i > 0 ? <Text style={{ color: C.faint, marginRight: 6 }}>›</Text> : null}
+                    <Crest name={name(id)} color={clubColor(id)} design={state.players[id].crest} size={22} />
+                    <Text style={{ color: isMine(id) ? C.accent : C.text, fontWeight: '800', fontSize: 13, marginLeft: 5 }}>{isMine(id) && viewer !== null ? 'Tú' : name(id)}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={{ color: C.faint, fontSize: 12, marginTop: 6 }}>Cada jornada abre un club distinto y se sigue en el mismo orden.</Text>
+            </View>
             <Lineups state={state} highlight={(id) => isMine(id)} />
             {state.players.filter((p) => isMine(p.id)).map((p) => (
               <View key={p.id} style={[s.panel, { borderColor: clubColor(p.id) + '88' }]}>

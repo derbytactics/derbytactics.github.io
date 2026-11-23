@@ -74,6 +74,17 @@ export function HelpScreen({ onClose, league = currentLeague() }: { onClose: () 
       />
       <Step
         n={6}
+        title="¿Quién empieza?"
+        text={`Pretemporada: cada club tira los dados y quien saca más ficha antes (los empates se deshacen tirando otra vez). Son dos vueltas de mercado y en la segunda el orden se invierte, así quien eligió el último elige ahora el primero. Después, en cada jornada abre el mercado el último de la liga y el líder elige el último: así quien va peor ficha antes. En el partido, cada jornada abre un club distinto y se sigue siempre en el mismo orden. El orden se ve siempre arriba, en el mercado y antes de tirar.`}
+        art={
+          <View style={[s.row, { gap: 4 }]}>
+            <Die value={6} size={36} />
+            <Die value={5} size={36} />
+          </View>
+        }
+      />
+      <Step
+        n={7}
         title="Gana la liga"
         text={`Tras la última jornada, cada ${CONFIG.moneyPerPoint}M en caja suman 1 punto extra. El club con más puntos es campeón.`}
         art={<Trophy size={64} />}

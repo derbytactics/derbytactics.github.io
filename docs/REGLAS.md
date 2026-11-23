@@ -78,7 +78,9 @@ Atacan delanteros y medios; defienden porteros y defensas. Nadie hace las dos co
 
 - Cada club empieza con **80M**, estadio de **nivel 1**, sin futbolistas y con **3 cartas especiales**.
 - Se descubre el mercado: 5 futbolistas con 2 jugadores, 6 con 3-4, 7 con 5-6 y 8 con 7-8.
-- **Pretemporada:** en orden aleatorio y en serpiente (1, 2, 3… 3, 2, 1), cada club juega **dos turnos de mercado** antes de la jornada 1.
+- **Sorteo:** cada club tira los dos dados y quien saca más ficha antes; los que empatan vuelven a tirar entre ellos.
+- **Pretemporada:** en el orden del sorteo y en serpiente (1, 2, 3… 3, 2, 1), cada club juega **dos turnos de mercado** antes de la jornada 1.
+- **Después,** en cada jornada abre el mercado el último de la liga y el líder elige el último. En el partido, cada jornada empieza a tirar un club distinto y se sigue siempre en el mismo orden. Los dos órdenes se ven en pantalla.
 
 ## La jornada
 

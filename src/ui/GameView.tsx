@@ -5,6 +5,7 @@ import { Crest } from './art';
 import { recordGame } from '../account/club';
 import { checkGame } from '../account/achievements';
 import { setCurrentLeague } from './currentLeague';
+import { DrawShow } from './DrawShow';
 import { Btn, Chronicle, ExitContext, NavBar, RosterContext, useBack, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
 import { EndScreen } from './EndScreen';
 import { GameScreen } from './GameScreen';
@@ -78,6 +79,7 @@ export function GameView(props: {
       <View style={{ flex: 1 }}>
         <NavBar subtitle={navJornada(props.game)} />
         <GameBody {...props} />
+        <DrawShow key={props.game.gameId} state={props.game} seat={props.seat ?? (props.game.players.findIndex((p) => !p.isBot) >= 0 ? props.game.players.findIndex((p) => !p.isBot) : null)} />
         {leaving ? (
           <Popup overline="SALIR DE LA PARTIDA" title="¿Seguro que quieres salir?" color={C.danger} button="Seguir jugando" onClose={() => setLeaving(false)}>
             <Text style={[s.p, { textAlign: 'center', marginBottom: 12 }]}>{props.exitText}</Text>

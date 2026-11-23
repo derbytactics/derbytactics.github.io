@@ -214,6 +214,11 @@ export interface GameState {
   daily?: string;
   /** Modo carrera: división y temporada de esta partida. */
   career?: { division: number; season: number };
+  /**
+   * Sorteo de la pretemporada: las tiradas de cada club (la primera y, si empata, las de desempate).
+   * El orden que sale es el de la primera vuelta del mercado.
+   */
+  draw?: DrawEntry[];
 }
 
 /** Un club al crear la partida. Plantilla, dinero, estadio y estilo son para el modo carrera. */
@@ -476,11 +481,43 @@ export function createGame(opts: NewGameOptions): GameState {
   state.market = state.footballDeck.splice(0, marketSize(n));
   // Cada club empieza con unas cartas especiales en la mano.
   for (let k = 0; k < CONFIG.special.initialHand; k++) for (const p of state.players) drawSpecial(state, p);
-  // Pretemporada: orden aleatorio en serpiente, dos turnos de mercado por club.
-  const order = shuffle(state, state.players.map((p) => p.id));
+  // Pretemporada: sorteo con dados y orden en serpiente, dos turnos de mercado por club.
+  const { order, draw } = diceDraw(state);
+  state.draw = draw;
   state.turnOrder = [...order, ...(CONFIG.preseasonSnake ? [...order].reverse() : order)];
+  say(state, `Sorteo de la pretemporada: ${state.players[order[0]].name} saca el número más alto y elige primero.`);
   say(state, 'Pretemporada: cada club tiene dos turnos de mercado antes de la jornada 1.');
   return state;
+}
+
+/** Tiradas de un club en el sorteo de la pretemporada. */
+export interface DrawEntry {
+  playerId: number;
+  rolls: [number, number][];
+}
+
+/**
+ * Sorteo con dados: todos tiran, quien saca más elige antes; los que empatan vuelven a tirar entre
+ * ellos hasta deshacer el empate. Devuelve el orden y las tiradas de cada uno.
+ */
+function diceDraw(state: GameState): { order: number[]; draw: DrawEntry[] } {
+  const draw: DrawEntry[] = state.players.map((p) => ({ playerId: p.id, rolls: [] }));
+  const byId = new Map(draw.map((d) => [d.playerId, d]));
+  const die = () => 1 + Math.floor(rand(state) * 6);
+  const rank = (group: number[]): number[] => {
+    const sums = new Map<number, number>();
+    for (const id of group) {
+      const r: [number, number] = [die(), die()];
+      byId.get(id)!.rolls.push(r);
+      sums.set(id, r[0] + r[1]);
+    }
+    const distinct = [...new Set(sums.values())].sort((a, b) => b - a);
+    return distinct.flatMap((v) => {
+      const tied = group.filter((id) => sums.get(id) === v);
+      return tied.length > 1 ? rank(tied) : tied;
+    });
+  };
+  return { order: rank(state.players.map((p) => p.id)), draw };
 }
 
 // ---------------------------------------------------------------- Validación

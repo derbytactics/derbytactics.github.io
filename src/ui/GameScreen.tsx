@@ -83,6 +83,38 @@ export function SpecialCardFace({ id, children }: { id: string; children?: React
 }
 
 /**
+ * Orden del mercado a la vista: quién ficha ahora y quién va después. En pretemporada es el del
+ * sorteo, en serpiente; después abre el colista y cierra el líder.
+ */
+function TurnOrder({ state, me }: { state: GameState; me: number }) {
+  const clubColor = useClubColor();
+  const preseason = state.jornada === 1 && state.turnOrder.length > state.players.length;
+  return (
+    <View style={{ marginTop: 8 }}>
+      <View style={[s.row, { flexWrap: 'wrap', gap: 4 }]}>
+        {state.turnOrder.map((id, i) => {
+          const p = state.players[id];
+          const now = i === state.turnIndex;
+          const past = i < state.turnIndex;
+          return (
+            <View key={i} style={[s.row, { opacity: past ? 0.35 : 1 }]}>
+              {i > 0 ? <Text style={{ color: C.faint, fontSize: 11, marginRight: 4 }}>›</Text> : null}
+              <View style={{ borderRadius: 14, borderWidth: 2, borderColor: now ? C.accent : 'transparent', padding: 1 }}>
+                <Crest name={p.name} color={clubColor(id)} design={p.crest} size={now ? 24 : 20} />
+              </View>
+              {id === me && !past ? <Text style={{ color: now ? C.accent : C.dim, fontSize: 11, fontWeight: '900', marginLeft: 2 }}>TÚ</Text> : null}
+            </View>
+          );
+        })}
+      </View>
+      <Text style={{ color: C.faint, fontSize: 11, marginTop: 3 }}>
+        {preseason ? 'Orden del sorteo; en la segunda vuelta, al revés.' : 'Abre el mercado el último de la liga; el líder elige el último.'}
+      </Text>
+    </View>
+  );
+}
+
+/**
  * Tu fuerza con cada número: ataque (espada) y defensa (escudo).
  * Con `state`, añade cuántos rivales pararían hoy tu ataque con ese número.
  */
@@ -187,6 +219,8 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
           </View>
         </View>
 
+
+        <TurnOrder state={state} me={me.id} />
 
         {me.closedDoorsUntil >= J || me.clubDayJornada === J || state.turn.scout || me.subsidy ? (
           <View style={[s.row, { flexWrap: 'wrap', marginTop: 4 }]}>
