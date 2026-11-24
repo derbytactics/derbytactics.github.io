@@ -4,7 +4,7 @@ import { HostCard, backendEnabled, getAccount, refreshProfile, rpc, browserLocat
 import { useAccount } from '../account/useAccount';
 import { CONFIG, CrestDesign, SeasonLength, standings } from '../engine';
 import { RoomState, botStep, finalSeats, hostAct, hostReady, kickSeat, pendingReady, playTurnForAbsent, seatOf, setLobby, startGame } from '../net/room';
-import { GuestSession, HostSession } from '../net/session';
+import { GuestSession, HostSession, normalizeCode } from '../net/session';
 import { isNearbyCode } from '../net/nearby';
 import { deviceId } from '../net/storage';
 import { Stars } from './AccountScreen';
@@ -355,7 +355,8 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
       session.current = s2;
       setSes(s2 ?? 'invalid');
     });
-    const t = setTimeout(() => alive && setSlow(true), 8000);
+    // Por Bluetooth, encontrar al otro móvil y conectarse tarda bastante más que por internet.
+    const t = setTimeout(() => alive && setSlow(true), isNearbyCode(normalizeCode(props.code)) ? 25000 : 8000);
     return () => {
       alive = false;
       clearTimeout(t);
@@ -383,7 +384,15 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
     );
   }
   if (!room) {
-    return <Connecting text={slow ? `No encuentro la sala ${ses.code}. Comprueba el código y que el anfitrión la tenga abierta.` : `Entrando en la sala ${ses.code}…`} onExit={props.onExit} />;
+    const near = isNearbyCode(ses.code);
+    const text = near
+      ? slow
+        ? `Aún no conecto con la sala ${ses.code}. Acercad los móviles y comprobad que los dos tienen el Bluetooth y el wifi activados y la app abierta.`
+        : `Conectando con la sala cercana ${ses.code}… Puede tardar unos segundos.`
+      : slow
+        ? `No encuentro la sala ${ses.code}. Comprueba el código y que el anfitrión la tenga abierta.`
+        : `Entrando en la sala ${ses.code}…`;
+    return <Connecting text={text} onExit={props.onExit} />;
   }
   const seat = mySeat;
   if (seat < 0) {
