@@ -246,29 +246,29 @@ describe('partido', () => {
     const { hits, r0 } = play([entry(MED68)], [entry(card('MED', [5, 6, 9])), entry(card('MED', [4, 6, 8]))]);
     expect(r0.goals).toBe(hits);
   });
-  it('cada club tira los dados una vez por jornada, y con un 7 roba carta quien tiró', () => {
-    expect([2, 4, 5, 8].map(rollsFor)).toEqual([2, 4, 5, 8]);
+  it('cada club tira una vez por jornada (dos con 2 o 3 clubes), y con un 7 roba carta quien tiró', () => {
+    expect([2, 3, 4, 5, 8].map(rollsFor)).toEqual([4, 6, 4, 5, 8]);
     let sevens = 0;
     for (let seed = 1; seed <= 60; seed++) {
-      let s = newGame(3, seed);
+      let s = newGame(4, seed);
       s.phase = 'match';
       s.match = null;
       s = apply(s, { type: 'roll' });
-      expect(s.match!.rollers).toEqual([0, 1, 2]);
+      expect(s.match!.rollers).toEqual([0, 1, 2, 3]);
       expect(currentRoller(s)).toBe(1);
       const first = s.match!.rolls[0];
       if (first.sum === 7) {
         sevens++;
         expect(first.plays).toHaveLength(0);
         expect(first.varDraws.map((d) => d.playerId)).toEqual([0]);
-        expect(s.players.map((p) => p.hand.length)).toEqual([1, 0, 0]);
+        expect(s.players.map((p) => p.hand.length)).toEqual([1, 0, 0, 0]);
       } else {
         expect(first.varDraws).toHaveLength(0);
       }
-      s = apply(apply(s, { type: 'roll' }), { type: 'roll' });
+      s = apply(apply(apply(s, { type: 'roll' }), { type: 'roll' }), { type: 'roll' });
       expect(s.phase).toBe('summary');
       expect(s.match).toBeNull();
-      expect(s.lastMatch!.rolls).toHaveLength(3);
+      expect(s.lastMatch!.rolls).toHaveLength(4);
     }
     expect(sevens).toBeGreaterThan(0);
   });

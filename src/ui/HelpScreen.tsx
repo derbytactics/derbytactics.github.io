@@ -46,7 +46,7 @@ export function HelpScreen({ onClose, league = currentLeague() }: { onClose: () 
       <Step
         n={2}
         title="Ataque contra defensa"
-        text={`Un solo partido de todos contra todos. Cada club tira los dados una vez. Con el número que sale atacan ${w.fem ? 'las' : 'los'} que lo tengan: ${w.eachForward} suma 2 y ${w.eachMid} 1. Cada rival defiende con ${w.fem ? 'las suyas' : 'los suyos'}: ${w.theKeeper} suma 2 y ${w.eachBack} 1. Tu jugada es gol contra cada rival cuya defensa en ese número sea menor que tu ataque.`}
+        text={`Un solo partido de todos contra todos. Cada club tira los dados una vez (dos, si sois 2 o 3 clubes). Con el número que sale atacan ${w.fem ? 'las' : 'los'} que lo tengan: ${w.eachForward} suma 2 y ${w.eachMid} 1. Cada rival defiende con ${w.fem ? 'las suyas' : 'los suyos'}: ${w.theKeeper} suma 2 y ${w.eachBack} 1. Tu jugada es gol contra cada rival cuya defensa en ese número sea menor que tu ataque.`}
         art={
           <View style={[s.row, { gap: 6 }]}>
             <Die value={5} size={40} />

@@ -39,7 +39,7 @@ Dentro de cada posición, los futbolistas caros tienen más números o números 
 
 ## El partido: todos contra todos
 
-Cada jornada se juega **un solo partido entre todos los clubes**. **Cada club tira los dados una vez**, por turnos (empieza un club distinto cada jornada). Con el número que sale:
+Cada jornada se juega **un solo partido entre todos los clubes**. **Cada club tira los dados una vez** (dos veces si sois 2 o 3 clubes, para que pasen cosas), por turnos (empieza un club distinto cada jornada). Con el número que sale:
 
 1. **Ataca** cada club que tenga delanteros o medios con ese número. Su **fuerza de ataque** es la suma:
    - cada delantero: **2**

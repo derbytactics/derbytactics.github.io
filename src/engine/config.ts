@@ -17,6 +17,8 @@ export const CONFIG = {
   maxKeepers: 1,
   /** Como mucho dos delanteros por club: el resto del ataque lo ponen los medios. */
   maxForwards: 2,
+  /** Con pocos clubes hay pocas tiradas: hasta este número de clubes, cada uno tira dos veces por jornada. */
+  doubleRollsUpTo: 3,
   /** Fuerza de ataque y defensa de cada posición cuando sale uno de sus números. */
   roles: {
     POR: { attack: 0, defense: 2 },

@@ -32,7 +32,7 @@ export const TACTICS: Record<BotStyle, Record<Position, number>> = {
   equilibrado: { POR: 1, DEF: 2, MED: 2, DEL: 2 },
   ofensivo: { POR: 1, DEF: 1, MED: 3, DEL: 2 },
   defensivo: { POR: 1, DEF: 3, MED: 1, DEL: 2 },
-  cerrojo: { POR: 1, DEF: 4, MED: 1, DEL: 1 },
+  cerrojo: { POR: 1, DEF: 3, MED: 2, DEL: 1 },
   // Extremos, solo para el simulador: jugar sin portero y jugar sin defensas.
   sinPortero: { POR: 0, DEF: 2, MED: 3, DEL: 2 },
   sinDefensa: { POR: 0, DEF: 0, MED: 5, DEL: 2 },

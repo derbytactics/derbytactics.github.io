@@ -277,6 +277,8 @@ export function MatchScreen(props: {
   const rolls = live ? state.match!.rolls : state.lastMatch?.rolls ?? [];
   const rollers = live ? state.match!.rollers : state.lastMatch?.rollers ?? [];
   const total = rollers.length;
+  /** «una vez» o «dos veces»: con 2 o 3 clubes cada uno tira dos veces. */
+  const times = total > state.players.length ? 'dos veces' : 'una vez';
   const rw = ruleWords(state.league);
   const report = live ? null : state.lastMatch;
   const mine = focus ?? state.players.filter((p) => !p.isBot).map((p) => p.id);
@@ -458,11 +460,11 @@ export function MatchScreen(props: {
         {cur < 0 ? (
           <>
             <Tip id="partido" title="Así se juega el partido">
-              {`Cada club tira los dados una vez. Con el número que salga atacan ${rw.theForwards} y ${rw.mids} que lo tengan, y ${rw.theKeepers} y defensas con ese mismo número intentan pararlo. Tú solo verás lo que te afecta; el resto queda en el acta.`}
+              {`Cada club tira los dados ${times}. Con el número que salga atacan ${rw.theForwards} y ${rw.mids} que lo tengan, y ${rw.theKeepers} y defensas con ese mismo número intentan pararlo. Tú solo verás lo que te afecta; el resto queda en el acta.`}
             </Tip>
             <Text style={s.h1}>Mercado cerrado. ¡A jugar!</Text>
             <Text style={[s.p, { marginTop: 6, marginBottom: 12 }]}>
-              {`Un partido de todos contra todos: cada club tira los dados una vez (${total} tiradas). Si te sale un 7, no hay jugada pero robas una carta especial. Con el número que salga atacan ${rw.theForwards} y ${rw.mids} que lo tengan, y cada rival lo para si ${rw.yourKeeper} y ${rw.yourBacks} con ese número suman al menos la misma fuerza.`}
+              {`Un partido de todos contra todos: cada club tira los dados ${times} (${total} tiradas). Si te sale un 7, no hay jugada pero robas una carta especial. Con el número que salga atacan ${rw.theForwards} y ${rw.mids} que lo tengan, y cada rival lo para si ${rw.yourKeeper} y ${rw.yourBacks} con ese número suman al menos la misma fuerza.`}
             </Text>
             <View style={s.panel}>
               <Overline>ORDEN DE TIRADA</Overline>

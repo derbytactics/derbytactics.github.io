@@ -850,7 +850,7 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
 
 /** Tiradas por jornada: una por club. */
 export function rollsFor(players: number): number {
-  return players;
+  return players <= CONFIG.doubleRollsUpTo ? players * 2 : players;
 }
 
 /** Club al que le toca tirar los dados, o null si no hay partido en juego. */

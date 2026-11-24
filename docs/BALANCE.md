@@ -56,11 +56,13 @@ Con esta muestra, diferencias de ±0,13 son ruido. Entre las cuatro tácticas ju
 
 | Más porteros: de 15 a 25 (versión 1.0.1) | Con 15 porteros entre 95 futbolistas, el mercado pasaba muchos turnos sin ninguno: el 35 % con 2 clubes, el 23 % con 4 y el 15 % con 6. Se añaden 10 porteros de precio medio (14M-24M, Plata y Oro), al final de la lista para no cambiar los identificadores de los de siempre. Ahora son 25 de 105 y los turnos sin portero bajan al 14 %, 7 % y 2 %; en la jornada 3 tiene portero el 54-63 % de los clubes de la IA que lo buscan (antes, 40-46 %). El equilibrio entre tácticas apenas cambia. |
 
+| Con 2 o 3 clubes, dos tiradas por club (versión 1.0.1) | Con una sola tirada por club, las mesas pequeñas eran sosas: con 2 clubes salían 0,43 goles por club y jornada y muchas jornadas acababan 0-0. Ahora, con 2 o 3 clubes cada uno tira dos veces (`doubleRollsUpTo`): con 2 clubes, 0,74 goles por club y jornada; con 3, 1,82 (casi lo mismo que con 4, 1,76). El equilibrio entre tácticas no cambia. |
+| La IA del cerrojo, 1-3-2-1 (versión 1.0.1) | Con 1-4-1-1 apenas marcaba: con 4-8 clubes ganaba entre 0,51 y 0,67 veces lo esperado, y en casi todas las ligas había un rival fácil. Con 1-3-2-1 (sigue siendo la que más defiende con un solo delantero) queda entre 0,77 y 0,99, sin que ninguna otra táctica pase de 1,24. Medido solo con las tácticas que usa la IA en las partidas (`FUT_STYLES=equilibrado,ofensivo,defensivo,cerrojo`). |
+
 ## Problemas conocidos
 
-- **Con pocos clubes pasan pocas cosas por jornada.** Con 2 hay solo 2 tiradas: de media, menos de una jugada de ataque y unos 0,6 goles por club y jornada, y muchas jornadas acaban 0-0. Con 4 hay unas 2 jugadas por club; con 8, unas 4.
+- **Con 2 clubes aún pasan pocas cosas:** incluso con dos tiradas por club, unos 0,74 goles por club y jornada.
 - **Con 8 clubes hay mucho más dinero que con 2:** más tiradas, más goles y más taquilla. La caja final media pasa de unos 30M con 2 clubes a más de 150M con 8.
-- **El cerrojo 1-4-1-1 rinde poco con 4-8 clubes** (0,38-0,62): con un solo delantero y un solo medio apenas marca.
 - **Se para más de la mitad de las jugadas** entre tácticas razonables. Si resulta frustrante, se corrige encareciendo a los defensas.
 - **El portero casi nunca llega a 3 paradas en una jornada con pocos clubes**, porque hay pocas tiradas.
 - **Los bots no miran los números de los rivales** al fichar. Una persona que sí lo haga jugará mejor que ellos; el equilibrio real entre tácticas puede moverse cuando lo pruebe gente.
