@@ -137,6 +137,10 @@ Los mensajes de las salas pasan por **Supabase Realtime** (gratis en el plan act
 
 Si el juego se abre a desconocidos y aparecen trampas, el paso siguiente es que una función de Supabase juegue la partida con el mismo motor (`src/engine`, puro y determinista) y valide cada jugada. Hay que desplegarla desde tu cuenta.
 
+## Para la 1.0.2
+
+- **Notificaciones push «Te toca»** en las salas en línea, para quien tenga la app en segundo plano. Las locales no sirven: iOS congela la app y corta la conexión, así que no puede saber cuándo te toca. Plan: guardar en Supabase el identificador de avisos de cada móvil (con cuenta); cuando le toque a alguien, el móvil del anfitrión pide a Supabase que le avise y Supabase manda el aviso con el servicio gratuito de Expo. Necesita `expo-notifications` (nueva compilación), una clave de notificaciones push de Apple dada a EAS y una función en Supabase. Por Bluetooth no aplica (no hay servidor), y si el anfitrión sale de la app la partida se para igualmente.
+
 ## Pendiente menor
 
 - Monitorización externa de errores (por ejemplo Sentry), si el registro propio se queda corto.

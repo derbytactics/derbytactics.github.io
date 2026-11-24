@@ -1,11 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Text, Vibration, View } from 'react-native';
 import { Action, GameState, currentPlayer, currentRoller } from '../engine';
 import { Crest } from './art';
 import { recordGame } from '../account/club';
 import { checkGame } from '../account/achievements';
 import { setCurrentLeague } from './currentLeague';
 import { DrawShow } from './DrawShow';
+import { play } from './sound';
+import { isMuted } from './sfx';
 import { Btn, Chronicle, ExitContext, NavBar, RosterContext, useBack, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
 import { EndScreen } from './EndScreen';
 import { GameScreen } from './GameScreen';
@@ -30,6 +32,18 @@ export interface OnlineInfo {
  * Muestra la partida en la fase que toque.
  * `seat` es el club de este dispositivo en línea; null si todos comparten dispositivo.
  */
+/** Identifica el momento en que le toca actuar a `seat` (o null si no le toca nada). */
+function myTurnKey(g: GameState, seat: number | null): string | null {
+  if (seat === null) return null;
+  if (g.phase === 'market' && g.turnOrder[g.turnIndex] === seat) return `m${g.jornada}-${g.turnIndex}`;
+  if (g.phase === 'lineup' && !g.players[seat]?.starters) return `l${g.jornada}`;
+  if (g.phase === 'match' && g.match) {
+    if (g.match.pending?.[0]?.playerId === seat) return `g${g.jornada}-${g.match.rolls.length}`;
+    if (currentRoller(g) === seat) return `r${g.jornada}-${g.match.rolls.length}`;
+  }
+  return null;
+}
+
 export function GameView(props: {
   game: GameState;
   seat: number | null;
@@ -58,6 +72,18 @@ export function GameView(props: {
     setCurrentLeague(league);
     return () => setCurrentLeague(undefined);
   }, [league]);
+  // En línea, cuando te toca (fichar, elegir alineación, tirar o decidir un giro), el móvil vibra y
+  // suena: por si lo tienes en la mesa sin mirar. Contra la IA no, porque te toca enseguida.
+  const turnKey = myTurnKey(props.game, props.seat);
+  const lastTurn = useRef<string | null>(turnKey);
+  useEffect(() => {
+    // Solo al pasar de «esperando» a «te toca»: si encadenas dos turnos seguidos, no vuelve a vibrar.
+    if (turnKey && lastTurn.current === null && props.online && !isMuted()) {
+      Vibration.vibrate(400);
+      play('whistle');
+    }
+    lastTurn.current = turnKey;
+  }, [turnKey, props.online]);
   const finished = props.game.phase === 'finished';
   // Al acabar la temporada, se apunta en el historial del club de este dispositivo.
   useEffect(() => {
