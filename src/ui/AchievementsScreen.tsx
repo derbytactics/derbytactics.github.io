@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, ScrollViewInstance, Text, View } from 'react-native';
 import { ACHIEVEMENTS, FOOTBALLERS, POSITIONS, ROLE_NAME, achievement, basePrice, tierForPrice } from '../engine';
 import { dismissUnlock, useAlbum, useNextUnlock, useUnlocked } from '../account/achievements';
 import { Avatar } from './art';
@@ -139,8 +139,13 @@ function AlbumGrid() {
 /** «Logros y álbum», desde el menú lateral. */
 export function AchievementsScreen({ onClose, initial = 'logros' }: { onClose: () => void; initial?: 'logros' | 'album' }) {
   const [tab, setTab] = useState(initial);
+  // Al cambiar entre logros y álbum, se empieza desde arriba.
+  const scroller = useRef<ScrollViewInstance>(null);
+  useEffect(() => {
+    scroller.current?.scrollTo({ y: 0, animated: false });
+  }, [tab]);
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+    <ScrollView ref={scroller} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <View style={[s.row, { marginBottom: 12 }]}>
         <Text style={[s.h1, { flex: 1 }]}>Logros y álbum</Text>
         <Btn small kind="ghost" label="Cerrar" onPress={onClose} />

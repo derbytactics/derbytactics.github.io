@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, ScrollViewInstance, Text, View } from 'react-native';
 import {
   Action,
   CONFIG,
@@ -154,6 +154,11 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
   const clubColor = useClubColor();
   const { state, me } = props;
   const [tab, setTab] = useState<Tab>('mercado');
+  // Al cambiar de pestaña, el contenido empieza desde arriba.
+  const scroller = useRef<ScrollViewInstance>(null);
+  useEffect(() => {
+    scroller.current?.scrollTo({ y: 0, animated: false });
+  }, [tab]);
   const [error, setError] = useState<string | null>(null);
   /** Carta especial pendiente de elegir objetivo. */
   const [pending, setPending] = useState<number | null>(null);
@@ -258,6 +263,8 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               onPress={() => {
+                // Pulsar la pestaña en la que ya estás también vuelve arriba.
+                if (t.key === tab) scroller.current?.scrollTo({ y: 0, animated: true });
                 setTab(t.key);
                 setPending(null);
               }}
@@ -272,7 +279,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
         })}
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+      <ScrollView ref={scroller} style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
         {tab === 'mercado' ? (
           <>
             <Tip id="mercado" title={`Empieza por ${rw.aKeeper} y ${rw.aForward}`}>
