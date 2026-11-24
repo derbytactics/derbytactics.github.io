@@ -92,14 +92,23 @@ export const dailyRanking = (day: string) => rpc<DailyRankingRow[]>('daily_ranki
 const MEDAL = ['🥇', '🥈', '🥉'];
 /** Texto para compartir, al estilo de los retos diarios. */
 export function shareText(r: DailyResult, streak: number, url?: string): string {
-  const [y, m, d] = r.day.split('-');
-  const pos = `${MEDAL[r.position - 1] ?? '🏟️'} ${r.position}.º de ${r.clubs}`;
+  const last = r.position === r.clubs;
+  // El titular cambia con el resultado: presumir si ganas, picar si quedas cerca, reírse si pierdes.
+  const head =
+    r.position === 1
+      ? `🏆 ¡He ganado el reto diario #${r.number} de DerbyTactics!`
+      : last
+        ? `😅 Hoy el reto diario #${r.number} de DerbyTactics me ha ganado a mí (${r.position}.º de ${r.clubs})`
+        : `${MEDAL[r.position - 1] ?? '⚽'} ${r.position}.º de ${r.clubs} en el reto diario #${r.number} de DerbyTactics`;
+  const goals = `⚽ ${r.goals} ${r.goals === 1 ? 'gol marcado' : 'goles marcados'} y ${r.against} ${r.against === 1 ? 'encajado' : 'encajados'} · ${r.points} puntos`;
   return [
-    `DerbyTactics · Reto #${r.number} · ${d}/${m}/${y}`,
-    `${pos} · ${r.points} pts · ⚽ ${r.goals}-${r.against}`,
-    streak > 1 ? `🔥 ${streak} días seguidos` : null,
+    head,
+    goals,
+    streak > 1 ? `🔥 Llevo ${streak} días seguidos` : null,
+    '',
+    r.position === 1 ? '¿Me igualas? Hoy todo el mundo juega el mismo partido 👇' : '¿Me superas? Hoy todo el mundo juega el mismo partido 👇',
     url ?? null,
   ]
-    .filter(Boolean)
+    .filter((x) => x !== null)
     .join('\n');
 }

@@ -29,7 +29,12 @@ describe('reto diario en el dispositivo', () => {
     expect(recordDaily(fake)!.points).toBe(first.points);
     expect(Object.keys(dailyResults())).toEqual(['2026-11-22']);
   });
-  it('el texto para compartir lleva número, puesto, puntos, goles y racha', () => {
-    expect(shareText(r('2026-11-22'), 3)).toBe('DerbyTactics · Reto #1 · 22/11/2026\n🥇 1.º de 4 · 9 pts · ⚽ 7-3\n🔥 3 días seguidos');
+  it('el texto para compartir cambia con el puesto y reta a quien lo recibe', () => {
+    expect(shareText(r('2026-11-22'), 3, 'https://derbytactics.github.io/')).toBe(
+      '🏆 ¡He ganado el reto diario #1 de DerbyTactics!\n⚽ 7 goles marcados y 3 encajados · 9 puntos\n🔥 Llevo 3 días seguidos\n\n¿Me igualas? Hoy todo el mundo juega el mismo partido 👇\nhttps://derbytactics.github.io/',
+    );
+    expect(shareText({ ...r('2026-11-22'), position: 2 }, 1).split('\n')[0]).toBe('🥈 2.º de 4 en el reto diario #1 de DerbyTactics');
+    expect(shareText({ ...r('2026-11-22'), position: 4 }, 1)).toContain('me ha ganado a mí (4.º de 4)');
+    expect(shareText({ ...r('2026-11-22'), position: 4 }, 1)).toContain('¿Me superas?');
   });
 });
