@@ -148,6 +148,10 @@ Hecho en el código (ver [`CUENTAS.md`](CUENTAS.md)). Para que funcionen hace fa
 
 Para probarlo: dos móviles con cuenta, uno crea una sala en línea y el otro entra (acepta los avisos); el invitado pasa a otra app y, cuando le toca, le llega «⚽ Te toca … en la sala …». Por Bluetooth no hay avisos (no pasa por ningún servidor), y si el anfitrión sale de la app la partida se para igualmente.
 
+## Ideas para más adelante
+
+- **Frases rápidas en las partidas en línea** (como en los juegos de mus): un panel con frases y emojis para picar o celebrar («Cláusula pagada, lo siento 😏», «¡Árbitro, comprado!», «¡Golazo!», «¿Tiramos ya?», «Bien jugado»), que salen como bocadillo junto al escudo. Sin texto libre: no necesita moderación ni cambia la revisión de Apple. Viajaría por la misma sala (también por Bluetooth). Hacerlo si los datos muestran que se juegan partidas en línea con amigos a distancia. El texto libre, solo con filtro, silenciar jugador y denuncias, y en salas privadas.
+
 ## Pendiente menor
 
 - Monitorización externa de errores (por ejemplo Sentry), si el registro propio se queda corto.
