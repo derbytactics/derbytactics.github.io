@@ -3,9 +3,11 @@ import { BarlowCondensed_800ExtraBold } from '@expo-google-fonts/barlow-condense
 import { BarlowCondensed_800ExtraBold_Italic } from '@expo-google-fonts/barlow-condensed/800ExtraBold_Italic';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BackHandler, Platform, Text, View } from 'react-native';
 import { backendEnabled, browserLocation, getAccount, initAccount, refreshProfile, signOut, subscribeAccount } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
@@ -33,7 +35,7 @@ import { SetupScreen } from './src/ui/SetupScreen';
 import { SideMenu } from './src/ui/SideMenu';
 import { WelcomeScreen } from './src/ui/WelcomeScreen';
 import { BackContext, Btn, LeagueChooser, NavContext, Popup, s } from './src/ui/components';
-import { C, TOP_INSET } from './src/ui/theme';
+import { C } from './src/ui/theme';
 import DerbyNearby from './modules/derby-nearby';
 import { NearbyNative, setNearbyNative } from './src/net/nearby';
 
@@ -63,7 +65,20 @@ function codeFromLink(): string {
   }
 }
 
+// La pantalla de arranque (escudo sobre el verde del juego) se queda hasta que fuentes y datos estén listos.
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
 export default function App() {
+  return (
+    <SafeAreaProvider>
+      <Main />
+    </SafeAreaProvider>
+  );
+}
+
+function Main() {
+  /** Márgenes reales de cada iPhone (isla dinámica, barra de inicio) y de Android. */
+  const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<Mode>({ kind: 'menu' });
   const [game, setGame] = useState<GameState | null>(null);
   const [help, setHelp] = useState(false);
@@ -92,6 +107,9 @@ export default function App() {
     return () => clearTimeout(t);
   }, []);
   const fontsReady = fontsLoaded || !!fontError || fontTimeout;
+  useEffect(() => {
+    if (booted && fontsReady) SplashScreen.hideAsync().catch(() => {});
+  }, [booted, fontsReady]);
   const userId = account.session?.user.id;
   // Con cuenta, el club y el historial se sincronizan al entrar.
   useEffect(() => {
@@ -348,7 +366,7 @@ export default function App() {
     <BackContext.Provider value={registerBack}>
     <NavContext.Provider value={{ onHelp, onAccount: () => setAccountOpen(true), onMenu: () => setMenuOpen(true), onLegal: setLegal }}>
     <ErrorBoundary onReset={toMenu}>
-    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: TOP_INSET }}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }}>
       <View style={{ flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' }}>
         {body}
         {/* Menú, club, historial y ayuda se superponen: así no se corta la conexión de una partida en línea. */}
@@ -428,7 +446,7 @@ export default function App() {
         ) : null}
         <AchievementToast />
         {leaving ? (
-          <Popup overline="CERRAR SESIÓN" title="¿Cerrar sesión?" button="Cancelar" onClose={() => setLeaving(false)}>
+          <Popup overline="CERRAR SESIÓN" title="¿Cerrar sesión?" button="Cancelar" buttonKind="ghost" onClose={() => setLeaving(false)}>
             <Text style={[s.p, { textAlign: 'center', marginBottom: 12 }]}>
               Tu club y tu historial quedan guardados en tu cuenta. Una partida a medias en este dispositivo se perdería.
             </Text>

@@ -27,6 +27,7 @@ import { C, POS_COLOR, DISPLAY } from './theme';
 import { useClubColor } from './clubColors';
 import { CARD_TYPE } from './cardTypes';
 import { I, Icon, IconName } from './icons';
+import { COMPACT } from './textScale';
 
 const J_IS_PRESEASON = (st: GameState) => st.jornada === 1 && st.turnOrder.length > st.players.length;
 
@@ -64,7 +65,7 @@ export function SpecialCardFace({ id, children }: { id: string; children?: React
       {/* Banda del tipo: se ve de un vistazo cuándo se juega. */}
       <View style={[s.row, { backgroundColor: tint + '2E', paddingHorizontal: 12, paddingVertical: 5 }]}>
         <Icon name={type.icon} size={15} color={tint} style={{ marginRight: 6 }} />
-        <Text style={[s.tier, { color: tint }]}>{type.label}</Text>
+        <Text maxFontSizeMultiplier={COMPACT} style={[s.tier, { color: tint }]}>{type.label}</Text>
         <Text style={{ color: C.dim, fontSize: 12, fontWeight: '700', marginLeft: 8, flex: 1 }} numberOfLines={1}>· {info.target === 'passive' ? 'Actúa sola desde tu mano' : type.when}</Text>
       </View>
       <View style={[s.row, { padding: 12, alignItems: 'flex-start' }]}>
@@ -72,7 +73,7 @@ export function SpecialCardFace({ id, children }: { id: string; children?: React
           <Icon name={SPECIAL_ICON[c.kind]} size={28} color={SPECIAL_ICON_COLOR[c.kind] ?? tint} />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          {info.sanction ? <Text style={[s.tier, { color: C.danger }]}>CONTRA UN RIVAL</Text> : null}
+          {info.sanction ? <Text maxFontSizeMultiplier={COMPACT} style={[s.tier, { color: C.danger }]}>CONTRA UN RIVAL</Text> : null}
           <Text style={s.cardName}>{info.title}</Text>
           <Text style={[s.p, { marginTop: 3 }]}>{info.text(c)}</Text>
         </View>
@@ -270,7 +271,7 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
               }}
               style={{ flex: 1, minHeight: 44, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.sel : 'transparent', borderWidth: 1, borderColor: on ? C.selLine : 'transparent' }}
             >
-              <Text numberOfLines={1} style={{ color: C.text, fontWeight: '800', fontSize: 13 }}>
+              <Text numberOfLines={1} maxFontSizeMultiplier={COMPACT} style={{ color: C.text, fontWeight: '800', fontSize: 13 }}>
                 {t.label}
                 {t.badge ? <Text style={{ color: on ? C.text : C.dim, fontWeight: '700' }}> {t.badge}</Text> : null}
               </Text>

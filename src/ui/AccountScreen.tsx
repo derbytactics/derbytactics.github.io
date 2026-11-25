@@ -18,6 +18,7 @@ import { useAccount } from '../account/useAccount';
 import { Trophy, USER_AVATARS, UserAvatar } from './art';
 import { Btn, LegalLinks, Overline, s } from './components';
 import { C, DISPLAY } from './theme';
+import { COMPACT } from './textScale';
 
 type Tab = 'perfil' | 'historial' | 'ranking';
 
@@ -346,10 +347,10 @@ function RankingTab() {
   return (
     <View style={s.panel}>
       <View style={[s.row, { marginBottom: 6 }]}>
-        <Text style={[s.th, { flex: 1, textAlign: 'left' }]}>RANKING POR VICTORIAS</Text>
-        <Text style={[s.th, { width: 44 }]}>VIC</Text>
-        <Text style={[s.th, { width: 44 }]}>PART</Text>
-        <Text style={[s.th, { width: 48 }]}>%</Text>
+        <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { flex: 1, textAlign: 'left' }]}>RANKING POR VICTORIAS</Text>
+        <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { width: 44 }]}>VIC</Text>
+        <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { width: 44 }]}>PART</Text>
+        <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { width: 48 }]}>%</Text>
       </View>
       {rows.map((r, i) => (
         <View key={r.username} style={[s.row, s.tr, r.username === profile?.username && { backgroundColor: C.panelAlt }]}>
@@ -361,9 +362,9 @@ function RankingTab() {
           ) : (
             <Text numberOfLines={1} style={{ color: C.text, flex: 1, fontWeight: '700' }}>{r.username}</Text>
           )}
-          <Text style={[s.td, { width: 44, color: C.accent, fontWeight: '900', fontSize: 15 }]}>{r.wins}</Text>
-          <Text style={[s.td, { width: 44 }]}>{r.games}</Text>
-          <Text style={[s.td, { width: 48 }]}>{Math.round((100 * r.wins) / r.games)}%</Text>
+          <Text maxFontSizeMultiplier={COMPACT} style={[s.td, { width: 44, color: C.accent, fontWeight: '900', fontSize: 15 }]}>{r.wins}</Text>
+          <Text maxFontSizeMultiplier={COMPACT} style={[s.td, { width: 44 }]}>{r.games}</Text>
+          <Text maxFontSizeMultiplier={COMPACT} style={[s.td, { width: 48 }]}>{Math.round((100 * r.wins) / r.games)}%</Text>
         </View>
       ))}
       {reporting ? (

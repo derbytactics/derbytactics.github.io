@@ -159,7 +159,8 @@ export function SetupScreen(props: {
               <Btn label="Continuar la partida" onPress={props.onContinueLocal} />
             </View>
           ) : null}
-          <DailyCard playing={props.dailyPlaying} onPlay={props.onDaily} onResult={props.onDailyResult} />
+          {/* Solo un botón dorado a la vista: la partida a medias si la hay; si no, el reto del día. */}
+          <DailyCard primary={!props.savedLocal} playing={props.dailyPlaying} onPlay={props.onDaily} onResult={props.onDailyResult} />
           <CareerCard onPlay={props.onCareer} onOpen={props.onCareerOpen} />
 
           {/* Amistoso: una liga a tu medida contra la IA. Se configura al abrirlo. */}
@@ -173,7 +174,7 @@ export function SetupScreen(props: {
               </View>
             </View>
             {!friendly ? (
-              <Btn label="Jugar un amistoso" onPress={() => setFriendly(true)} style={{ marginTop: 10 }} />
+              <Btn kind="secondary" label="Jugar un amistoso" onPress={() => setFriendly(true)} style={{ marginTop: 10 }} />
             ) : (
               <View style={{ marginTop: 12 }}>
               <View style={[s.row, { marginBottom: 10 }]}>

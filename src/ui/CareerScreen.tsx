@@ -33,7 +33,7 @@ export function CareerCard({ onPlay, onOpen }: { onPlay: () => void; onOpen: () 
         </View>
       </View>
       <View style={[s.row, { gap: 8, marginTop: 10 }]}>
-        <Btn label={!c ? 'Empezar mi carrera' : saved?.game ? `Seguir la temporada ${c.season}` : `Jugar la temporada ${c.season}`} onPress={onPlay} style={{ flex: 1 }} />
+        <Btn kind="secondary" label={!c ? 'Empezar mi carrera' : saved?.game ? `Seguir la temporada ${c.season}` : `Jugar la temporada ${c.season}`} onPress={onPlay} style={{ flex: 1 }} />
         {c ? <Btn kind="ghost" icon={I.trophy} label="Vitrina" onPress={onOpen} /> : null}
       </View>
     </View>
