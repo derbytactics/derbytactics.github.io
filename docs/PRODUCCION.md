@@ -137,7 +137,7 @@ Los mensajes de las salas pasan por **Supabase Realtime** (gratis en el plan act
 
 Si el juego se abre a desconocidos y aparecen trampas, el paso siguiente es que una función de Supabase juegue la partida con el mismo motor (`src/engine`, puro y determinista) y valide cada jugada. Hay que desplegarla desde tu cuenta.
 
-## Para la 1.0.2: avisos «Te toca»
+## Para la 1.1.0: avisos «Te toca»
 
 Hecho en el código (ver [`CUENTAS.md`](CUENTAS.md)). Para que funcionen hace falta, una vez:
 

@@ -76,7 +76,7 @@ El modo sin internet no envía nada a ningún servidor: los móviles hablan dire
 | Contenido del usuario → Contenido de juego (club, historial, resultados del reto diario, logros y álbum) | Sí | Funcionalidad de la app |
 | Contenido del usuario → Otro contenido (nombre de usuario y de club) | Sí | Funcionalidad de la app |
 | Diagnóstico → Datos de fallos | Sí | Funcionalidad de la app |
-| Identificadores → ID del dispositivo (identificador de avisos push, desde la 1.0.2) | Sí | Funcionalidad de la app |
+| Identificadores → ID del dispositivo (identificador de avisos push, desde la 1.1.0) | Sí | Funcionalidad de la app |
 
 ## Clasificación por edad
 
