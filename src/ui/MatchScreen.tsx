@@ -12,6 +12,7 @@ import { Tip } from './Tip';
 import { C, DISPLAY, NATIVE_DRIVER } from './theme';
 import { useClubColor } from './clubColors';
 import { I, Icon, IconName } from './icons';
+import { COMPACT, FIXED } from './textScale';
 
 const ordinal = (n: number) => `${n}.º`;
 
@@ -214,7 +215,7 @@ function RefereeButton({ label, icon, seconds, token, auto, onGo }: { label: str
       {auto ? (
       <View style={[s.row, { justifyContent: 'center', marginTop: 8 }]}>
         <View style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: left <= 2 ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: left <= 2 ? C.danger : C.accent, fontWeight: '900', fontSize: 13 }}>{Math.max(0, left)}</Text>
+          <Text maxFontSizeMultiplier={FIXED} style={{ color: left <= 2 ? C.danger : C.accent, fontWeight: '900', fontSize: 13 }}>{Math.max(0, left)}</Text>
         </View>
         <Text style={{ color: C.dim, fontSize: 12, fontWeight: '700', marginLeft: 8 }}>El árbitro cuenta: si no, ordena seguir</Text>
       </View>
@@ -239,7 +240,7 @@ function Dice({ roll, rolling }: { roll: RollReport | null; rolling: boolean }) 
       <Die value={show[0]} size={64} tone={tone} />
       <Die value={show[1]} size={64} tone={tone} />
       <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: sum === null ? C.panelAlt : sum === 7 ? C.danger : C.accent, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: sum === null ? C.faint : sum === 7 ? '#fff' : C.accentText, fontSize: 34, ...DISPLAY }}>{sum ?? '?'}</Text>
+        <Text maxFontSizeMultiplier={FIXED} style={{ color: sum === null ? C.faint : sum === 7 ? '#fff' : C.accentText, fontSize: 34, ...DISPLAY }}>{sum ?? '?'}</Text>
       </View>
     </Pop>
   );
@@ -429,19 +430,19 @@ export function MatchScreen(props: {
           ))}
           <View style={s.panel}>
             <View style={[s.row, { marginBottom: 6 }]}>
-              <Text style={[s.th, { flex: 1, textAlign: 'left' }]}>REPARTO DE LA JORNADA</Text>
-              <Text style={[s.th, { width: 50 }]}>GOLES</Text>
-              <Text style={[s.th, { width: 52 }]}>PTS</Text>
-              <Text style={[s.th, { width: 56 }]}>DINERO</Text>
+              <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { flex: 1, textAlign: 'left' }]}>REPARTO DE LA JORNADA</Text>
+              <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { width: 50 }]}>GOLES</Text>
+              <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { width: 52 }]}>PTS</Text>
+              <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { width: 56 }]}>DINERO</Text>
             </View>
             {report.results.map((r) => (
               <View key={r.playerId} style={[s.row, s.tr]}>
                 <Text style={{ color: C.faint, width: 20, fontWeight: '700' }}>{r.rank}</Text>
                 <Crest name={name(r.playerId)} color={clubColor(r.playerId)} design={state.players[r.playerId].crest} size={24} />
                 <Text numberOfLines={1} style={{ color: C.text, flex: 1, fontWeight: '700', marginLeft: 8 }}>{name(r.playerId)}</Text>
-                <Text style={[s.td, { width: 50, color: C.text, fontWeight: '800' }]}>{r.goals}:{r.against}</Text>
-                <Text style={[s.td, { width: 52, color: C.accent, fontWeight: '900', fontSize: 15 }]}>+{r.points}</Text>
-                <Text style={[s.td, { width: 56, color: C.good, fontWeight: '800' }]}>+{r.prize + r.ticket + r.saveBonus}M</Text>
+                <Text maxFontSizeMultiplier={COMPACT} style={[s.td, { width: 50, color: C.text, fontWeight: '800' }]}>{r.goals}:{r.against}</Text>
+                <Text maxFontSizeMultiplier={COMPACT} style={[s.td, { width: 52, color: C.accent, fontWeight: '900', fontSize: 15 }]}>+{r.points}</Text>
+                <Text maxFontSizeMultiplier={COMPACT} style={[s.td, { width: 56, color: C.good, fontWeight: '800' }]}>+{r.prize + r.ticket + r.saveBonus}M</Text>
               </View>
             ))}
           </View>

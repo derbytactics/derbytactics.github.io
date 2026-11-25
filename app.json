@@ -59,6 +59,15 @@
         {
           "color": "#07160F"
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#07160F"
+        }
       ]
     ],
     "description": "Juego de cartas de fútbol para 2 a 8 jugadores: ficha, amplía tu estadio y gana la liga a golpe de dado.",

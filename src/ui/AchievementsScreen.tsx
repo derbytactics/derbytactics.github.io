@@ -5,7 +5,7 @@ import { dismissUnlock, useAlbum, useNextUnlock, useUnlocked } from '../account/
 import { Avatar } from './art';
 import { Btn, FootballerCard, Overline, Pop, Popup, RosterContext, s } from './components';
 import { Icon, IconName } from './icons';
-import { C, DISPLAY, POS_COLOR, SHADOW, TIER_COLOR, TOP_INSET } from './theme';
+import { C, DISPLAY, POS_COLOR, SHADOW, TIER_COLOR } from './theme';
 
 const fmtDate = (d: string) => d.split('-').reverse().join('/');
 
@@ -125,7 +125,7 @@ function AlbumGrid() {
         );
       })}
       {open && openEntry ? (
-        <Popup overline="EN TU ÁLBUM" title={openEntry.identity?.name ?? FOOTBALLERS.find((f) => f.id === open)!.name} button="Cerrar" onClose={() => setOpen(null)}>
+        <Popup overline="EN TU ÁLBUM" title={openEntry.identity?.name ?? FOOTBALLERS.find((f) => f.id === open)!.name} button="Cerrar" buttonKind="ghost" onClose={() => setOpen(null)}>
           <RosterContext.Provider value={openEntry.identity ? { [open]: openEntry.identity } : undefined}>
             <FootballerCard cardId={open} />
           </RosterContext.Provider>
@@ -167,7 +167,7 @@ export function AchievementToast() {
   if (!id) return null;
   const a = achievement(id);
   return (
-    <View pointerEvents="box-none" style={{ position: 'absolute', top: TOP_INSET + 10, left: 12, right: 12, alignItems: 'center' }}>
+    <View pointerEvents="box-none" style={{ position: 'absolute', top: 10, left: 12, right: 12, alignItems: 'center' }}>
       <Pop trigger={id} style={{ width: '100%', maxWidth: 420 }}>
         <Pressable
           accessibilityRole="alert"

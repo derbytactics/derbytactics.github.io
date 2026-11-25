@@ -12,7 +12,7 @@ import { C, DISPLAY } from './theme';
 const URL = 'https://derbytactics.github.io/';
 
 /** Tarjeta del reto de hoy en «Jugar aquí». */
-export function DailyCard({ playing, onPlay, onResult }: { playing: boolean; onPlay: () => void; onResult: () => void }) {
+export function DailyCard({ playing, onPlay, onResult, primary = true }: { playing: boolean; onPlay: () => void; onResult: () => void; primary?: boolean }) {
   const day = dailyKey();
   const done = todayResult();
   const streak = dailyStreak(day);
@@ -37,7 +37,7 @@ export function DailyCard({ playing, onPlay, onResult }: { playing: boolean; onP
         {done ? (
           <Btn kind="ghost" icon={I.trophy} label={`Hoy: ${done.position}.º · ${done.points} pts · ver resultado`} onPress={onResult} />
         ) : (
-          <Btn icon="calendar-star" label={playing ? 'Continuar el reto de hoy' : 'Jugar el reto de hoy'} onPress={onPlay} />
+          <Btn kind={primary ? 'primary' : 'secondary'} icon="calendar-star" label={playing ? 'Continuar el reto de hoy' : 'Jugar el reto de hoy'} onPress={onPlay} />
         )}
       </View>
       <Text style={{ color: C.faint, fontSize: 12, marginTop: 6, textAlign: 'center' }}>

@@ -25,12 +25,16 @@ import { isMuted, setMuted, soundAvailable } from './sound';
 import { C, NATIVE_DRIVER, POS_COLOR, SHADOW, TIER_COLOR, DISPLAY, DISPLAY_BOLD, FONTS } from './theme';
 import { useClubColor } from './clubColors';
 import { I, Icon, IconName } from './icons';
+import { COMPACT, FIXED } from './textScale';
 
 export function Btn(props: {
   label: string;
   onPress: () => void;
-  /** primary: la acción principal (dorado) · selected: opción elegida en un selector · ghost, danger, muted. */
-  kind?: 'primary' | 'selected' | 'ghost' | 'danger' | 'muted';
+  /**
+   * primary: LA acción principal de la pantalla (dorado; solo una a la vista) · secondary: otras acciones
+   * importantes (verde) · selected: opción elegida en un selector · ghost, danger, muted.
+   */
+  kind?: 'primary' | 'secondary' | 'selected' | 'ghost' | 'danger' | 'muted';
   small?: boolean;
   icon?: IconName;
   style?: ViewStyle;
@@ -45,7 +49,7 @@ export function Btn(props: {
       style={({ pressed }) => [
         s.btn,
         props.small && s.btnSmall,
-        kind === 'selected' && s.btnSelected,
+        (kind === 'selected' || kind === 'secondary') && s.btnSelected,
         kind === 'ghost' && s.btnGhost,
         kind === 'muted' && s.btnMuted,
         kind === 'danger' && s.btnDanger,
@@ -73,8 +77,8 @@ export function NumberToken({ n, extra, size = 38, dim }: { n: number; extra?: b
         dim && { backgroundColor: C.panelAlt, borderColor: C.line },
       ]}
     >
-      <Text style={{ color: dim ? C.faint : hot ? C.hot : C.chipText, fontWeight: '900', fontSize: size * 0.42, lineHeight: size * 0.48 }}>{n}</Text>
-      <Text style={{ color: dim ? C.faint : hot ? C.hot : C.chipText, fontSize: size * 0.2, lineHeight: size * 0.2, letterSpacing: -0.5 }}>{'•'.repeat(pipsOf(n))}</Text>
+      <Text maxFontSizeMultiplier={FIXED} style={{ color: dim ? C.faint : hot ? C.hot : C.chipText, fontWeight: '900', fontSize: size * 0.42, lineHeight: size * 0.48 }}>{n}</Text>
+      <Text maxFontSizeMultiplier={FIXED} style={{ color: dim ? C.faint : hot ? C.hot : C.chipText, fontSize: size * 0.2, lineHeight: size * 0.2, letterSpacing: -0.5 }}>{'•'.repeat(pipsOf(n))}</Text>
     </View>
   );
 }
@@ -83,13 +87,17 @@ export function Tag({ text, color, icon }: { text: string; color?: string; icon?
   return (
     <View style={[s.tag, s.row, color ? { borderColor: color, backgroundColor: color + '1F' } : null]}>
       {icon ? <Icon name={icon} size={13} color={color ?? C.dim} style={{ marginRight: 4 }} /> : null}
-      <Text style={[s.tagText, color ? { color } : null]}>{text}</Text>
+      <Text maxFontSizeMultiplier={COMPACT} style={[s.tagText, color ? { color } : null]}>{text}</Text>
     </View>
   );
 }
 
 export function Overline({ children }: { children: React.ReactNode }) {
-  return <Text style={s.overline}>{children}</Text>;
+  return (
+    <Text maxFontSizeMultiplier={COMPACT} style={s.overline}>
+      {children}
+    </Text>
+  );
 }
 
 const TIER_ICON: Record<string, IconName> = { Cantera: 'sprout', Plata: 'medal-outline', Oro: 'star', Crack: 'star-shooting' };
@@ -116,14 +124,14 @@ export function FootballerCard(props: { cardId: string; entry?: SquadEntry; stat
       {/* Cabecera de la carta: categoría y precio, en el color de su categoría. */}
       <View style={[s.row, { backgroundColor: tint + (tier === 'Crack' ? '44' : '26'), paddingHorizontal: 12, paddingVertical: 5 }]}>
         <Icon name={TIER_ICON[tier]} size={15} color={tint} style={{ marginRight: 5 }} />
-        <Text style={[s.tier, { color: tint, flex: 1 }]}>{tier.toUpperCase()}</Text>
+        <Text maxFontSizeMultiplier={COMPACT} style={[s.tier, { color: tint, flex: 1 }]}>{tier.toUpperCase()}</Text>
         <Text style={{ color: C.text, fontSize: 18, ...DISPLAY }}>{basePrice(f.id)}M</Text>
       </View>
       <View style={[s.row, { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6, opacity: out ? 0.6 : 1 }]}>
         <View>
           <Avatar seed={f.id} who={who} size={66} jersey={props.owner ? clubColor(props.owner.id) : '#7C8F84'} ring={tint} />
           <View style={[s.posBadge, { backgroundColor: pos }]}>
-            <Text style={s.posText}>{f.position}</Text>
+            <Text maxFontSizeMultiplier={FIXED} style={s.posText}>{f.position}</Text>
           </View>
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
@@ -169,8 +177,20 @@ export function Pop({ trigger, children, style }: { trigger?: unknown; children:
 }
 
 /** Aviso a pantalla completa: hay que pulsar para cerrarlo, así no se pasa por alto. */
-export function Popup(props: { icon?: React.ReactNode; overline: string; title: string; color?: string; children?: React.ReactNode; button?: string; onClose: () => void }) {
-  const color = props.color ?? C.accent;
+export function Popup(props: {
+  icon?: React.ReactNode;
+  overline: string;
+  title: string;
+  color?: string;
+  children?: React.ReactNode;
+  button?: string;
+  /** «Cancelar», «Cerrar»…: el botón de cierre no debe llamar más la atención que la acción. */
+  buttonKind?: 'primary' | 'ghost';
+  onClose: () => void;
+}) {
+  // Sin color propio, la ventana es neutra: el dorado queda para la acción principal.
+  const color = props.color ?? C.selLine;
+  const labelColor = props.color ?? C.dim;
   return (
     <View style={s.backdrop}>
       <Pop style={{ width: '100%', maxWidth: 420 }}>
@@ -178,12 +198,12 @@ export function Popup(props: { icon?: React.ReactNode; overline: string; title: 
           <View style={{ height: 6, backgroundColor: color }} />
           <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={{ padding: 18, alignItems: 'center' }}>
             {props.icon}
-            <Text style={[s.overline, { color, marginTop: props.icon ? 10 : 0 }]}>{props.overline}</Text>
+            <Text style={[s.overline, { color: labelColor, marginTop: props.icon ? 10 : 0 }]}>{props.overline}</Text>
             <Text style={[s.h1, { textAlign: 'center', marginTop: 4, fontSize: 24 }]}>{props.title}</Text>
             <View style={{ alignSelf: 'stretch', marginTop: 10 }}>{props.children}</View>
           </ScrollView>
           <View style={{ padding: 14, paddingTop: 0 }}>
-            <Btn label={props.button ?? 'Entendido'} onPress={props.onClose} />
+            <Btn kind={props.buttonKind ?? 'primary'} label={props.button ?? 'Entendido'} onPress={props.onClose} />
           </View>
         </View>
       </Pop>
@@ -302,7 +322,7 @@ export function PhaseStepper({ step }: { step: 0 | 1 | 2; label?: string }) {
             {i > 0 ? <View style={[s.stepLine, i <= step && { backgroundColor: C.accent }]} /> : null}
             <View style={s.row} accessibilityLabel={`Paso ${i + 1}: ${name}${i === step ? ', actual' : i < step ? ', hecho' : ''}`}>
               <View style={[s.stepDot, i < step && s.stepDone, i === step && s.stepActive]}>
-                <Text style={{ color: i <= step ? C.accentText : C.faint, fontWeight: '800', fontSize: 12 }}>{i < step ? '✓' : i + 1}</Text>
+                <Text maxFontSizeMultiplier={FIXED} style={{ color: i <= step ? C.accentText : C.faint, fontWeight: '800', fontSize: 12 }}>{i < step ? '✓' : i + 1}</Text>
               </View>
               {i === step ? <Text style={{ color: C.text, fontWeight: '800', fontSize: 13, marginLeft: 6 }}>{name}</Text> : null}
             </View>
@@ -330,11 +350,11 @@ export function StandingsTable({ state, highlight }: { state: GameState; highlig
   return (
     <View style={s.panel}>
       <View style={[s.row, { marginBottom: 6 }]}>
-        <Text style={[s.th, { flex: 1, textAlign: "left" }]}>CLASIFICACIÓN</Text>
-        <Text style={[s.th, { width: 44 }]}>PTS</Text>
-        <Text style={[s.th, { width: 52 }]}>GOLES</Text>
-        <Text style={[s.th, { width: 50 }]}>CAJA</Text>
-        <Text style={[s.th, { width: 34 }]}>EST</Text>
+        <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { flex: 1, textAlign: "left" }]}>CLASIFICACIÓN</Text>
+        <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { width: 44 }]}>PTS</Text>
+        <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { width: 52 }]}>GOLES</Text>
+        <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { width: 50 }]}>CAJA</Text>
+        <Text maxFontSizeMultiplier={COMPACT} style={[s.th, { width: 34 }]}>EST</Text>
       </View>
       {standings(state).map((p, i) => (
         <View key={p.id} style={[s.row, s.tr, p.id === highlight && { backgroundColor: C.panelAlt }]}>
@@ -344,10 +364,10 @@ export function StandingsTable({ state, highlight }: { state: GameState; highlig
             {p.name}
             {p.isBot ? <Text style={{ color: C.faint, fontWeight: '500' }}> · IA</Text> : null}
           </Text>
-          <Text style={[s.td, { width: 44, color: C.accent, fontWeight: '800', fontSize: 15 }]}>{p.points}</Text>
-          <Text style={[s.td, { width: 52 }]}>{p.goals}:{p.against ?? 0}</Text>
-          <Text style={[s.td, { width: 50 }]}>{p.money}M</Text>
-          <Text style={[s.td, { width: 34 }]}>N{p.stadium}</Text>
+          <Text maxFontSizeMultiplier={COMPACT} style={[s.td, { width: 44, color: C.accent, fontWeight: '800', fontSize: 15 }]}>{p.points}</Text>
+          <Text maxFontSizeMultiplier={COMPACT} style={[s.td, { width: 52 }]}>{p.goals}:{p.against ?? 0}</Text>
+          <Text maxFontSizeMultiplier={COMPACT} style={[s.td, { width: 50 }]}>{p.money}M</Text>
+          <Text maxFontSizeMultiplier={COMPACT} style={[s.td, { width: 34 }]}>N{p.stadium}</Text>
         </View>
       ))}
     </View>
@@ -436,7 +456,7 @@ export function LeaguePicker({ value, onPick }: { value: League; onPick: (l: Lea
 /** Ventana «¿Qué liga jugamos?», tras pulsar jugar: masculina, femenina o mixta. */
 export function LeagueChooser({ title = '¿Qué liga jugamos?', note, onPick, onClose }: { title?: string; note?: string; onPick: (l: League) => void; onClose: () => void }) {
   return (
-    <Popup overline="ELIGE LA LIGA" title={title} button="Cancelar" onClose={onClose}>
+    <Popup overline="ELIGE LA LIGA" title={title} button="Cancelar" buttonKind="ghost" onClose={onClose}>
       {note ? <Text style={[s.p, { textAlign: 'center', marginBottom: 10 }]}>{note}</Text> : null}
       {LEAGUES.map((l) => (
         <Pressable
@@ -461,7 +481,7 @@ export function LeagueChooser({ title = '¿Qué liga jugamos?', note, onPick, on
 /** Nombre del juego en su letra: condensada, en cursiva y con «TACTICS» en dorado. */
 export function Wordmark({ size = 22 }: { size?: number }) {
   return (
-    <Text accessibilityRole="header" style={{ color: C.text, fontSize: size, fontFamily: FONTS.wordmark, fontWeight: 'normal', letterSpacing: 0.3 }}>
+    <Text accessibilityRole="header" maxFontSizeMultiplier={COMPACT} style={{ color: C.text, fontSize: size, fontFamily: FONTS.wordmark, fontWeight: 'normal', letterSpacing: 0.3 }}>
       DERBY<Text style={{ color: C.accent }}>TACTICS</Text>
     </Text>
   );

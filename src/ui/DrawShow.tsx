@@ -39,7 +39,7 @@ export function DrawShow({ state, seat }: { state: GameState; seat: number | nul
   const visible = (playerId: number, round: number) => steps.findIndex((x) => x.playerId === playerId && x.round === round) < shown;
   const rows = done ? order.map((pid) => state.draw!.find((d) => d.playerId === pid)!) : state.draw;
   return (
-    <Popup overline="¿QUIÉN FICHA PRIMERO?" title="Sorteo de la pretemporada" button={done ? '¡A fichar!' : 'Saltar'} onClose={close}>
+    <Popup overline="¿QUIÉN FICHA PRIMERO?" title="Sorteo de la pretemporada" button={done ? '¡A fichar!' : 'Saltar'} buttonKind={done ? 'primary' : 'ghost'} onClose={close}>
       <Text style={[s.p, { textAlign: 'center', marginBottom: 10 }]}>Cada club tira los dados: quien saca más ficha antes. Si hay empate, desempatan tirando otra vez. En la segunda vuelta, el orden se invierte.</Text>
       {rows.map((d, i) => {
         const p = state.players[d.playerId];
