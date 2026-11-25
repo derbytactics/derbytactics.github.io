@@ -11,7 +11,7 @@ import { enablePush, notifyTurn } from '../account/push';
 import { deviceId } from '../net/storage';
 import { Stars } from './AccountScreen';
 import { Crest } from './art';
-import { Btn, LeaguePicker, NavBar, Overline, leagueLabel, s, useBack } from './components';
+import { Btn, LeaguePicker, NavBar, Overline, Popup, leagueLabel, s, useBack } from './components';
 import { GameView } from './GameView';
 import { C, clubColor, DISPLAY } from './theme';
 
@@ -105,6 +105,8 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
   /** null: aún no registrada · true/false: si la partida puntúa para el ranking. */
   const [ranked, setRanked] = useState<boolean | null>(null);
   const reported = useRef(false);
+  /** Antes de empezar, se recuerda al anfitrión que su móvil dirige la partida. */
+  const [tip, setTip] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -269,9 +271,19 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
             </View>
           </View>
           {startError ? <Text style={{ color: C.danger, fontWeight: '700', marginBottom: 10 }}>{startError}</Text> : null}
-          <Btn label={room.seats.length < room.clubs ? `Empezar (la IA lleva ${room.clubs - room.seats.length})` : 'Empezar la pretemporada'} onPress={start} />
+          <Btn label={room.seats.length < room.clubs ? `Empezar (la IA lleva ${room.clubs - room.seats.length})` : 'Empezar la pretemporada'} onPress={() => setTip(true)} />
           <Btn kind="ghost" label="Cerrar la sala" onPress={exit} style={{ marginTop: 10 }} />
         </ScrollView>
+        {tip ? (
+          <Popup overline="ERES EL ANFITRIÓN" title="Tu móvil dirige la partida" button="Entendido, ¡a jugar!" onClose={() => { setTip(false); void start(); }}>
+            <Text style={[s.p, { textAlign: 'center', marginBottom: 8 }]}>
+              {isNearbyCode(room.code)
+                ? 'Deja la app abierta y el móvil cerca de los demás. Si cambias de app o bloqueas el móvil, la partida se para para todos hasta que vuelvas.'
+                : 'Deja la app abierta. Si cambias de app o bloqueas el móvil, la partida se para para todos hasta que vuelvas.'}
+            </Text>
+            <Text style={[s.p, { textAlign: 'center', fontSize: 13 }]}>Si se cierra del todo, no se pierde: en «Con amigos» podrás reanudar la sala y los demás volverán a entrar.</Text>
+          </Popup>
+        ) : null}
       </View>
     );
   }
