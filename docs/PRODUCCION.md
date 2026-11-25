@@ -137,9 +137,16 @@ Los mensajes de las salas pasan por **Supabase Realtime** (gratis en el plan act
 
 Si el juego se abre a desconocidos y aparecen trampas, el paso siguiente es que una función de Supabase juegue la partida con el mismo motor (`src/engine`, puro y determinista) y valide cada jugada. Hay que desplegarla desde tu cuenta.
 
-## Para la 1.0.2
+## Para la 1.0.2: avisos «Te toca»
 
-- **Notificaciones push «Te toca»** en las salas en línea, para quien tenga la app en segundo plano. Las locales no sirven: iOS congela la app y corta la conexión, así que no puede saber cuándo te toca. Plan: guardar en Supabase el identificador de avisos de cada móvil (con cuenta); cuando le toque a alguien, el móvil del anfitrión pide a Supabase que le avise y Supabase manda el aviso con el servicio gratuito de Expo. Necesita `expo-notifications` (nueva compilación), una clave de notificaciones push de Apple dada a EAS y una función en Supabase. Por Bluetooth no aplica (no hay servidor), y si el anfitrión sale de la app la partida se para igualmente.
+Hecho en el código (ver [`CUENTAS.md`](CUENTAS.md)). Para que funcionen hace falta, una vez:
+
+1. **Supabase:** volver a ejecutar `supabase/schema.sql` entero (crea las tablas de avisos, las funciones y activa la extensión `pg_net`). Si diera un error con `pg_net`, actívala en **Database → Extensions → pg_net** y vuelve a ejecutarlo.
+2. **Clave de avisos de Apple para EAS:** en el Mac, en la carpeta del proyecto, `npx eas-cli@latest credentials` → **iOS** → **production** → **Push Notifications: Manage your Apple Push Notifications Key** → **Set up a new key** (EAS la crea en tu cuenta de Apple y la guarda; sin ella, Expo no puede enviar los avisos a iPhone).
+3. **Compilar** de nuevo (lleva el módulo nativo `expo-notifications`).
+4. **App Store Connect → Privacidad de la app:** añadir **Identificadores → ID del dispositivo** (uso: funcionalidad de la app; vinculado: sí; rastreo: no) y **publicar**.
+
+Para probarlo: dos móviles con cuenta, uno crea una sala en línea y el otro entra (acepta los avisos); el invitado pasa a otra app y, cuando le toca, le llega «⚽ Te toca … en la sala …». Por Bluetooth no hay avisos (no pasa por ningún servidor), y si el anfitrión sale de la app la partida se para igualmente.
 
 ## Pendiente menor
 

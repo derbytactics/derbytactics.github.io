@@ -18,7 +18,7 @@ import { RoomState } from './src/net/room';
 import { GUEST_KEY, HOST_KEY, normalizeCode } from './src/net/session';
 import { hydrateStorage, load, remove, save } from './src/net/storage';
 import { AccountScreen, UsernamePrompt, formatDate } from './src/ui/AccountScreen';
-import { belongsToAccount, forgetLocalClub, reloadClub, syncClub, useClubSyncing, useMyClub } from './src/account/club';
+import { belongsToAccount, forgetLocalClub, getMyClub, reloadClub, syncClub, useClubSyncing, useMyClub } from './src/account/club';
 import { ClubScreen } from './src/ui/ClubScreen';
 import { ErrorBoundary, installGlobalErrorHandlers } from './src/ui/ErrorBoundary';
 import { GameView } from './src/ui/GameView';
@@ -26,6 +26,7 @@ import { HelpScreen } from './src/ui/HelpScreen';
 import { HistoryScreen } from './src/ui/HistoryScreen';
 import { AchievementToast, AchievementsScreen } from './src/ui/AchievementsScreen';
 import { forgetLocalCollection, syncCollection } from './src/account/achievements';
+import { disablePush, onPushOpen } from './src/account/push';
 import { LegalScreen, LegalTab } from './src/ui/LegalScreen';
 import { OnlineGuest, OnlineHost } from './src/ui/Online';
 import { SetupScreen } from './src/ui/SetupScreen';
@@ -223,6 +224,21 @@ export default function App() {
   /** Modo carrera: sigue la temporada a medias o empieza la que toca (y la carrera, si no hay). */
   /** Carrera nueva: antes de empezar se elige la liga (vale para toda la carrera). */
   const [careerAsk, setCareerAsk] = useState(false);
+  // Al tocar un aviso «Te toca», se vuelve a esa sala (si no estás ya en ella).
+  const modeRef = useRef(mode);
+  useLayoutEffect(() => {
+    modeRef.current = mode;
+  });
+  useEffect(
+    () =>
+      onPushOpen((code) => {
+        const m = modeRef.current;
+        const c = getMyClub();
+        if ((m.kind === 'guest' && m.code === code) || !c) return;
+        setMode({ kind: 'guest', code, name: c.name, crest: c.crest });
+      }),
+    [],
+  );
   const playCareer = (league?: League) => {
     const saved = loadCareer();
     if (!saved?.career && !league) return setCareerAsk(true);
@@ -246,7 +262,7 @@ export default function App() {
     setLeaving(false);
     if (getAccount().session) {
       // Antes de salir se sube lo pendiente; al cerrarse la sesión se borra lo de la cuenta del dispositivo.
-      await Promise.race([Promise.all([syncClub(), syncCollection()]), new Promise((r) => setTimeout(r, 4000))]);
+      await Promise.race([Promise.all([syncClub(), syncCollection(), disablePush()]), new Promise((r) => setTimeout(r, 4000))]);
       await signOut();
     } else {
       remove(GUEST_MODE_KEY);

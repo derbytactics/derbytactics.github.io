@@ -27,6 +27,7 @@ export const privacy = (): LegalSection[] => [
       'Si juegas como invitado no se te pide ningún dato personal. En tu dispositivo se guardan el avatar elegido, un identificador aleatorio del dispositivo para recuperar tu asiento en una sala, el nombre y el escudo de tu club, el historial de tus temporadas terminadas, tus resultados del reto diario, tu carrera, tus logros y tu álbum de futbolistas y, si la hay, la partida en curso.',
       'Si creas una cuenta se guardan además tu correo electrónico, tu nombre de usuario, tu avatar, el nombre y el escudo de tu club, el historial de tus temporadas terminadas (resultado y clasificación), tus resultados del reto diario, tus logros y tu álbum de futbolistas, las partidas en línea que juegas con su resultado, tus victorias, y las valoraciones que das y recibes como anfitrión.',
       'Se entra con Google o con Apple, sin contraseña: ese servicio confirma quién eres y nos envía tu correo. Google envía también tu nombre y tu foto, y el sistema de cuentas los conserva junto a tu acceso, pero el juego no los muestra ni los usa: eliges un nombre de usuario propio. Apple puede darnos un correo anónimo de reenvío en lugar del tuyo, si así lo eliges.',
+      'Si con tu cuenta entras en una sala en línea y aceptas los avisos, se guarda el identificador de avisos de tu móvil para avisarte de que te toca. Se borra al cerrar sesión en ese móvil.',
       'Si denuncias el nombre de otro jugador, o alguien denuncia el tuyo, se guarda quién denuncia, a quién y qué nombre, para retirar los nombres ofensivos.',
       'Si la aplicación falla, puede enviarse un informe técnico con el mensaje de error, sin datos personales más allá de tu identificador de cuenta si has iniciado sesión.',
     ],
@@ -35,7 +36,7 @@ export const privacy = (): LegalSection[] => [
   {
     title: 'Quién más interviene',
     body: [
-      'Las cuentas y las partidas guardadas se alojan en Supabase. La web se sirve desde GitHub Pages. Google o Apple, según con cuál entres, intervienen en el acceso según sus propias políticas de privacidad.',
+      'Las cuentas y las partidas guardadas se alojan en Supabase. La web se sirve desde GitHub Pages. Google o Apple, según con cuál entres, intervienen en el acceso según sus propias políticas de privacidad. Los avisos «Te toca» se envían a través del servicio de notificaciones de Expo (650 Industries) y de Apple o Google; solo llevan el texto del aviso y el código de la sala.',
       'Durante una partida en línea, el estado de la sala (nombres de club, plantillas y cartas) viaja por el servicio de mensajería de Supabase (o, si no responde, por servidores públicos de mensajería). No incluye tu correo, pero no debe considerarse privado.',
     ],
   },

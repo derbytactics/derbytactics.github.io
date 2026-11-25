@@ -6,6 +6,8 @@ import { CONFIG, CrestDesign, SeasonLength, standings } from '../engine';
 import { RoomState, botStep, finalSeats, hostAct, hostReady, kickSeat, pendingReady, playTurnForAbsent, seatOf, setLobby, startGame } from '../net/room';
 import { GuestSession, HostSession, normalizeCode } from '../net/session';
 import { isNearbyCode } from '../net/nearby';
+import { turnFor } from '../net/turns';
+import { enablePush, notifyTurn } from '../account/push';
 import { deviceId } from '../net/storage';
 import { Stars } from './AccountScreen';
 import { Crest } from './art';
@@ -147,6 +149,20 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
     const t = setTimeout(() => session.current?.update((r) => botStep(r)), 350);
     return () => clearTimeout(t);
   }, [botTurn, room?.seq]);
+
+  // Avisos push: cuando a un invitado le toca, se le avisa (le llega si tiene la app en segundo plano).
+  const notified = useRef(new Map<number, string>());
+  useEffect(() => {
+    const game = room?.game;
+    const gid = room?.gameId;
+    if (!game || !gid) return;
+    room.seats.forEach((st, seat) => {
+      if (seat === 0 || !st.clientId) return;
+      const t = turnFor(game, seat);
+      if (t && notified.current.get(seat) !== t.key) notifyTurn(gid, seat, t.kind);
+      notified.current.set(seat, t?.key ?? '');
+    });
+  }, [room]);
 
   // Con cuentas: señal de vida mientras se juega y registro del resultado al terminar.
   const gameId = room?.gameId ?? null;
@@ -329,6 +345,13 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
   useEffect(() => {
     if (hostUserId && backendEnabled()) rpc<HostCard>('host_card', { p_user: hostUserId }, false).then(setHostCard, () => {});
   }, [hostUserId]);
+  // Con cuenta, en una sala en línea: avisos «Te toca» por si pasas a otra app.
+  const pushAsked = useRef(false);
+  useEffect(() => {
+    if (!account || mySeat < 0 || pushAsked.current || isNearbyCode(normalizeCode(props.code))) return;
+    pushAsked.current = true;
+    void enablePush();
+  }, [account, mySeat, props.code]);
   // Con cuenta, cada persona reclama su propio asiento en el servidor.
   useEffect(() => {
     if (!gameId || !account || mySeat < 0 || claimed.current) return;

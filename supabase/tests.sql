@@ -109,6 +109,31 @@ select pg_temp.ok(not join_game((select gid from t), 3), 'no se puede ocupar el 
 select pg_temp.ok(not join_game((select gid from t), 0), 'no se puede ocupar el asiento del anfitrión');
 select pg_temp.ok(join_game((select gid from t), 1), 'el invitado registrado reclama su asiento');
 select pg_temp.ok(not finish_game((select gid from t), '[]'), 'solo el anfitrión cierra la partida');
+
+-- Avisos «Te toca».
+do $$ begin
+  perform set_push_token('no-es-un-token');
+  raise exception 'FALLA: token no válido aceptado';
+exception when raise_exception then
+  if sqlerrm like 'FALLA%' then raise; end if;
+  raise notice 'ok · se rechaza un identificador de avisos no válido';
+end $$;
+select set_push_token('ExponentPushToken[luis-movil-123456]');
+select set_push_token('ExponentPushToken[luis-movil-123456]');
+select pg_temp.ok((select count(*) = 1 from push_tokens where user_id = '00000000-0000-0000-0000-00000000000b'), 'el identificador de avisos se guarda una vez');
+select pg_temp.ok(not notify_turn((select gid from t), 1, 'market'), 'un invitado no puede mandar avisos');
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select pg_temp.ok(notify_turn((select gid from t), 1, 'roll'), 'la anfitriona avisa al invitado registrado de que le toca');
+select pg_temp.ok((select count(*) = 1 and bool_and(url like 'https://exp.host/%') and bool_and(body -> 'to' ? 'ExponentPushToken[luis-movil-123456]')
+                     and bool_and(body ->> 'body' like '%Te toca tirar los dados en la sala AAAAA%') from net.sent), 'el aviso sale hacia Expo con el texto y la sala');
+select pg_temp.ok(not notify_turn((select gid from t), 1, 'market'), 'no se repite el aviso en pocos segundos');
+select pg_temp.ok(not notify_turn((select gid from t), 2, 'market'), 'al invitado sin cuenta no se le avisa');
+select pg_temp.ok(not notify_turn((select gid from t), 3, 'market'), 'a un bot no se le avisa');
+select pg_temp.ok(not notify_turn((select gid from t), 1, 'otra'), 'solo avisos conocidos');
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select clear_push_token('ExponentPushToken[luis-movil-123456]');
+select pg_temp.ok(not exists (select 1 from push_tokens where user_id = '00000000-0000-0000-0000-00000000000b'), 'al cerrar sesión el móvil deja de recibir avisos');
+
 do $$ begin
   perform rate_host((select gid from t), 5);
   raise exception 'FALLA: valoró una partida en juego';

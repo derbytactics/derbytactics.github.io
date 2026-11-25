@@ -91,6 +91,21 @@ create table if not exists public.collections (
   updated_at timestamptz not null default now()
 );
 
+-- Avisos push «Te toca»: el identificador de avisos de cada móvil con la cuenta (Expo).
+create table if not exists public.push_tokens (
+  token text primary key,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  updated_at timestamptz not null default now()
+);
+create index if not exists push_tokens_user_idx on public.push_tokens (user_id);
+-- Último aviso a cada persona en cada partida, para no mandar avisos seguidos.
+create table if not exists public.push_log (
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  game_id uuid not null references public.games (id) on delete cascade,
+  sent_at timestamptz not null default now(),
+  primary key (user_id, game_id)
+);
+
 -- Denuncias de nombres ofensivos. Con 3 personas distintas contra el mismo nombre, se retira solo.
 create table if not exists public.name_reports (
   reporter uuid not null references public.profiles (id) on delete cascade,
@@ -120,6 +135,15 @@ alter table public.season_history enable row level security;
 alter table public.name_reports enable row level security;
 alter table public.daily_results enable row level security;
 alter table public.collections enable row level security;
+alter table public.push_tokens enable row level security;
+alter table public.push_log enable row level security;
+
+-- pg_net: llamadas HTTP desde la base de datos (para mandar los avisos a Expo). En Supabase ya
+-- está disponible; en una base de datos sin ella se ignora (las pruebas usan una imitación).
+do $$ begin
+  create extension if not exists pg_net;
+exception when others then null;
+end $$;
 
 -- ---------------------------------------------------------------- Alta de usuario
 
@@ -591,6 +615,68 @@ $$;
 
 -- ---------------------------------------------------------------- Permisos
 
+-- ---------------------------------------------------------------- Avisos «Te toca»
+
+-- Guarda el identificador de avisos de este móvil para la cuenta (si lo tenía otra, pasa a esta).
+create or replace function public.set_push_token(p_token text) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  me uuid := auth.uid();
+begin
+  if me is null then raise exception 'Inicia sesión.'; end if;
+  if p_token is null or p_token !~ '^ExponentPushToken\[[A-Za-z0-9_-]{10,100}\]$' then raise exception 'Identificador de avisos no válido.'; end if;
+  insert into push_tokens (token, user_id) values (p_token, me)
+  on conflict (token) do update set user_id = me, updated_at = now();
+  -- Como mucho 5 móviles por cuenta: se olvidan los más antiguos.
+  delete from push_tokens where user_id = me
+     and token not in (select token from push_tokens where user_id = me order by updated_at desc limit 5);
+end $$;
+
+-- Al cerrar sesión en un móvil, deja de recibir avisos de esa cuenta.
+create or replace function public.clear_push_token(p_token text) returns void
+language sql security definer set search_path = public as $$
+  delete from push_tokens where token = p_token and user_id = auth.uid()
+$$;
+
+-- El anfitrión avisa a quien ocupa el asiento `p_seat` de que le toca. Solo en partidas suyas en
+-- juego, a personas con cuenta y, como mucho, un aviso cada 15 s por persona y partida.
+create or replace function public.notify_turn(p_game uuid, p_seat int, p_kind text) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare
+  me uuid := auth.uid();
+  g record;
+  target uuid;
+  msg text;
+  tokens text[];
+begin
+  if me is null then return false; end if;
+  select * into g from games where id = p_game and host_id = me and status = 'playing';
+  if not found then return false; end if;
+  select user_id into target from game_players where game_id = p_game and seat = p_seat and not is_bot;
+  if target is null or target = me then return false; end if;
+  msg := case p_kind
+    when 'market' then 'Te toca fichar'
+    when 'lineup' then 'Elige tu convocatoria'
+    when 'roll' then 'Te toca tirar los dados'
+    when 'react' then 'Una jugada te afecta: ¿juegas tu carta?'
+  end;
+  if msg is null then return false; end if;
+  if exists (select 1 from push_log where user_id = target and game_id = p_game and sent_at > now() - interval '15 seconds') then
+    return false;
+  end if;
+  select array_agg(token) into tokens from push_tokens where user_id = target;
+  if tokens is null then return false; end if;
+  insert into push_log (user_id, game_id) values (target, p_game)
+  on conflict (user_id, game_id) do update set sent_at = now();
+  perform net.http_post(
+    url := 'https://exp.host/--/api/v2/push/send',
+    body := jsonb_build_object('to', to_jsonb(tokens), 'title', 'DerbyTactics', 'body', '⚽ ' || msg || ' en la sala ' || g.code,
+                               'sound', 'default', 'data', jsonb_build_object('code', g.code)),
+    headers := '{"Content-Type": "application/json", "Accept": "application/json"}'::jsonb
+  );
+  return true;
+end $$;
+
 -- ---------------------------------------------------------------- Logros y álbum
 
 -- Junta lo que manda el dispositivo con lo guardado: nunca se pierde nada. De cada logro se queda
@@ -633,6 +719,8 @@ revoke all on function public.set_my_club(text, jsonb), public.save_seasons(json
 grant execute on function public.set_my_club(text, jsonb), public.save_seasons(jsonb), public.my_seasons(), public.report_name(text) to authenticated;
 grant execute on function public.is_offensive(text), public.norm_word(text) to anon, authenticated;
 revoke all on function public.submit_daily(date, int, int, int, int) from public, anon;
+revoke all on function public.set_push_token(text), public.clear_push_token(text), public.notify_turn(uuid, int, text) from public, anon;
+grant execute on function public.set_push_token(text), public.clear_push_token(text), public.notify_turn(uuid, int, text) to authenticated;
 revoke all on function public.save_collection(jsonb, jsonb), public.my_collection() from public, anon;
 grant execute on function public.save_collection(jsonb, jsonb), public.my_collection() to authenticated;
 grant execute on function public.submit_daily(date, int, int, int, int) to authenticated;
