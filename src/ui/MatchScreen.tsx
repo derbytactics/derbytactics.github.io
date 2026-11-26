@@ -7,12 +7,15 @@ import { Avatar, Crest, Die } from './art';
 import { NumberLine, SPECIAL_ICON, SpecialCardFace } from './GameScreen';
 import { Btn, FootballerCard, Overline, PhaseStepper, Pop, RosterContext, StandingsTable, s } from './components';
 import { News, NewsKind, rollNews, rollScore } from './narrative';
-import { Sfx, play } from './sound';
+import { cue } from './feedback';
+import type { Sfx } from './sound';
 import { Tip } from './Tip';
 import { C, DISPLAY, NATIVE_DRIVER } from './theme';
 import { useClubColor } from './clubColors';
 import { I, Icon, IconName } from './icons';
 import { COMPACT, FIXED } from './textScale';
+import { successHaptic } from './haptics';
+import { reduceMotion, useReduceMotion } from './motion';
 
 const ordinal = (n: number) => `${n}.º`;
 
@@ -30,8 +33,9 @@ const TICK_MS = 1000 / SPEED;
 
 function useCountUp(target: number, run: boolean): number {
   const [v, setV] = useState(0);
+  const still = useReduceMotion();
   useEffect(() => {
-    if (!run || target <= 0) return;
+    if (!run || target <= 0 || still) return;
     let cur = 0;
     const t = setInterval(() => {
       cur += 1;
@@ -39,9 +43,9 @@ function useCountUp(target: number, run: boolean): number {
       if (cur >= target) clearInterval(t);
     }, Math.max(40, 700 / target));
     return () => clearInterval(t);
-  }, [target, run]);
-  // Sin nada que contar (cero o negativo), se enseña el valor tal cual.
-  return run && target <= 0 ? target : v;
+  }, [target, run, still]);
+  // Sin nada que contar (cero o negativo) o sin animaciones, se enseña el valor tal cual.
+  return run && (target <= 0 || still) ? target : v;
 }
 
 function Stat({ label, value, color, big }: { label: string; value: string; color?: string; big?: boolean }) {
@@ -227,12 +231,14 @@ function RefereeButton({ label, icon, seconds, token, auto, onGo }: { label: str
 /** Dados que ruedan un instante antes de mostrar el resultado. */
 function Dice({ roll, rolling }: { roll: RollReport | null; rolling: boolean }) {
   const [faces, setFaces] = useState<[number, number]>([1, 1]);
+  const still = useReduceMotion();
   useEffect(() => {
-    if (!rolling) return;
+    // Con «Reducir movimiento» los dados no giran: se ve directamente el resultado.
+    if (!rolling || still) return;
     const t = setInterval(() => setFaces([1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)]), 90);
     return () => clearInterval(t);
-  }, [rolling]);
-  const show = rolling || !roll ? faces : roll.dice;
+  }, [rolling, still]);
+  const show = (rolling && !still) || !roll ? faces : roll.dice;
   const tone = !roll ? 'ghost' : !rolling && roll.sum === 7 ? 'var' : 'light';
   const sum = roll && !rolling ? roll.sum : null;
   return (
@@ -295,6 +301,11 @@ export function MatchScreen(props: {
   /** Ya ha pasado el tiempo mínimo de lectura de la tirada actual. */
   const [ready, setReady] = useState(true);
   const [reparto, setReparto] = useState(false);
+  // Ganar la jornada (o quedar primero entre los tuyos) se celebra también con vibración.
+  const wonJornada = reparto && !!state.lastMatch?.results.some((r) => r.rank === 1 && (focus ?? state.players.filter((p) => !p.isBot).map((p) => p.id)).includes(r.playerId));
+  useEffect(() => {
+    if (wonJornada) successHaptic();
+  }, [wonJornada]);
   /** He pedido tirar: en cuanto llegue la tirada se cuenta, sin volver a preguntar. */
   const [awaiting, setAwaiting] = useState(false);
   /** Tirada que empezó porque se agotó la cuenta del árbitro. */
@@ -320,7 +331,7 @@ export function MatchScreen(props: {
     if (cur >= rolls.length - 1) return;
     if (forced) {
       setForcedRoll(cur + 1);
-      play('whistle');
+      cue('whistle');
     }
     setCur(cur + 1);
     setRolling(true);
@@ -352,19 +363,19 @@ export function MatchScreen(props: {
   // Al tirar, la pantalla vuelve arriba para seguir la crónica desde los dados.
   const scroller = useRef<ScrollViewInstance>(null);
   useEffect(() => {
-    if (cur >= 0) scroller.current?.scrollTo({ y: 0, animated: true });
+    if (cur >= 0) scroller.current?.scrollTo({ y: 0, animated: !reduceMotion() });
   }, [cur]);
 
   // Sonido: dados al tirar y un efecto por cada noticia que aparece.
   useEffect(() => {
-    if (rolling) play('dice');
+    if (rolling) cue('dice');
   }, [rolling, cur]);
   useEffect(() => {
     const nw = !rolling && revealed > 0 ? news[revealed - 1] : null;
     if (!nw) return;
     const map: Partial<Record<string, Sfx>> = { goal: 'goal', concede: 'concede', save: 'save', stopped: 'stopped', var: 'whistle', card: 'card', referee: 'whistle' };
     const sfx = map[nw.kind];
-    if (sfx) play(sfx);
+    if (sfx) cue(sfx);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealed, rolling, cur]);
 

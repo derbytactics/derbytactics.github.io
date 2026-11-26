@@ -26,6 +26,8 @@ import { C, NATIVE_DRIVER, POS_COLOR, SHADOW, TIER_COLOR, DISPLAY, DISPLAY_BOLD,
 import { useClubColor } from './clubColors';
 import { I, Icon, IconName } from './icons';
 import { COMPACT, FIXED } from './textScale';
+import { selectHaptic } from './haptics';
+import { useReduceMotion } from './motion';
 
 export function Btn(props: {
   label: string;
@@ -166,13 +168,16 @@ export function FootballerCard(props: { cardId: string; entry?: SquadEntry; stat
   );
 }
 
-/** Aparición con rebote; se repite cada vez que cambia `trigger`. */
+/** Aparición con rebote; se repite cada vez que cambia `trigger`. Con «Reducir movimiento», aparece sin más. */
 export function Pop({ trigger, children, style }: { trigger?: unknown; children: React.ReactNode; style?: ViewStyle }) {
-  const [v] = useState(() => new Animated.Value(0.6));
+  const still = useReduceMotion();
+  const [v] = useState(() => new Animated.Value(still ? 1 : 0.6));
   useEffect(() => {
+    if (still) return v.setValue(1);
     v.setValue(0.6);
     Animated.spring(v, { toValue: 1, friction: 5, tension: 150, useNativeDriver: NATIVE_DRIVER }).start();
-  }, [trigger, v]);
+  }, [trigger, v, still]);
+  if (still) return <View style={style}>{children}</View>;
   return <Animated.View style={[style, { transform: [{ scale: v }], opacity: v.interpolate({ inputRange: [0.6, 0.85], outputRange: [0, 1], extrapolate: 'clamp' }) }]}>{children}</Animated.View>;
 }
 
@@ -445,7 +450,10 @@ export function LeaguePicker({ value, onPick }: { value: League; onPick: (l: Lea
       <Overline>LIGA</Overline>
       <View style={[s.row, { gap: 8, marginTop: 8 }]}>
         {LEAGUES.map((l) => (
-          <Btn key={l} small kind={value === l ? 'selected' : 'ghost'} label={LEAGUE_INFO[l].label} onPress={() => onPick(l)} style={{ flex: 1 }} />
+          <Btn key={l} small kind={value === l ? 'selected' : 'ghost'} label={LEAGUE_INFO[l].label} onPress={() => {
+            if (l !== value) selectHaptic();
+            onPick(l);
+          }} style={{ flex: 1 }} />
         ))}
       </View>
       <Text style={{ color: C.faint, fontSize: 12, marginTop: 4 }}>{LEAGUE_INFO[value].text} Las reglas son las mismas.</Text>
@@ -463,7 +471,10 @@ export function LeagueChooser({ title = '¿Qué liga jugamos?', note, onPick, on
           key={l}
           accessibilityRole="button"
           accessibilityLabel={`Liga ${LEAGUE_INFO[l].label}`}
-          onPress={() => onPick(l)}
+          onPress={() => {
+            selectHaptic();
+            onPick(l);
+          }}
           style={({ pressed }) => [s.row, { padding: 12, borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: pressed ? C.sel : C.panelAlt, marginBottom: 8 }]}
         >
           <Icon name={LEAGUE_INFO[l].icon} size={26} color={C.accent} style={{ marginRight: 12 }} />

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Text, Vibration, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Action, GameState, currentPlayer, currentRoller } from '../engine';
 import { Crest } from './art';
 import { recordGame } from '../account/club';
@@ -7,8 +7,7 @@ import { checkGame } from '../account/achievements';
 import { setCurrentLeague } from './currentLeague';
 import { DrawShow } from './DrawShow';
 import { turnFor } from '../net/turns';
-import { play } from './sound';
-import { isMuted } from './sfx';
+import { cue } from './feedback';
 import { Btn, Chronicle, ExitContext, NavBar, RosterContext, useBack, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
 import { EndScreen } from './EndScreen';
 import { GameScreen } from './GameScreen';
@@ -67,10 +66,8 @@ export function GameView(props: {
   const lastTurn = useRef<string | null>(turnKey);
   useEffect(() => {
     // Solo al pasar de «esperando» a «te toca»: si encadenas dos turnos seguidos, no vuelve a vibrar.
-    if (turnKey && lastTurn.current === null && props.online && !isMuted()) {
-      Vibration.vibrate(400);
-      play('whistle');
-    }
+    // La vibración va siempre; el pitido, solo sin silenciar (lo decide `play`).
+    if (turnKey && lastTurn.current === null && props.online) cue('whistle');
     lastTurn.current = turnKey;
   }, [turnKey, props.online]);
   const finished = props.game.phase === 'finished';
