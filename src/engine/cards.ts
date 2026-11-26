@@ -151,7 +151,10 @@ export type SpecialKind =
   | 'ojeador'
   | 'abogados'
   | 'salvada'
-  | 'cantada';
+  | 'cantada'
+  | 'muralla'
+  | 'tiroLibre'
+  | 'prima';
 
 export type TargetType = 'self' | 'rival' | 'rivalFootballer' | 'ownFootballer' | 'passive' | 'reaction';
 
@@ -218,6 +221,30 @@ export const SPECIAL_INFO: Record<
     sanction: true,
     copies: 2,
     text: () => `En el partido: mandas a la calle a alguien de la alineación rival. Ni ataca ni defiende el resto de la jornada ni la siguiente.`,
+  },
+  tiroLibre: {
+    title: 'Tiro libre',
+    timing: 'jugada',
+    target: 'rival',
+    sanction: false,
+    copies: 3,
+    text: () => 'En el partido: falta al borde del área contra el rival que elijas. Se tira un dado: con 4, 5 o 6 es gol.',
+  },
+  muralla: {
+    title: 'Muralla',
+    timing: 'jugada',
+    target: 'self',
+    sanction: false,
+    copies: 3,
+    text: () => 'En el partido: el resto de la jornada, tu portería y tu defensa suman 1 más en cada número en el que defienden.',
+  },
+  prima: {
+    title: 'Prima por ganar',
+    timing: 'despacho',
+    target: 'self',
+    sanction: false,
+    copies: 3,
+    text: () => `Si ganas esta jornada (1.º en el reparto), cobras ${S.winBonus}M más.`,
   },
   penalti: {
     title: 'Penalti a favor',

@@ -63,7 +63,7 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
   const p = state.players[r.playerId];
   const color = clubColor(p.id);
   const pts = useCountUp(r.points, true);
-  const income = r.prize + r.ticket + r.saveBonus;
+  const income = r.prize + r.ticket + r.saveBonus + (r.winBonus ?? 0);
   const money = useCountUp(income, true);
   const leaguePos = standings(state).findIndex((x) => x.id === p.id) + 1;
   const n = state.players.length;
@@ -92,6 +92,7 @@ function HeroResult({ state, r }: { state: GameState; r: MatchResult }) {
             ? 'taquilla 0M (puerta cerrada)'
             : `taquilla ${r.ticket}M (${r.scoringPlays} ${r.scoringPlays === 1 ? 'jugada de gol' : 'jugadas de gol'} × ${ticketPerGoal(p.stadium)}M${r.clubDay ? ' × 2 Día del club' : ''})`}
           {r.saves ? ` · ${r.saves} ${r.saves === 1 ? 'parada' : 'paradas'} ${words(state, keeperOf(p)).fem ? 'de la portera' : 'del portero'}: ${r.saveBonus}M` : ''}
+          {r.winBonus ? ` · prima por ganar: ${r.winBonus}M` : ''}
         </Text>
         {r.keeperCard ? (
           <Text style={{ color: C.good, fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Tu {words(state, keeperOf(p)).keeper} gana una carta especial por sus paradas</Text>
@@ -410,7 +411,7 @@ export function MatchScreen(props: {
   // Los penaltis (cartas) suben al marcador cuando la crónica los cuenta.
   const toldAt = (e: MatchCardEvent) => Math.max(0, e.beforeRoll - 1);
   const penalties = events
-    .filter((e) => !e.blocked && specialCard(e.cardId).kind === 'penalti' && (toldAt(e) < cur || (toldAt(e) === cur && !rolling)))
+    .filter((e) => !e.blocked && (specialCard(e.cardId).kind === 'penalti' || (specialCard(e.cardId).kind === 'tiroLibre' && e.scored)) && (toldAt(e) < cur || (toldAt(e) === cur && !rolling)))
     .map((e) => ({ playerId: e.playerId, rival: e.targetPlayerId! }));
   const score = (id: number) =>
     counted.reduce((a, r) => ({ gf: a.gf + rollScore(r, id).gf, gc: a.gc + rollScore(r, id).gc }), {
@@ -771,7 +772,7 @@ function eventText(state: GameState, e: MatchCardEvent, viewer: number | null): 
   const name = (id: number) => (id === viewer ? 'tú' : state.players[id].name);
   const kind = specialCard(e.cardId).kind;
   const by = state.players[e.playerId].name;
-  const target = e.targetCardId ? `${cardName(state, e.targetCardId)} (${state.players[e.targetPlayerId!].name})` : name(e.targetPlayerId!);
+  const target = e.targetPlayerId === undefined ? '' : e.targetCardId ? `${cardName(state, e.targetCardId)} (${state.players[e.targetPlayerId].name})` : name(e.targetPlayerId);
   if (e.blocked) return `${by} pide «${SPECIAL_INFO[kind].title}» contra ${state.players[e.targetPlayerId!].name}, pero su gabinete jurídico la anula.`;
   switch (kind) {
     case 'amarilla':
@@ -782,6 +783,10 @@ function eventText(state: GameState, e: MatchCardEvent, viewer: number | null): 
       return `${target} se retira ${words(state, e.targetCardId).injured}. Estará ${CONFIG.special.injuryRounds} jornadas de baja.`;
     case 'penalti':
       return `¡Penalti a favor de ${by}! Gol a ${state.players[e.targetPlayerId!].name}.`;
+    case 'tiroLibre':
+      return e.scored ? `¡Gol de falta de ${by} a ${state.players[e.targetPlayerId!].name}! (sale un ${e.die})` : `Tiro libre de ${by} contra ${state.players[e.targetPlayerId!].name}: fuera (sale un ${e.die}).`;
+    case 'muralla':
+      return `${by} cierra filas: su defensa suma 1 más el resto del partido.`;
     default:
       return `${by} juega «${SPECIAL_INFO[kind].title}».`;
   }
@@ -795,7 +800,7 @@ function eventBody(state: GameState, e: MatchCardEvent, viewer: number | null): 
   const kind = specialCard(e.cardId).kind;
   const club = (id: number) => (id === viewer ? 'tu club' : state.players[id].name);
   const by = e.playerId === viewer ? 'La pediste tú' : `La pidió ${state.players[e.playerId].name}`;
-  const target = e.targetCardId ? `${cardName(state, e.targetCardId)} (${club(e.targetPlayerId!)})` : club(e.targetPlayerId!);
+  const target = e.targetPlayerId === undefined ? '' : e.targetCardId ? `${cardName(state, e.targetCardId)} (${club(e.targetPlayerId)})` : club(e.targetPlayerId);
   if (e.blocked) return eventText(state, e, viewer);
   switch (kind) {
     case 'amarilla':
@@ -806,6 +811,14 @@ function eventBody(state: GameState, e: MatchCardEvent, viewer: number | null): 
       return `${target} se retira ${words(state, e.targetCardId).injured}: ${CONFIG.special.injuryRounds} jornadas de baja.`;
     case 'penalti':
       return e.playerId === viewer ? `Lo lanzas y no fallas: gol a ${state.players[e.targetPlayerId!].name}.` : `${state.players[e.playerId].name} lo transforma: gol a ${club(e.targetPlayerId!)}.`;
+    case 'tiroLibre': {
+      const shooter = e.playerId === viewer ? 'Tu lanzamiento' : `El lanzamiento de ${state.players[e.playerId].name}`;
+      return e.scored
+        ? `${shooter} entra por la escuadra (sale un ${e.die}): gol a ${club(e.targetPlayerId!)}.`
+        : `${shooter} se marcha fuera (sale un ${e.die}; hacía falta un 4 o más).`;
+    }
+    case 'muralla':
+      return e.playerId === viewer ? 'Cierras filas: tu defensa suma 1 más el resto del partido.' : `${state.players[e.playerId].name} cierra filas: su defensa suma 1 más el resto del partido.`;
     default:
       return eventText(state, e, viewer);
   }
@@ -824,9 +837,14 @@ function eventNews(state: GameState, e: MatchCardEvent, viewer: number | null): 
           ? 'Lesión'
           : kind === 'penalti'
             ? '¡Penalti!'
-            : SPECIAL_INFO[kind].title;
+            : kind === 'tiroLibre'
+              ? e.scored ? '¡Gol de falta!' : 'Tiro libre… ¡fuera!'
+              : kind === 'muralla'
+                ? '¡Muralla!'
+                : SPECIAL_INFO[kind].title;
   // Si te afecta a ti, se cuenta como un golpe; si es tuya y entra, como un acierto.
-  const tone: NewsKind = kind === 'penalti' && !e.blocked ? (e.playerId === viewer ? 'goal' : e.targetPlayerId === viewer ? 'concede' : 'referee') : 'referee';
+  const goal = !e.blocked && (kind === 'penalti' || (kind === 'tiroLibre' && e.scored));
+  const tone: NewsKind = goal ? (e.playerId === viewer ? 'goal' : e.targetPlayerId === viewer ? 'concede' : 'referee') : 'referee';
   return { kind: tone, title, text: eventBody(state, e, viewer), special: kind };
 }
 
@@ -878,7 +896,7 @@ function MatchHand({ state, me, act }: { state: GameState; me: Player; act: (a: 
                 {!now ? (
                   <Text style={{ color: C.faint, fontSize: 12, fontWeight: '700' }}>{info.timing === 'giro' ? 'Te saldrá el botón cuando una jugada te afecte.' : 'Se juega en el mercado.'}</Text>
                 ) : !pick ? (
-                  <Btn small label="Jugar" onPress={() => { setError(null); setPicking({ index, rival: null }); }} />
+                  <Btn small label="Jugar" onPress={() => { setError(null); if (info.target === 'self') fire({ type: 'matchCard', playerId: me.id, handIndex: index }); else setPicking({ index, rival: null }); }} />
                 ) : pick.rival === null ? (
                   <View style={{ flexBasis: '100%' }}>
                     <Text style={{ color: C.dim, fontWeight: '700', marginBottom: 6 }}>¿Contra qué club?</Text>

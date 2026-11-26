@@ -12,6 +12,7 @@ import {
   expectedGoals,
   isOut,
   isProtected,
+  levelOf,
   lineup,
   onStreak,
   sellValue,
@@ -131,22 +132,27 @@ function transfer(state: GameState, me: Player, style: BotStyle, remaining: numb
       if (pos === 'DEL' && have.DEL >= CONFIG.maxForwards) return false;
       return anyNeed ? needs(pos) : want[pos] > 0;
     };
-    const smart = !NAIVE.has(me.id);
+    const level = levelOf(me);
+    // En fácil no mira a los rivales al fichar y no siempre elige al mejor.
+    const smart = !NAIVE.has(me.id) && level !== 'facil';
     const value = (id: string) => worth(state, me, id, smart);
-    const market = state.market.filter((id) => allowed(id) && signPrice(state, id) <= me.money).sort((a, b) => value(b) - value(a));
+    const sorted = state.market.filter((id) => allowed(id) && signPrice(state, id) <= me.money).sort((a, b) => value(b) - value(a));
+    const market = level === 'facil' ? [...sorted.slice(Math.floor(sorted.length / 2)), ...sorted.slice(0, Math.floor(sorted.length / 2))] : sorted;
     // No se gasta todo en el primer fichaje: reserva para completar la plantilla.
     const slotsLeft = CONFIG.squadSize - me.squad.length;
     const budget = remaining <= 2 ? me.money : Math.max(me.money / Math.min(slotsLeft, 3), 10);
     const pick = market.find((id) => signPrice(state, id) <= budget) ?? (state.jornada >= 3 ? market[market.length - 1] : undefined);
 
     let target: { ownerId: number; entry: SquadEntry } | null = null;
-    if (remaining >= 3) {
+    // Cláusulas: en fácil nunca.
+    const clauseMargin = 4;
+    if (level !== 'facil' && remaining >= 3) {
       for (const rival of state.players) {
         if (rival.id === me.id) continue;
         for (const e of rival.squad) {
           const pos = posOf(e.cardId);
           if (isProtected(e, J) || clauseOf(e) > me.money || !allowed(e.cardId)) continue;
-          if (pips(e.cardId) < (pick ? pips(pick) : 0) + 4 || basePrice(e.cardId) < 24) continue;
+          if (pips(e.cardId) < (pick ? pips(pick) : 0) + clauseMargin || basePrice(e.cardId) < 24) continue;
           if (pos === 'POR' && have.POR > 0) continue;
           if (!target || pips(e.cardId) > pips(target.entry.cardId)) target = { ownerId: rival.id, entry: e };
         }
@@ -173,7 +179,7 @@ function stadium(state: GameState, me: Player, style: BotStyle, remaining: numbe
   if (me.squad.length < minSquad) return null;
   // Rentabilidad: +1M por gol durante las jornadas que quedan (el partido de esta jornada cuenta).
   const gain = expectedGoals(me, state.jornada) * remaining;
-  const margin = 1.25;
+  const margin = levelOf(me) === 'facil' ? 1.6 : 1.25;
   return gain >= cost * margin ? { type: 'upgradeStadium' } : null;
 }
 
@@ -190,6 +196,10 @@ function pickCardToPlay(state: GameState, me: Player, style: BotStyle, remaining
     switch (c.kind) {
       case 'patrocinador':
         a = { type: 'playCard', handIndex };
+        break;
+      case 'prima':
+        // Solo si tiene equipo para ganar la jornada.
+        if (me.squad.length >= 4) a = { type: 'playCard', handIndex };
         break;
       case 'racha': {
         const e = myBest((x) => !onStreak(x, J) && !isOut(x, J));

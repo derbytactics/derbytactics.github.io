@@ -6,7 +6,9 @@ import { recordGame } from '../account/club';
 import { checkGame } from '../account/achievements';
 import { setCurrentLeague } from './currentLeague';
 import { DrawShow } from './DrawShow';
+import { Coach, TutorialContext } from './Coach';
 import { turnFor } from '../net/turns';
+import { logUsage, usageMode } from '../account/usage';
 import { cue } from './feedback';
 import { Btn, Chronicle, ExitContext, NavBar, RosterContext, useBack, Overline, PhaseStepper, Popup, StandingsTable, jornadaLabel, navJornada, s } from './components';
 import { EndScreen } from './EndScreen';
@@ -18,6 +20,8 @@ import { ClubColorsContext, clubPalette, useClubColor } from './clubColors';
 import { I } from './icons';
 
 export interface OnlineInfo {
+  /** Sala cercana (Bluetooth), no por internet. */
+  nearby?: boolean;
   isHost: boolean;
   connected: boolean;
   iAmReady: boolean;
@@ -71,6 +75,17 @@ export function GameView(props: {
     lastTurn.current = turnKey;
   }, [turnKey, props.online]);
   const finished = props.game.phase === 'finished';
+  // Uso anónimo: al empezar, al terminar y al abandonar.
+  const mode = usageMode(props.game, props.online ? (props.online.nearby ? 'cercana' : 'enLinea') : false);
+  const useSeat = props.seat ?? props.game.players.findIndex((p) => !p.isBot);
+  useEffect(() => {
+    logUsage(finished ? 'finish' : 'start', props.game, mode, useSeat >= 0 ? useSeat : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished]);
+  const exit = () => {
+    if (!finished) logUsage('abandon', props.game, mode, useSeat >= 0 ? useSeat : null);
+    props.onExit();
+  };
   // Al acabar la temporada, se apunta en el historial del club de este dispositivo.
   useEffect(() => {
     if (finished) recordGame(props.game, props.seat ?? 0, !!props.online);
@@ -85,24 +100,27 @@ export function GameView(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [squadKey, phase, props.game.jornada]);
   return (
+    <TutorialContext.Provider value={!!props.game.tutorial}>
     <ClubColorsContext.Provider value={palette}>
     <RosterContext.Provider value={props.game.roster}>
     <ExitContext.Provider value={() => setLeaving(true)}>
       <View style={{ flex: 1 }}>
         <NavBar subtitle={navJornada(props.game)} />
+        {props.game.tutorial ? <Coach game={props.game} seat={useSeat >= 0 ? useSeat : 0} /> : null}
         <GameBody {...props} />
         <DrawShow key={props.game.gameId} state={props.game} seat={props.seat ?? (props.game.players.findIndex((p) => !p.isBot) >= 0 ? props.game.players.findIndex((p) => !p.isBot) : null)} />
         {leaving ? (
           <Popup overline="SALIR DE LA PARTIDA" title="¿Seguro que quieres salir?" color={C.danger} button="Seguir jugando" onClose={() => setLeaving(false)}>
             <Text style={[s.p, { textAlign: 'center', marginBottom: 12 }]}>{props.exitText}</Text>
             {props.exitExtra}
-            <Btn kind="danger" label="Salir" onPress={props.onExit} style={{ marginBottom: 4 }} />
+            <Btn kind="danger" label="Salir" onPress={exit} style={{ marginBottom: 4 }} />
           </Popup>
         ) : null}
       </View>
     </ExitContext.Provider>
     </RosterContext.Provider>
     </ClubColorsContext.Provider>
+    </TutorialContext.Provider>
   );
 }
 

@@ -52,6 +52,9 @@ export const SPECIAL_ICON: Record<SpecialKind, IconName> = {
   abogados: 'scale-balance',
   salvada: 'shield-alert',
   cantada: 'hand-back-left-off',
+  muralla: 'wall',
+  tiroLibre: 'bullseye-arrow',
+  prima: 'cash-plus',
 };
 /** Las tarjetas se pintan de su color. */
 const SPECIAL_ICON_COLOR: Partial<Record<SpecialKind, string>> = { amarilla: '#F5C542', roja: '#E5484D' };

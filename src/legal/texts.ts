@@ -29,6 +29,7 @@ export const privacy = (): LegalSection[] => [
       'Se entra con Google o con Apple, sin contraseña: ese servicio confirma quién eres y nos envía tu correo. Google envía también tu nombre y tu foto, y el sistema de cuentas los conserva junto a tu acceso, pero el juego no los muestra ni los usa: eliges un nombre de usuario propio. Apple puede darnos un correo anónimo de reenvío en lugar del tuyo, si así lo eliges.',
       'Si con tu cuenta entras en una sala en línea y aceptas los avisos, se guarda el identificador de avisos de tu móvil para avisarte de que te toca. Se borra al cerrar sesión en ese móvil.',
       'Si denuncias el nombre de otro jugador, o alguien denuncia el tuyo, se guarda quién denuncia, a quién y qué nombre, para retirar los nombres ofensivos.',
+      'Para saber qué mejorar se envían datos de uso anónimos: cuándo empieza, termina o se abandona una partida, el modo, el número de clubes, el nivel de la IA, la liga, la jornada, el puesto final y el sistema (iPhone, Android o web). No llevan tu cuenta ni ningún identificador de tu dispositivo.',
       'Si la aplicación falla, puede enviarse un informe técnico con el mensaje de error, sin datos personales más allá de tu identificador de cuenta si has iniciado sesión.',
     ],
   },

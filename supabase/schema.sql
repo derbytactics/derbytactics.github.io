@@ -106,6 +106,25 @@ create table if not exists public.push_log (
   primary key (user_id, game_id)
 );
 
+-- Uso del juego, anónimo: sin cuenta, sin identificador del dispositivo, solo qué se juega.
+-- Sirve para decidir qué mejorar (modos más jugados, dificultad, abandonos).
+create table if not exists public.usage_events (
+  id bigint generated always as identity primary key,
+  day date not null default current_date,
+  created_at timestamptz not null default now(),
+  kind text not null check (kind in ('start', 'finish', 'abandon')),
+  mode text not null check (mode in ('amistoso', 'reto', 'carrera', 'guiada', 'enLinea', 'cercana')),
+  clubs int not null check (clubs between 2 and 8),
+  level text check (level in ('facil', 'normal', 'dificil')),
+  league text check (league in ('masculina', 'femenina', 'mixta')),
+  jornada int,
+  jornadas int,
+  position int,
+  platform text check (platform in ('ios', 'android', 'web'))
+);
+create index if not exists usage_events_day_idx on public.usage_events (day, mode, kind);
+create index if not exists usage_events_created_idx on public.usage_events (created_at);
+
 -- Denuncias de nombres ofensivos. Con 3 personas distintas contra el mismo nombre, se retira solo.
 create table if not exists public.name_reports (
   reporter uuid not null references public.profiles (id) on delete cascade,
@@ -136,6 +155,7 @@ alter table public.name_reports enable row level security;
 alter table public.daily_results enable row level security;
 alter table public.collections enable row level security;
 alter table public.push_tokens enable row level security;
+alter table public.usage_events enable row level security;
 alter table public.push_log enable row level security;
 
 -- pg_net: llamadas HTTP desde la base de datos (para mandar los avisos a Expo). En Supabase ya
@@ -552,6 +572,30 @@ begin
   values (auth.uid(), left(coalesce(p_message, ''), 500), left(p_stack, 4000), left(p_context, 300));
 end $$;
 
+-- Apunta un evento de uso anónimo. Lo que no tenga buena forma se ignora; como mucho 3000 por hora.
+create or replace function public.log_usage(p_kind text, p_mode text, p_clubs int, p_level text default null, p_league text default null,
+                                            p_jornada int default null, p_jornadas int default null, p_position int default null, p_platform text default null)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if (select count(*) from usage_events where created_at > now() - interval '1 hour') >= 3000 then return; end if;
+  insert into usage_events (kind, mode, clubs, level, league, jornada, jornadas, position, platform)
+  values (p_kind, p_mode, p_clubs, p_level, p_league,
+          case when p_jornada between 0 and 40 then p_jornada end, case when p_jornadas between 1 and 40 then p_jornadas end,
+          case when p_position between 1 and 8 then p_position end, p_platform);
+exception when check_violation or not_null_violation then
+  null;
+end $$;
+
+-- Resumen de los últimos días, para consultarlo en el editor SQL: select * from usage_summary(14);
+create or replace function public.usage_summary(p_days int default 14) returns table (mode text, level text, clubs int, empezadas bigint, terminadas bigint, abandonadas bigint, ganadas bigint, puesto_medio numeric)
+language sql stable security definer set search_path = public as $$
+  select mode, level, clubs,
+         count(*) filter (where kind = 'start'), count(*) filter (where kind = 'finish'), count(*) filter (where kind = 'abandon'),
+         count(*) filter (where kind = 'finish' and position = 1), round(avg(position) filter (where kind = 'finish'), 2)
+    from usage_events where day > current_date - p_days
+   group by mode, level, clubs order by 4 desc
+$$;
+
 -- Denuncia el nombre de usuario de otro jugador. Devuelve 'retirado' si con esta denuncia se retira.
 create or replace function public.report_name(p_username text) returns text
 language plpgsql security definer set search_path = public as $$
@@ -733,3 +777,5 @@ grant execute on function public.my_profile(), public.set_avatar(text), public.s
   public.rate_host(uuid, int), public.my_history(int), public.delete_my_account() to authenticated;
 grant execute on function public.username_available(text), public.host_card(uuid), public.ranking(int), public.clean_username(text),
   public.log_client_error(text, text, text) to anon, authenticated;
+grant execute on function public.log_usage(text, text, int, text, text, int, int, int, text) to anon, authenticated;
+revoke all on function public.usage_summary(int) from public, anon, authenticated;

@@ -11,7 +11,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { BackHandler, Platform, Text, View } from 'react-native';
 import { backendEnabled, browserLocation, getAccount, initAccount, refreshProfile, signOut, subscribeAccount } from './src/account/api';
 import { useAccount } from './src/account/useAccount';
-import { Action, CrestDesign, GameState, apply, botAction, check, styleOf, createCareerSeason, createDailyGame, createGame, currentPlayer, dailyKey, League } from './src/engine';
+import { Action, CrestDesign, GameState, apply, botAction, check, styleOf, createCareerSeason, createDailyGame, createGame, currentPlayer, dailyKey, League, randomClubName, randomCrest } from './src/engine';
 import { saveDailyGame, savedDailyGame, submitPending } from './src/account/daily';
 import { DailyEnd, DailyResultScreen } from './src/ui/DailyScreen';
 import { CareerEnd, CareerOverview } from './src/ui/CareerScreen';
@@ -257,6 +257,19 @@ function Main() {
       }),
     [],
   );
+  /** Primera partida guiada: 4 jornadas contra 2 rivales fáciles, con el entrenador. */
+  const startTutorial = () => {
+    if (!club) return;
+    const r = () => Math.random();
+    const taken = [club.name];
+    const rivals = [0, 1].map(() => {
+      const name = randomClubName(r, taken);
+      taken.push(name);
+      return { name, isBot: true, crest: randomCrest(r) };
+    });
+    setGame(createGame({ players: [{ name: club.name, isBot: false, crest: club.crest }, ...rivals], jornadas: 4, level: 'facil', tutorial: true }));
+    setMode({ kind: 'local' });
+  };
   const playCareer = (league?: League) => {
     const saved = loadCareer();
     if (!saved?.career && !league) return setCareerAsk(true);
@@ -342,6 +355,7 @@ function Main() {
         }}
         onDailyResult={() => setDailyOpen(true)}
         onCareer={() => playCareer()}
+        onTutorial={startTutorial}
         onCareerOpen={() => setCareerOpen(true)}
         onEditClub={() => setClubOpen(true)}
         onHost={() => setMode({ kind: 'host', name: club.name, crest: club.crest, resume: null })}
@@ -408,7 +422,7 @@ function Main() {
         ) : null}
         {help ? (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg }}>
-            <HelpScreen onClose={() => setHelp(false)} />
+            <HelpScreen onClose={() => setHelp(false)} onTutorial={club ? () => { setHelp(false); startTutorial(); } : undefined} />
           </View>
         ) : null}
         {legal ? (

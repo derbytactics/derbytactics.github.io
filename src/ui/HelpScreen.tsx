@@ -22,7 +22,7 @@ function Step({ n, title, text, art }: { n: number; title: string; text: string;
   );
 }
 
-export function HelpScreen({ onClose, league = currentLeague() }: { onClose: () => void; league?: League }) {
+export function HelpScreen({ onClose, onTutorial, league = currentLeague() }: { onClose: () => void; onTutorial?: () => void; league?: League }) {
   const w = ruleWords(league);
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
@@ -98,6 +98,7 @@ export function HelpScreen({ onClose, league = currentLeague() }: { onClose: () 
         </View>
       ) : null}
       <Btn label="Entendido" onPress={onClose} />
+      {onTutorial ? <Btn kind="ghost" icon="whistle" label="Jugar la partida guiada" onPress={onTutorial} style={{ marginTop: 10 }} /> : null}
       <Btn small kind="ghost" label="Volver a ver los consejos de primera vez" onPress={() => { resetTips(); onClose(); }} style={{ marginTop: 10 }} />
       <LegalLinks />
     </ScrollView>

@@ -312,6 +312,7 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
           return res.error;
         }}
         online={{
+          nearby: isNearbyCode(room.code),
           isHost: true,
           connected,
           iAmReady: room.ready.includes(0),
@@ -485,6 +486,7 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
         endExtra={gameId && account ? <RateHost gameId={gameId} hostName={room.seats[0].name} /> : undefined}
         dispatch={(a) => ses.act(a)}
         online={{
+          nearby: isNearbyCode(room.code),
           isHost: false,
           connected,
           iAmReady: room.ready.includes(seat),

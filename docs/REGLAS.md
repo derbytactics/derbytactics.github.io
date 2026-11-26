@@ -9,7 +9,7 @@ Tu club acaba de ascender y la directiva te ha dado 80 millones y una temporada 
 ## Componentes
 
 - **105 futbolistas:** 25 porteros, 28 defensas, 32 medios y 20 delanteros. Cada uno tiene números entre el 2 y el 12 (nunca el 7).
-- **51 cartas especiales.**
+- **60 cartas especiales.**
 - **2 dados** y dinero (en millones, M).
 
 ## Tu plantilla
@@ -146,6 +146,7 @@ Cada club juega como mucho **2 cartas de árbitro o de jugada por partido**. Las
 | **Jugador de cantera** | Despacho | 3 | Nadie puede pagar la cláusula de uno de tus futbolistas durante 3 jornadas. |
 | **Nuevo patrocinador** | Despacho | 3 | Cobras 8M. |
 | **Día del club** | Despacho | 2 | Esta jornada cobras el doble de taquilla. |
+| **Prima por ganar** | Despacho | 3 | Si ganas esta jornada (1.º en el reparto), cobras 10M más. |
 | **Subvención municipal** | Despacho | 2 | Tu próxima ampliación de estadio cuesta la mitad. |
 | **Ojeador estrella** | Despacho | 2 | Tu próximo fichaje del mercado este turno cuesta un 30% menos. |
 | **Gabinete jurídico** | Despacho (automática) | 3 | No se juega: desde tu mano anula la primera sanción que te lancen, y se descarta. |
@@ -153,6 +154,8 @@ Cada club juega como mucho **2 cartas de árbitro o de jugada por partido**. Las
 | **Tarjeta roja** | Árbitro (sanción) | 2 | Expulsas a un titular rival: ni ataca ni defiende el resto de la jornada ni la siguiente. |
 | **Lesión muscular** | Árbitro (sanción) | 2 | Un titular rival se retira y se pierde 3 jornadas (esta incluida). |
 | **Penalti a favor** | Jugada | 3 | Marcas un gol al rival que elijas. Cuenta como jugada de gol para la taquilla. |
+| **Tiro libre** | Jugada | 3 | Contra el rival que elijas: se tira un dado y con 4, 5 o 6 es gol (como un penalti). |
+| **Muralla** | Jugada | 3 | El resto de la jornada, tu portería y tu defensa suman 1 más en cada número en el que defienden. |
 | **Salvada in extremis** | Giro | 4 | Cuando te van a marcar: el gol no sube al marcador (solo el tuyo; si la jugada marcaba a varios, a los demás sí). |
 | **Cantada terrible** | Giro | 4 | Cuando un rival te para una jugada: se le escapa el balón y es gol contra ese rival. |
 
@@ -161,6 +164,14 @@ Para añadir cartas nuevas basta con una entrada en `SPECIAL_INFO` (`src/engine/
 ## Liga masculina, femenina o mixta
 
 En un amistoso contra la IA, al pulsar «Elegir liga y empezar» se elige la liga: **masculina** (todos jugadores), **femenina** (todas jugadoras) o **mixta** (jugadores y jugadoras en todos los equipos, a partes iguales). Cambian los nombres, las caras y los textos (también la crónica del partido, los consejos y la pantalla de reglas, que concuerdan con cada futbolista); las reglas son las mismas. En la carrera se elige al empezarla y vale para toda; en las salas (en línea o cercanas), la elige el anfitrión en la sala de espera. El reto diario cambia de liga cada día, la misma para todo el mundo.
+
+## Nivel de la IA
+
+En los amistosos contra la IA se elige el nivel: **fácil** (la IA ficha y alinea sin pensar mucho y a veces se olvida de sus cartas), **normal** (ficha mirando a los rivales y elige la mejor alineación) o **difícil** (como normal, y cada rival roba una carta especial más al empezar y en cada jornada). El reto diario y la carrera se juegan en normal (en la carrera, la dificultad la marca la división).
+
+## Partida guiada
+
+La primera vez, en «Jugar aquí» se ofrece una **partida guiada**: 4 jornadas contra 2 rivales fáciles, con un entrenador arriba que dice qué hacer en cada momento. También se puede empezar desde «Cómo se juega».
 
 ## Reto diario
 

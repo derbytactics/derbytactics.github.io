@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { CONFIG, CrestDesign, League, NewGameOptions, SeasonLength, randomClubName, randomCrest } from '../engine';
+import { CONFIG, CrestDesign, League, Level, NewGameOptions, SeasonLength, randomClubName, randomCrest } from '../engine';
 import { Crest } from './art';
-import { MyClub } from '../account/club';
+import { MyClub, useHistory } from '../account/club';
 import { Btn, LeagueChooser, LegalLinks, NavBar, Overline, s, useBack } from './components';
 import { C, clubColor, DISPLAY } from './theme';
 import { I, Icon } from './icons';
@@ -23,6 +23,11 @@ function randomRivals(mine: string): Rival[] {
     return { name, isBot: true, crest: randomCrest(rnd) };
   });
 }
+const LEVEL_INFO: { key: Level; label: string; note: string }[] = [
+  { key: 'facil', label: 'Fácil', note: 'La IA ficha y alinea sin mirar mucho y se olvida a veces de sus cartas.' },
+  { key: 'normal', label: 'Normal', note: 'La IA ficha pensando en los rivales y elige la mejor alineación.' },
+  { key: 'dificil', label: 'Difícil', note: 'Como en normal, y además cada rival roba una carta especial más por jornada.' },
+];
 const SEASONS: { key: SeasonLength; label: string; note: string }[] = [
   { key: 'corta', label: 'Corta', note: `${CONFIG.seasonLengths.corta} jornadas` },
   { key: 'estandar', label: 'Estándar', note: `${CONFIG.seasonLengths.estandar} jornadas` },
@@ -53,6 +58,8 @@ export function SetupScreen(props: {
   /** Modo carrera: jugar o seguir la temporada, y abrir la vitrina. */
   onCareer: () => void;
   onCareerOpen: () => void;
+  /** Primera partida guiada (se ofrece arriba a quien aún no ha terminado ninguna). */
+  onTutorial: () => void;
   /** Comprueba si esta persona puede crear salas; devuelve el motivo si no. */
   hostGate: () => Promise<string | null>;
 }) {
@@ -63,10 +70,12 @@ export function SetupScreen(props: {
   const [warn, setWarn] = useState<string | null>(null);
   const [count, setCount] = useState(4);
   const [season, setSeason] = useState<SeasonLength>('estandar');
+  const [level, setLevel] = useState<Level>('normal');
   /** Tras pulsar «Jugar», se elige la liga. */
   const [asking, setAsking] = useState(false);
   /** Amistoso abierto: se ven sus opciones. */
   const [friendly, setFriendly] = useState(false);
+  const history = useHistory();
   const [rivals, setRivals] = useState(() => randomRivals(club.name));
   const patch = (i: number, p: Partial<Rival>) => setRivals((all) => all.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const reroll = (i: number) =>
@@ -84,7 +93,7 @@ export function SetupScreen(props: {
 
   // En este móvil se juega contra la IA: los rivales siempre los lleva ella.
   const start = (league: League) =>
-    onStart({ players: [{ name: club.name, isBot: false, crest: club.crest }, ...rivals.slice(0, count - 1).map((r, i) => ({ ...r, isBot: true, name: r.name.trim() || `Club ${i + 2}` }))], season, league });
+    onStart({ players: [{ name: club.name, isBot: false, crest: club.crest }, ...rivals.slice(0, count - 1).map((r, i) => ({ ...r, isBot: true, name: r.name.trim() || `Club ${i + 2}` }))], season, league, level });
   // «Atrás» en Android: vuelve a jugar aquí o pliega las opciones antes de salir de la app.
   useBack(() => {
     if (mode === 'online') return setMode('local'), true;
@@ -154,6 +163,19 @@ export function SetupScreen(props: {
         </>
       ) : (
         <>
+          {!history.length && !props.savedLocal ? (
+            <View style={[s.panel, { borderColor: '#7FB2FF' }]}>
+              <View style={s.row}>
+                <Icon name="whistle" size={22} color="#7FB2FF" style={{ marginRight: 8 }} />
+                <View style={{ flex: 1 }}>
+                  <Overline>¿PRIMERA VEZ?</Overline>
+                  <Text style={{ color: C.text, fontWeight: '800', marginTop: 1 }}>Partida guiada</Text>
+                  <Text style={{ color: C.dim, fontSize: 12, marginTop: 2 }}>4 jornadas contra 2 rivales fáciles, con un entrenador que te dice qué hacer en cada momento.</Text>
+                </View>
+              </View>
+              <Btn kind="secondary" icon="whistle" label="Aprender jugando" onPress={props.onTutorial} style={{ marginTop: 10 }} />
+            </View>
+          ) : null}
           {props.savedLocal ? (
             <View style={[s.panel, { borderColor: C.accent }]}>
               <Overline>PARTIDA A MEDIAS</Overline>
@@ -210,6 +232,15 @@ export function SetupScreen(props: {
               <Text style={[s.p, { fontSize: 13, marginBottom: 8 }]}>Los rivales los lleva la IA. Para jugar con amigos, cada uno en su móvil: «Con amigos».</Text>
 
               <View style={{ height: 6 }} />
+              <View style={{ marginBottom: 12 }}>
+                <Overline>NIVEL DE LA IA</Overline>
+                <View style={[s.row, { gap: 8, marginTop: 8 }]}>
+                  {LEVEL_INFO.map((x) => (
+                    <Btn key={x.key} small kind={level === x.key ? 'selected' : 'ghost'} label={x.label} onPress={() => setLevel(x.key)} style={{ flex: 1 }} />
+                  ))}
+                </View>
+                <Text style={{ color: C.dim, fontSize: 12, marginTop: 4 }}>{LEVEL_INFO.find((x) => x.key === level)!.note}</Text>
+              </View>
               <View style={{ marginBottom: 12 }}>
                 <Overline>DURACIÓN DE LA TEMPORADA</Overline>
                 <View style={[s.row, { gap: 8, marginTop: 8 }]}>

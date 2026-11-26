@@ -15,7 +15,7 @@ Eres el presidente de un club recién ascendido. Con 80M en caja tienes que mont
 - **Multijugador en línea:** cada persona desde su móvil, con salas por código o enlace de invitación.
 - **Sin internet (iPhone):** salas cercanas por Bluetooth y wifi directo con Multipeer Connectivity (`modules/derby-nearby`, módulo nativo propio).
 - Partida en un solo dispositivo contra rivales controlados por la IA (varias tácticas). Para jugar con otras personas, cada una en su móvil (en línea).
-- Mercado de fichajes, cláusulas, blindajes, ampliación de estadio, 51 cartas especiales, recuento de goles y reparto por posición cada jornada.
+- Mercado de fichajes, cláusulas, blindajes, ampliación de estadio, 60 cartas especiales, recuento de goles y reparto por posición cada jornada.
 - **Tu club:** cada persona funda un único club (nombre y escudo a medida: forma, dibujo, emblema y colores) que se guarda en el dispositivo y la acompaña a todas sus partidas. Desde el menú lateral se cambia el nombre o el escudo y se consulta el historial de temporadas terminadas.
 - **Reto diario, modo carrera, logros y álbum de futbolistas** (ver [docs/REGLAS.md](docs/REGLAS.md)).
 - Futbolistas con nombres y caras nuevos en cada partida, de todas las procedencias (`src/engine/identity.ts`). Los rivales de la IA también reciben nombre y escudo al azar.
@@ -60,7 +60,7 @@ npm run test:db    # pruebas de la base de datos (necesita PostgreSQL local)
 App.tsx              Decide la pantalla según la fase de la partida
 src/engine/
   config.ts          Todos los valores de equilibrio
-  cards.ts           105 futbolistas y 51 cartas especiales
+  cards.ts           105 futbolistas y 60 cartas especiales
   engine.ts          Estado, validación y aplicación de acciones
   bots.ts            IA con varias tácticas
   daily.ts, career.ts, achievements.ts  Reto diario, carrera y logros

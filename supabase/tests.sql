@@ -240,6 +240,23 @@ select pg_temp.login(null);
 select log_client_error('fallo de prueba', 'pila', 'contexto');
 select pg_temp.ok((select count(*) = 1 and bool_and(user_id is null) from client_errors), 'los informes de error se guardan sin cuenta');
 
+-- Uso anónimo.
+select pg_temp.login(null);
+select log_usage('start', 'amistoso', 4, 'normal', 'mixta', 1, 12, null, 'ios');
+select log_usage('finish', 'amistoso', 4, 'normal', 'mixta', 12, 12, 1, 'ios');
+select log_usage('start', 'trampa', 4);
+select log_usage('start', 'reto', 99);
+select pg_temp.ok((select count(*) = 2 from usage_events), 'el uso se apunta sin cuenta y lo mal formado se ignora');
+select pg_temp.ok((select empezadas = 1 and terminadas = 1 and ganadas = 1 from usage_summary(7) where mode = 'amistoso'), 'el resumen cuenta partidas empezadas, terminadas y ganadas');
+set role authenticated;
+do $$ begin
+  perform * from public.usage_summary(7);
+  raise exception 'FALLA: resumen de uso accesible desde la app';
+exception when insufficient_privilege then
+  raise notice 'ok · el resumen de uso solo se consulta desde el editor';
+end $$;
+reset role;
+
 -- Logros y álbum.
 select pg_temp.login('00000000-0000-0000-0000-00000000000b');
 select pg_temp.ok((my_collection() ->> 'achievements') = '{}', 'sin colección, vacía');

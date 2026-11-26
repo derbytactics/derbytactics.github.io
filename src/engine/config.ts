@@ -19,6 +19,8 @@ export const CONFIG = {
   maxForwards: 2,
   /** Con pocos clubes hay pocas tiradas: hasta este número de clubes, cada uno tira dos veces por jornada. */
   doubleRollsUpTo: 3,
+  /** Ventaja de la IA en difícil: dinero, niveles de estadio y cartas especiales de más (al empezar y en cada jornada). La carta extra es lo que de verdad la hace más fuerte (ver BALANCE.md). */
+  hardBonus: { money: 0, stadium: 0, cards: 1 },
   /** Fuerza de ataque y defensa de cada posición cuando sale uno de sus números. */
   roles: {
     POR: { attack: 0, defense: 2 },
@@ -80,6 +82,8 @@ export const CONFIG = {
     /** Cartas de árbitro y de jugada que cada club puede jugar en un mismo partido. */
     maxPlayedPerMatch: 2,
     fine: 6,
+    /** «Prima por ganar»: lo que cobras de más si ganas la jornada. */
+    winBonus: 10,
     closedDoorsRounds: 2,
     injuryRounds: 3,
     redCardRounds: 2,

@@ -46,6 +46,10 @@ export interface Player {
   against: number;
   closedDoorsUntil: number;
   clubDayJornada: number;
+  /** «Muralla»: jornada en la que su defensa suma 1 más. */
+  wallJornada?: number;
+  /** «Prima por ganar»: jornada en la que cobra de más si gana. */
+  bonusJornada?: number;
   subsidy: boolean;
   /** Última entrada de la crónica que este club ya había visto al acabar su turno. */
   lastSeen: number;
@@ -64,6 +68,8 @@ export interface Player {
   clauses?: number;
   /** Estilo de la IA (modo carrera: cada rival tiene el suyo). */
   style?: BotStyle;
+  /** Nivel de la IA de este club (sin él, normal). */
+  level?: Level;
 }
 
 /** Una jugada de ataque: un club con atacantes en el número que ha salido. */
@@ -118,6 +124,9 @@ export interface MatchCardEvent {
   blocked?: boolean;
   /** Amarilla que era la segunda: expulsión. */
   secondYellow?: boolean;
+  /** «Tiro libre»: el dado que salió y si fue gol. */
+  die?: number;
+  scored?: boolean;
 }
 
 export interface MatchResult {
@@ -139,6 +148,8 @@ export interface MatchResult {
   ticket: number;
   closedDoors: boolean;
   clubDay: boolean;
+  /** «Prima por ganar» cobrada (además del premio). */
+  winBonus?: number;
 }
 
 export interface MatchReport {
@@ -219,9 +230,16 @@ export interface GameState {
    * El orden que sale es el de la primera vuelta del mercado.
    */
   draw?: DrawEntry[];
+  /** Primera partida guiada: un entrenador dice qué hacer en cada momento. */
+  tutorial?: boolean;
 }
 
 /** Un club al crear la partida. Plantilla, dinero, estadio y estilo son para el modo carrera. */
+/** Nivel de la IA: cómo de bien ficha, alinea y usa las cartas. */
+export type Level = 'facil' | 'normal' | 'dificil';
+export const LEVELS: Level[] = ['facil', 'normal', 'dificil'];
+export const levelOf = (p: { level?: Level }): Level => p.level ?? 'normal';
+
 export interface NewPlayer {
   name: string;
   isBot: boolean;
@@ -231,6 +249,8 @@ export interface NewPlayer {
   squad?: SquadEntry[];
   /** Estilo de la IA de este club (si no, se reparte por orden). */
   style?: BotStyle;
+  /** Nivel de la IA de este club (si no, el de la partida). */
+  level?: Level;
 }
 
 export interface NewGameOptions {
@@ -246,6 +266,10 @@ export interface NewGameOptions {
   roster?: Record<string, Identity>;
   /** Modo carrera: división (0 = la más baja) y temporada. */
   career?: { division: number; season: number };
+  /** Nivel de la IA para todos sus clubes (por defecto, normal). */
+  level?: Level;
+  /** Primera partida guiada. */
+  tutorial?: boolean;
 }
 
 export type Action =
@@ -379,7 +403,10 @@ export function fielded(player: Player): SquadEntry[] {
 
 /** Ataque y defensa de un club con un número concreto (solo cuentan los que juegan). */
 export function strengthOn(player: Player, n: number, jornada: number) {
-  return strengthOfEntries(fielded(player), n, jornada);
+  const s = strengthOfEntries(fielded(player), n, jornada);
+  // «Muralla»: donde ya defiende, defiende 1 más.
+  if (player.wallJornada === jornada && s.defense > 0) s.defense += 1;
+  return s;
 }
 
 /** Ataque y defensa de un grupo de futbolistas con un número concreto. */
@@ -441,6 +468,7 @@ export function createGame(opts: NewGameOptions): GameState {
     ...(opts.league && opts.league !== 'masculina' ? { league: opts.league } : {}),
     ...(opts.daily ? { daily: opts.daily } : {}),
     ...(opts.career ? { career: opts.career } : {}),
+    ...(opts.tutorial ? { tutorial: true } : {}),
     totalJornadas: opts.jornadas ?? CONFIG.seasonLengths[opts.season ?? 'estandar'],
     jornada: 1,
     phase: 'market',
@@ -448,11 +476,12 @@ export function createGame(opts: NewGameOptions): GameState {
       id,
       name: p.name.trim() || `Club ${id + 1}`,
       isBot: p.isBot,
-      money: p.money ?? CONFIG.startingMoney,
+      money: p.money ?? CONFIG.startingMoney + (p.isBot && (p.level ?? opts.level) === 'dificil' ? CONFIG.hardBonus.money : 0),
       squad: (p.squad ?? []).map((e) => ({ ...e })),
       hand: [],
-      stadium: p.stadium ?? 1,
+      stadium: p.stadium ?? 1 + (p.isBot && (p.level ?? opts.level) === 'dificil' ? CONFIG.hardBonus.stadium : 0),
       ...(p.style ? { style: p.style } : {}),
+      ...(p.isBot && (p.level ?? opts.level) && (p.level ?? opts.level) !== 'normal' ? { level: p.level ?? opts.level } : {}),
       points: 0,
       goals: 0,
       against: 0,
@@ -481,6 +510,7 @@ export function createGame(opts: NewGameOptions): GameState {
   state.market = state.footballDeck.splice(0, marketSize(n));
   // Cada club empieza con unas cartas especiales en la mano.
   for (let k = 0; k < CONFIG.special.initialHand; k++) for (const p of state.players) drawSpecial(state, p);
+  hardCards(state);
   // Pretemporada: sorteo con dados y orden en serpiente, dos turnos de mercado por club.
   const { order, draw } = diceDraw(state);
   state.draw = draw;
@@ -625,6 +655,7 @@ export function check(state: GameState, action: Action): string | null {
       if (card.kind === 'subvencion' && upgradeCost(me) === null) return 'Tu estadio ya está al máximo.';
       if (card.kind === 'ojeador' && state.turn.scout) return 'Ya tienes al ojeador trabajando.';
       if (card.kind === 'diaDelClub' && me.clubDayJornada === J) return 'Ya has declarado el Día del club.';
+      if (card.kind === 'prima' && me.bonusJornada === J) return 'Ya has prometido la prima esta jornada.';
       return null;
     }
   }
@@ -831,6 +862,10 @@ function playCard(state: GameState, me: Player, action: Extract<Action, { type: 
       me.money += S.sponsor;
       say(state, `${me.name} firma un patrocinio de ${S.sponsor}M.`);
       break;
+    case 'prima':
+      me.bonusJornada = J;
+      say(state, `${me.name} promete una prima a su plantilla si gana la jornada.`);
+      break;
     case 'diaDelClub':
       me.clubDayJornada = J;
       say(state, `${me.name} declara el Día del club: taquilla doble esta jornada.`);
@@ -881,6 +916,16 @@ function checkLineup(state: GameState, action: Extract<Action, { type: 'setLineu
  * más goles da y menos encaja contra las plantillas completas de los rivales, cuyas alineaciones no
  * se conocen. Evita a los que no pueden jugar.
  */
+/** IA en difícil: cartas especiales de más (al empezar la partida y en cada jornada). */
+function hardCards(state: GameState) {
+  for (const p of state.players) if (p.isBot && levelOf(p) === 'dificil') for (let k = 0; k < CONFIG.hardBonus.cards; k++) drawSpecial(state, p);
+}
+
+/** Alineación sin pensar: los primeros disponibles, en el orden en que se ficharon. */
+function casualLineup(state: GameState, player: Player): string[] {
+  return player.squad.filter((e) => !isOut(e, state.jornada)).slice(0, startersNeeded(player)).map((e) => e.cardId);
+}
+
 export function autoLineup(state: GameState, player: Player): string[] {
   const need = startersNeeded(player);
   const J = state.jornada;
@@ -930,7 +975,8 @@ export function fillBotLineups(state: GameState) {
   if (state.phase !== 'lineup') return;
   for (const p of state.players) {
     if (p.starters) continue;
-    if (p.isBot) p.starters = autoLineup(state, p);
+    // En fácil, la IA no estudia la alineación: saca a los primeros que fichó.
+    if (p.isBot) p.starters = levelOf(p) === 'facil' ? casualLineup(state, p) : autoLineup(state, p);
     else if (p.squad.length <= CONFIG.starters) p.starters = p.squad.map((e) => e.cardId);
   }
   beginMatchIfReady(state);
@@ -1068,6 +1114,7 @@ function checkMatchCard(state: GameState, action: Extract<Action, { type: 'match
   const played = (state.match.events ?? []).filter((e) => e.playerId === me.id).length;
   if (played >= CONFIG.special.maxPlayedPerMatch) return `Máximo ${CONFIG.special.maxPlayedPerMatch} cartas por partido.`;
   if (state.match.rolls.length >= state.match.rollers.length) return 'El partido ya ha terminado.';
+  if (info.target === 'self') return card.kind === 'muralla' && me.wallJornada === state.jornada ? 'Ya has puesto la muralla en este partido.' : null;
   const rival = action.targetPlayerId === undefined ? undefined : state.players[action.targetPlayerId];
   if (!rival || rival.id === me.id) return 'Elige un club rival.';
   if (info.target === 'rivalFootballer') {
@@ -1129,6 +1176,14 @@ function playMatchCard(state: GameState, action: Extract<Action, { type: 'matchC
   state.specialDiscard.push(id);
   const card = specialCard(id);
   const info = SPECIAL_INFO[card.kind];
+  if (info.target === 'self') {
+    m.events = [...(m.events ?? []), { beforeRoll: m.rolls.length, playerId: me.id, cardId: id }];
+    if (card.kind === 'muralla') {
+      me.wallJornada = J;
+      say(state, `${me.name} cierra filas: su defensa suma 1 más el resto del partido.`);
+    }
+    return;
+  }
   const rival = state.players[action.targetPlayerId!];
   const ev: MatchCardEvent = { beforeRoll: m.rolls.length, playerId: me.id, cardId: id, targetPlayerId: rival.id, targetCardId: action.targetCardId };
   m.events = [...(m.events ?? []), ev];
@@ -1166,6 +1221,14 @@ function playMatchCard(state: GameState, action: Extract<Action, { type: 'matchC
       me.penalties = [...(me.penalties ?? []).filter((x) => x.jornada >= J), { jornada: J, rival: rival.id }];
       say(state, `¡Penalti a favor de ${me.name}! Gol a ${rival.name}.`, [rival.id]);
       break;
+    case 'tiroLibre': {
+      // Con 4, 5 o 6 entra: cuenta como un gol más, igual que un penalti.
+      ev.die = 1 + Math.floor(rand(state) * 6);
+      ev.scored = ev.die >= 4;
+      if (ev.scored) me.penalties = [...(me.penalties ?? []).filter((x) => x.jornada >= J), { jornada: J, rival: rival.id }];
+      say(state, ev.scored ? `¡Gol de falta de ${me.name} a ${rival.name}!` : `Tiro libre de ${me.name} contra ${rival.name}: se marcha fuera.`, [rival.id]);
+      break;
+    }
   }
   botSubstitutions(state);
 }
@@ -1175,13 +1238,18 @@ function botMatchCards(state: GameState) {
   const J = state.jornada;
   for (const me of state.players) {
     if (!me.isBot) continue;
+    // En fácil, la IA se olvida de sus cartas de partido una jornada de cada dos.
+    if (levelOf(me) === 'facil' && (J + me.id) % 2 === 1) continue;
     for (let guard = 0; guard < 5; guard++) {
-      const idx = me.hand.findIndex((h) => ['penalti', 'roja', 'lesion', 'amarilla'].includes(specialCard(h).kind));
+      // La muralla, solo si tiene a alguien que defienda en el campo.
+      const defends = fielded(me).some((e) => !isOut(e, J) && powerOf(e, J).defense > 0);
+      const idx = me.hand.findIndex((h) => ['penalti', 'tiroLibre', 'roja', 'lesion', 'amarilla'].includes(specialCard(h).kind) || (specialCard(h).kind === 'muralla' && defends && me.wallJornada !== J));
       if (idx < 0) break;
       const kind = specialCard(me.hand[idx]).kind;
       const rivals = standings(state).filter((p) => p.id !== me.id);
       let action: Action | null = null;
-      if (kind === 'penalti') action = { type: 'matchCard', playerId: me.id, handIndex: idx, targetPlayerId: rivals[0].id };
+      if (kind === 'penalti' || kind === 'tiroLibre') action = { type: 'matchCard', playerId: me.id, handIndex: idx, targetPlayerId: rivals[0].id };
+      else if (kind === 'muralla') action = { type: 'matchCard', playerId: me.id, handIndex: idx };
       else {
         // El titular rival que más ataca (por probabilidad de sus números).
         let best: { r: Player; e: SquadEntry; v: number } | null = null;
@@ -1258,6 +1326,7 @@ function finishMatch(state: GameState) {
       ticket,
       closedDoors,
       clubDay,
+      ...(rank === 1 && p.bonusJornada === J ? { winBonus: CONFIG.special.winBonus } : {}),
     };
   });
   for (const r of results) {
@@ -1265,7 +1334,7 @@ function finishMatch(state: GameState) {
     p.goals += r.goals;
     p.against += r.against;
     p.points += r.points;
-    p.money += r.prize + r.ticket + r.saveBonus;
+    p.money += r.prize + r.ticket + r.saveBonus + (r.winBonus ?? 0);
   }
   results.sort((a, b) => a.rank - b.rank || a.playerId - b.playerId);
   state.lastMatch = { jornada: J, rolls, rollers: state.match!.rollers, penalties, events: state.match!.events, results };
@@ -1294,6 +1363,7 @@ function startNextJornada(state: GameState): GameState {
     // Una carta nueva por jornada para cada club.
     for (let k = 0; k < CONFIG.special.perJornada; k++) drawSpecial(state, p);
   }
+  hardCards(state);
   state.turn = freshTurn();
   state.turnIndex = 0;
   // El colista abre el mercado; el líder elige el último.
