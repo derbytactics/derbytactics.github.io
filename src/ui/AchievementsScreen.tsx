@@ -6,6 +6,7 @@ import { Avatar } from './art';
 import { Btn, FootballerCard, Overline, Pop, Popup, RosterContext, s } from './components';
 import { Icon, IconName } from './icons';
 import { C, DISPLAY, POS_COLOR, SHADOW, TIER_COLOR } from './theme';
+import { successHaptic } from './haptics';
 
 const fmtDate = (d: string) => d.split('-').reverse().join('/');
 
@@ -161,6 +162,7 @@ export function AchievementToast() {
   const id = useNextUnlock();
   useEffect(() => {
     if (!id) return;
+    successHaptic();
     const t = setTimeout(dismissUnlock, 3800);
     return () => clearTimeout(t);
   }, [id]);

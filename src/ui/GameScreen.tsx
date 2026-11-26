@@ -28,6 +28,8 @@ import { useClubColor } from './clubColors';
 import { CARD_TYPE } from './cardTypes';
 import { I, Icon, IconName } from './icons';
 import { COMPACT } from './textScale';
+import { doneHaptic, refusedHaptic, selectHaptic } from './haptics';
+import { reduceMotion } from './motion';
 
 const J_IS_PRESEASON = (st: GameState) => st.jornada === 1 && st.turnOrder.length > st.players.length;
 
@@ -176,7 +178,10 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
   const rivals = state.players.filter((p) => p.id !== me.id);
 
   const act = (a: Action) => {
-    setError(props.dispatch(a));
+    const err = props.dispatch(a);
+    if (err) refusedHaptic();
+    else doneHaptic();
+    setError(err);
     setPending(null);
   };
   // Al comprar una carta se roba boca abajo: en cuanto llega a la mano, se enseña.
@@ -265,7 +270,8 @@ export function GameScreen(props: { state: GameState; me: Player; dispatch: (a: 
               accessibilityState={{ selected: on }}
               onPress={() => {
                 // Pulsar la pestaña en la que ya estás también vuelve arriba.
-                if (t.key === tab) scroller.current?.scrollTo({ y: 0, animated: true });
+                if (t.key === tab) scroller.current?.scrollTo({ y: 0, animated: !reduceMotion() });
+                if (t.key !== tab) selectHaptic();
                 setTab(t.key);
                 setPending(null);
               }}

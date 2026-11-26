@@ -6,6 +6,7 @@ import { Crest, Die } from './art';
 import { Popup, s } from './components';
 import { useClubColor } from './clubColors';
 import { C } from './theme';
+import { hapticFor } from './haptics';
 
 const SEEN_KEY = 'futcards.draw.seen';
 const STEP_MS = 650;
@@ -26,7 +27,11 @@ export function DrawShow({ state, seat }: { state: GameState; seat: number | nul
   const [shown, setShown] = useState(0);
   useEffect(() => {
     if (!open || shown >= steps.length) return;
-    const t = setTimeout(() => setShown((x) => x + 1), shown === 0 ? 400 : STEP_MS);
+    const t = setTimeout(() => {
+      // Cada tirada del sorteo se siente como un dado que cae.
+      hapticFor('dice');
+      setShown((x) => x + 1);
+    }, shown === 0 ? 400 : STEP_MS);
     return () => clearTimeout(t);
   }, [open, shown, steps.length]);
   if (!open || !state.draw) return null;

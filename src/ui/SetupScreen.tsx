@@ -10,6 +10,7 @@ import { DailyCard } from './DailyScreen';
 import { CareerCard } from './CareerScreen';
 import { NearbyPanel } from './NearbyPanel';
 import { nearbyAvailable } from '../net/nearby';
+import { selectHaptic } from './haptics';
 
 type Rival = { name: string; isBot: boolean; crest: CrestDesign };
 const rnd = () => Math.random();
@@ -105,6 +106,7 @@ export function SetupScreen(props: {
             accessibilityRole="tab"
             accessibilityState={{ selected: mode === m }}
             onPress={() => {
+              if (m !== mode) selectHaptic();
               setMode(m);
               setWarn(null);
             }}
@@ -213,7 +215,10 @@ export function SetupScreen(props: {
                 <View style={[s.row, { gap: 8, marginTop: 8 }]}>
                   {SEASONS.map((x) => (
                     <View key={x.key} style={{ flex: 1 }}>
-                      <Btn small kind={season === x.key ? 'selected' : 'ghost'} label={x.label} onPress={() => setSeason(x.key)} />
+                      <Btn small kind={season === x.key ? 'selected' : 'ghost'} label={x.label} onPress={() => {
+                          if (x.key !== season) selectHaptic();
+                          setSeason(x.key);
+                        }} />
                       <Text style={{ color: C.dim, fontSize: 12, textAlign: 'center', marginTop: 4 }}>{x.note}</Text>
                     </View>
                   ))}
