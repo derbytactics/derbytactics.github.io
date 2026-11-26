@@ -8,6 +8,7 @@ import { GuestSession, HostSession, normalizeCode } from '../net/session';
 import { isNearbyCode } from '../net/nearby';
 import { turnFor } from '../net/turns';
 import { enablePush, notifyTurn } from '../account/push';
+import { block, isBlocked, reportName } from '../account/blocks';
 import { deviceId } from '../net/storage';
 import { Stars } from './AccountScreen';
 import { Crest } from './art';
@@ -35,8 +36,20 @@ function Offline({ connected }: { connected: boolean }) {
   );
 }
 
-/** Asientos de la sala de espera. Con `onKick`, el anfitrión puede expulsar a un invitado. */
-function Seats({ room, mine, onKick }: { room: RoomState; mine: number; onKick?: (seat: number) => void }) {
+/**
+ * Asientos de la sala de espera. Junto a cada jugador, «Opciones»: denunciar su nombre, bloquearlo
+ * y (si eres el anfitrión, con `onKick`) expulsarlo.
+ */
+function Seats({ room, mine, onKick, onBlock }: { room: RoomState; mine: number; onKick?: (seat: number) => void; onBlock?: (seat: number) => void }) {
+  const [menu, setMenu] = useState<number | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [confirmBlock, setConfirmBlock] = useState(false);
+  const target = menu !== null ? room.seats[menu] : null;
+  const close = () => {
+    setMenu(null);
+    setNote(null);
+    setConfirmBlock(false);
+  };
   return (
     <>
       {Array.from({ length: room.clubs }, (_, i) => {
@@ -50,10 +63,33 @@ function Seats({ room, mine, onKick }: { room: RoomState; mine: number; onKick?:
             <Text style={{ color: i === mine ? C.accent : C.faint, fontSize: 12, fontWeight: '700' }}>
               {!seat ? 'IA si nadie entra' : i === mine ? 'TÚ' : i === 0 ? 'ANFITRIÓN' : 'CONECTADO'}
             </Text>
-            {onKick && seat && i > 0 ? <Btn small kind="ghost" label="Expulsar" onPress={() => onKick(i)} style={{ marginLeft: 8 }} /> : null}
+            {seat && seat.clientId && i !== mine ? (
+              <Btn small kind="ghost" icon="dots-horizontal" label="Opciones" onPress={() => setMenu(i)} style={{ marginLeft: 8 }} />
+            ) : null}
           </View>
         );
       })}
+      {menu !== null && target ? (
+        <Popup overline="JUGADOR" title={target.name} button="Cerrar" onClose={close}>
+          {note ? <Text style={[s.p, { textAlign: 'center', marginBottom: 10 }]}>{note}</Text> : null}
+          {confirmBlock ? (
+            <>
+              <Text style={[s.p, { textAlign: 'center', marginBottom: 10 }]}>
+                {mine === 0
+                  ? `${target.name} sale de la sala y no podrá volver a entrar en tus salas.`
+                  : `Sales de esta sala y no volverás a entrar en salas de ${target.name}; tampoco podrá entrar en las tuyas.`}
+              </Text>
+              <Btn kind="danger" icon="account-cancel" label="Sí, bloquear" onPress={() => { const i = menu; close(); onBlock?.(i); }} />
+            </>
+          ) : (
+            <>
+              <Btn kind="ghost" icon="flag" label="Denunciar el nombre" onPress={() => reportName(target.name, room.code).then((ok) => setNote(ok ? 'Gracias: lo revisaremos. Si quieres, también puedes bloquear a este jugador.' : 'No se ha podido enviar la denuncia (sin conexión). Puedes bloquear a este jugador.'))} />
+              <Btn kind="ghost" icon="account-cancel" label="Bloquear" onPress={() => setConfirmBlock(true)} style={{ marginTop: 8 }} />
+              {onKick && menu > 0 && !room.game ? <Btn kind="ghost" icon="account-remove" label="Expulsar de la sala" onPress={() => { const i = menu; close(); onKick(i); }} style={{ marginTop: 8 }} /> : null}
+            </>
+          )}
+        </Popup>
+      ) : null}
     </>
   );
 }
@@ -151,6 +187,13 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
     const t = setTimeout(() => session.current?.update((r) => botStep(r)), 350);
     return () => clearTimeout(t);
   }, [botTurn, room?.seq]);
+
+  // Los jugadores que has bloqueado no pueden entrar en tus salas.
+  useEffect(() => {
+    if (!room || room.game || !ses) return;
+    const i = room.seats.findIndex((st, k) => k > 0 && isBlocked(st.clientId));
+    if (i > 0) ses.update((r) => kickSeat(r, i));
+  }, [room, ses]);
 
   // Avisos push: cuando a un invitado le toca, se le avisa (le llega si tiene la app en segundo plano).
   const notified = useRef(new Map<number, string>());
@@ -259,7 +302,17 @@ export function OnlineHost(props: { name: string; crest?: CrestDesign; resume: R
             <Btn label="−" small kind="ghost" onPress={() => ses.update((r) => setLobby(r, { clubs: r.clubs - 1 }))} style={{ width: 44 }} />
             <Btn label="+" small kind="ghost" onPress={() => ses.update((r) => setLobby(r, { clubs: r.clubs + 1 }))} style={{ width: 44, marginLeft: 8 }} />
           </View>
-          <Seats room={room} mine={0} onKick={(i) => ses.update((r) => kickSeat(r, i))} />
+          <Seats
+            room={room}
+            mine={0}
+            onKick={(i) => ses.update((r) => kickSeat(r, i))}
+            onBlock={(i) => {
+              const st = room.seats[i];
+              if (!st?.clientId) return;
+              block(st.clientId, st.name);
+              ses.update((r) => kickSeat(r, i));
+            }}
+          />
 
           <LeaguePicker value={room.league ?? 'masculina'} onPick={(league) => ses.update((r) => setLobby(r, { league }))} />
           <View style={{ marginTop: 6, marginBottom: 20 }}>
@@ -401,6 +454,11 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Si has bloqueado al anfitrión, no se entra en su sala.
+  const hostBlocked = !!room && isBlocked(room.seats[0]?.clientId);
+  useEffect(() => {
+    if (hostBlocked) session.current?.close(true);
+  }, [hostBlocked]);
   const exit = () => {
     if (ses && ses !== 'invalid') ses.close(true);
     props.onExit();
@@ -431,6 +489,7 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
     return <Connecting text={text} onExit={props.onExit} />;
   }
   const seat = mySeat;
+  if (hostBlocked) return <Connecting text="Has bloqueado al anfitrión de esta sala: no puedes entrar." onExit={props.onExit} />;
   if (seat < 0) {
     return <Connecting text={room.kicked?.includes(me) ? 'El anfitrión te ha sacado de la sala.' : room.game ? 'La partida ya ha empezado sin ti.' : 'La sala está llena. Pide al anfitrión que añada un club.'} onExit={props.onExit} />;
   }
@@ -459,7 +518,17 @@ export function OnlineGuest(props: { code: string; name: string; crest?: CrestDe
           <Text style={[s.p, { marginBottom: 10 }]}>
             {leagueLabel(room.league)} · {room.clubs} clubes · {SEASONS.find((x) => x.key === room.season)?.label ?? ''} jornadas
           </Text>
-          <Seats room={room} mine={seat} />
+          <Seats
+            room={room}
+            mine={seat}
+            onBlock={(i) => {
+              const st = room.seats[i];
+              if (!st?.clientId) return;
+              block(st.clientId, st.name);
+              // Si bloqueas al anfitrión, sales de su sala; si es otro invitado, no podrá entrar en las tuyas.
+              if (i === 0) exit();
+            }}
+          />
           <Btn kind="ghost" label="Salir de la sala" onPress={exit} style={{ marginTop: 10 }} />
         </ScrollView>
       </View>

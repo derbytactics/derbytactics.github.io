@@ -240,6 +240,12 @@ select pg_temp.login(null);
 select log_client_error('fallo de prueba', 'pila', 'contexto');
 select pg_temp.ok((select count(*) = 1 and bool_and(user_id is null) from client_errors), 'los informes de error se guardan sin cuenta');
 
+-- Denuncias de nombres de club en salas.
+select pg_temp.login(null);
+select report_content('Club Ofensivo', 'ZABCD', 'nombre ofensivo');
+select report_content('   ');
+select pg_temp.ok((select count(*) = 1 and bool_and(reporter is null and room = 'ZABCD') from content_reports), 'cualquiera puede denunciar un nombre de club; lo vacío se ignora');
+
 -- Uso anónimo.
 select pg_temp.login(null);
 select log_usage('start', 'amistoso', 4, 'normal', 'mixta', 1, 12, null, 'ios');

@@ -125,6 +125,17 @@ create table if not exists public.usage_events (
 create index if not exists usage_events_day_idx on public.usage_events (day, mode, kind);
 create index if not exists usage_events_created_idx on public.usage_events (created_at);
 
+-- Denuncias de nombres de club en las salas (también de invitados sin cuenta), para revisarlas a mano.
+create table if not exists public.content_reports (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  reporter uuid references public.profiles (id) on delete set null,
+  name text not null,
+  room text,
+  reason text
+);
+create index if not exists content_reports_created_idx on public.content_reports (created_at desc);
+
 -- Denuncias de nombres ofensivos. Con 3 personas distintas contra el mismo nombre, se retira solo.
 create table if not exists public.name_reports (
   reporter uuid not null references public.profiles (id) on delete cascade,
@@ -156,6 +167,7 @@ alter table public.daily_results enable row level security;
 alter table public.collections enable row level security;
 alter table public.push_tokens enable row level security;
 alter table public.usage_events enable row level security;
+alter table public.content_reports enable row level security;
 alter table public.push_log enable row level security;
 
 -- pg_net: llamadas HTTP desde la base de datos (para mandar los avisos a Expo). En Supabase ya
@@ -596,6 +608,16 @@ language sql stable security definer set search_path = public as $$
    group by mode, level, clubs order by 4 desc
 $$;
 
+-- Denuncia el nombre de club de otro jugador en una sala. Como mucho 300 por hora en total.
+-- Para revisarlas, en el editor SQL: select * from content_reports order by created_at desc;
+create or replace function public.report_content(p_name text, p_room text default null, p_reason text default null) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if coalesce(btrim(p_name), '') = '' then return; end if;
+  if (select count(*) from content_reports where created_at > now() - interval '1 hour') >= 300 then return; end if;
+  insert into content_reports (reporter, name, room, reason) values (auth.uid(), left(btrim(p_name), 40), left(p_room, 8), left(p_reason, 200));
+end $$;
+
 -- Denuncia el nombre de usuario de otro jugador. Devuelve 'retirado' si con esta denuncia se retira.
 create or replace function public.report_name(p_username text) returns text
 language plpgsql security definer set search_path = public as $$
@@ -778,4 +800,5 @@ grant execute on function public.my_profile(), public.set_avatar(text), public.s
 grant execute on function public.username_available(text), public.host_card(uuid), public.ranking(int), public.clean_username(text),
   public.log_client_error(text, text, text) to anon, authenticated;
 grant execute on function public.log_usage(text, text, int, text, text, int, int, int, text) to anon, authenticated;
+grant execute on function public.report_content(text, text, text) to anon, authenticated;
 revoke all on function public.usage_summary(int) from public, anon, authenticated;

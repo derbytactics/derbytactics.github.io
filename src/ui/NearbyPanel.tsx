@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { NearbyFound, browseNearby, nearbyAvailable } from '../net/nearby';
+import { useBlocked } from '../account/blocks';
 import { Btn, Overline, s } from './components';
 import { Icon } from './icons';
 import { C } from './theme';
@@ -10,8 +11,11 @@ import { C } from './theme';
  * de las que se ven alrededor. Mientras está en pantalla, el móvil busca salas.
  */
 export function NearbyPanel({ onHost, onJoin }: { onHost: () => void; onJoin: (code: string) => void }) {
-  const [rooms, setRooms] = useState<NearbyFound[]>([]);
-  useEffect(() => browseNearby(setRooms), []);
+  const [found, setFound] = useState<NearbyFound[]>([]);
+  // Las salas de quien has bloqueado no aparecen.
+  const blocked = useBlocked();
+  const rooms = found.filter((r) => !blocked.some((b) => b.name === r.name));
+  useEffect(() => browseNearby(setFound), []);
   if (!nearbyAvailable()) return null;
   return (
     <View style={[s.panel, { borderColor: C.good, marginTop: 18 }]}>
