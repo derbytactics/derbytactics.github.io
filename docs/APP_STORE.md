@@ -51,7 +51,19 @@ SIN TRAMPAS NI PAGOS
 • Sin anuncios.
 • Puedes jugar sin cuenta. Con cuenta (Apple o Google) creas salas en línea, entras en los rankings y guardas tus logros y tu álbum.
 
-**Novedades de esta versión (1.0.1):**
+**Novedades de esta versión (1.1.0):**
+
+• Avisos «Te toca»: en las salas en línea, el móvil te avisa cuando es tu turno aunque estés en otra app.
+• Partida guiada: un entrenador te enseña a jugar en tu primera liga.
+• Tres niveles de la IA en los amistosos: fácil, normal y difícil.
+• Tres cartas nuevas: Tiro libre, Muralla y Prima por ganar.
+• Sorteo con dados para decidir quién ficha primero en la pretemporada.
+• Mesas de 2 y 3 clubes con más goles: cada club tira dos veces por jornada.
+• Vibraciones al tirar los dados, al marcar, al encajar y en cada parada.
+• Se adapta a cada iPhone: isla dinámica, barra de inicio y tamaño de letra del sistema. Respeta «Reducir movimiento».
+• Denunciar y bloquear jugadores en las salas.
+
+**Novedades de la versión anterior (1.0.1):**
 
 • Convocatoria secreta: eliges 5 titulares de tu plantilla de 7 antes de cada partido, y nadie ve las alineaciones hasta el pitido inicial.
 • Cartas en pleno partido: tarjetas, lesiones, penaltis y giros que salvan o regalan un gol.
